@@ -3,10 +3,20 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # Standard API v1 endpoints
     path('api/v1/auth/', include('apps.accounts.urls')),
     path('api/v1/catalog/', include('apps.catalog.urls')),
     path('api/v1/valuation/', include('apps.valuation.urls')),
     path('api/v1/sales/', include('apps.sales.urls')),
     path('api/v1/inspections/', include('apps.inspections.urls')),
     path('api/v1/payments/', include('apps.payments.urls')),
+
+    # Fallback direct paths
+    path('auth/', include('apps.accounts.urls')),
+    path('catalog/', include('apps.catalog.urls')),
+    path('valuation/', include('apps.valuation.urls')),
+    path('sales/', include('apps.sales.urls')),
+    path('inspections/', include('apps.inspections.urls')),
+    path('payments/', include('apps.payments.urls')),
 ]

@@ -1,4 +1,14 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
+// Auto-normalize API URL: Ensure /api/v1 is appended whether the user entered it or not
+const getApiBase = () => {
+  let base = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1').trim();
+  base = base.replace(/\/+$/, '');
+  if (!base.endsWith('/api/v1')) {
+    base = `${base}/api/v1`;
+  }
+  return base;
+};
+
+const API_BASE = getApiBase();
 
 export const getAuthToken = () => localStorage.getItem('recell_token');
 export const setAuthToken = (token) => localStorage.setItem('recell_token', token);
