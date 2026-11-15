@@ -5,14 +5,11 @@ After=network.target mariadb.service
 [Service]
 User=user
 Group=user
-WorkingDirectory=/data/home/mobilebuyback_backend
-EnvironmentFile=/data/home/mobilebuyback_backend/.env
-ExecStart=/data/home/mobilebuyback_backend/venv/bin/gunicorn \
+WorkingDirectory=/data/home/mobile_resell/backend
+ExecStart=/data/home/pondytourstravels/backend/venv/bin/gunicorn \
     --workers 3 \
     --bind 127.0.0.1:8010 \
     --timeout 120 \
-    --access-logfile /data/home/mobilebuyback_logs/access.log \
-    --error-logfile /data/home/mobilebuyback_logs/error.log \
     config.wsgi:application
 
 Restart=always

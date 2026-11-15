@@ -130,9 +130,20 @@ REST_FRAMEWORK = {
     ],
 }
 
-# CORS settings
+# CORS settings for Vercel and cross-origin frontend
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
 
 # Increase memory size to easily accept Base64 encoded screenshots and photos
 DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50MB
