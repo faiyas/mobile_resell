@@ -123,11 +123,13 @@ def run():
     samsung_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 60' width='140' height='42'><text x='10' y='42' font-family='Arial, sans-serif' font-weight='bold' font-size='32' fill='%231428A0' letter-spacing='2'>SAMSUNG</text></svg>"
     oneplus_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 60' width='130' height='42'><rect x='5' y='10' width='40' height='40' fill='%23F50514' rx='4'/><text x='18' y='38' font-family='Arial, sans-serif' font-weight='bold' font-size='26' fill='white'>1</text><text x='55' y='40' font-family='Arial, sans-serif' font-weight='bold' font-size='26' fill='%23111827'>ONEPLUS</text></svg>"
     xiaomi_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 60' width='120' height='42'><rect x='5' y='10' width='40' height='40' fill='%23FF6900' rx='8'/><text x='12' y='38' font-family='Arial, sans-serif' font-weight='bold' font-size='22' fill='white'>mi</text><text x='55' y='38' font-family='Arial, sans-serif' font-weight='bold' font-size='24' fill='%23111827'>Xiaomi</text></svg>"
+    google_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 60' width='120' height='42'><text x='10' y='40' font-family='Arial, sans-serif' font-weight='bold' font-size='26' fill='%234285F4'>G<tspan fill='%23EA4335'>o</tspan><tspan fill='%23FBBC05'>o</tspan><tspan fill='%234285F4'>g</tspan><tspan fill='%2334A853'>l</tspan><tspan fill='%23EA4335'>e</tspan></text></svg>"
 
     b_apple, _ = Brand.objects.get_or_create(name='Apple', defaults={'logo_base64': apple_logo, 'display_order': 1})
     b_samsung, _ = Brand.objects.get_or_create(name='Samsung', defaults={'logo_base64': samsung_logo, 'display_order': 2})
     b_oneplus, _ = Brand.objects.get_or_create(name='OnePlus', defaults={'logo_base64': oneplus_logo, 'display_order': 3})
     b_xiaomi, _ = Brand.objects.get_or_create(name='Xiaomi', defaults={'logo_base64': xiaomi_logo, 'display_order': 4})
+    b_google, _ = Brand.objects.get_or_create(name='Google', defaults={'logo_base64': google_logo, 'display_order': 5})
 
     # Device mock graphic SVG in Base64
     phone_graphic_svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 200' width='120' height='200'><rect x='5' y='5' width='110' height='190' rx='20' fill='%231e293b' stroke='%23475569' stroke-width='3'/><rect x='10' y='18' width='100' height='164' rx='12' fill='%230f172a'/><circle cx='60' cy='12' r='3' fill='%2364748b'/><rect x='42' y='28' width='36' height='12' rx='6' fill='%23020617'/></svg>"
@@ -151,6 +153,10 @@ def run():
 
         # Xiaomi
         (b_xiaomi, 'Redmi Note 13 Pro+ 5G', 2024, [('8GB', '256GB', Decimal('16000.00')), ('12GB', '512GB', Decimal('18500.00'))]),
+
+        # Google
+        (b_google, 'Pixel 8 Pro', 2023, [('12GB', '128GB', Decimal('42000.00')), ('12GB', '256GB', Decimal('48000.00'))]),
+        (b_google, 'Pixel 7a', 2023, [('8GB', '128GB', Decimal('21000.00'))]),
     ]
 
     for brand_obj, m_name, yr, variants in models_data:
@@ -172,16 +178,21 @@ def run():
     # 4. Seed Live Test Orders in different states to demonstrate the full workflow
     v_ip13 = StorageVariant.objects.filter(model__name='iPhone 13', storage='128GB').first()
     v_s23 = StorageVariant.objects.filter(model__name='Galaxy S23', storage='128GB').first()
+    v_op12 = StorageVariant.objects.filter(model__name='OnePlus 12', storage='256GB').first()
+    v_pix8 = StorageVariant.objects.filter(model__name='Pixel 8 Pro', storage='128GB').first()
+
+    # SVG payment receipt preview
+    sample_receipt_svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 350 450' width='350' height='450'><rect width='100%25' height='100%25' fill='%230f172a'/><circle cx='175' cy='70' r='36' fill='%2310b981'/><path d='M160 70 L170 80 L190 60' stroke='white' stroke-width='6' fill='none' stroke-linecap='round'/><text x='175' y='135' font-family='Arial' font-size='22' font-weight='bold' fill='white' text-anchor='middle'>Paid Successfully</text><text x='175' y='175' font-family='Arial' font-size='32' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>%E2%82%B9 24,000</text><rect x='30' y='210' width='290' height='180' rx='8' fill='%231e293b'/><text x='45' y='240' font-family='Arial' font-size='14' fill='%2394a3b8'>Paid to:</text><text x='45' y='265' font-family='Arial' font-size='16' font-weight='bold' fill='white'>Vikram Mehra</text><text x='45' y='285' font-family='Arial' font-size='14' fill='%23cbd5e1'>vikram@icici</text><text x='45' y='320' font-family='Arial' font-size='14' fill='%2394a3b8'>UPI Ref / UTR:</text><text x='45' y='345' font-family='Arial' font-size='15' font-weight='bold' fill='%2310b981'>432109876543</text><text x='45' y='370' font-family='Arial' font-size='12' fill='%2394a3b8'>State Bank of India %E2%80%A2 15-Nov-2026</text></svg>"
 
     if v_ip13:
-        # Order 1: Ready for Payment Proof Upload (Status: OWNERSHIP_TRANSFERRED)
-        sale_ready_for_payout, _ = PhoneSale.objects.get_or_create(
+        # Order 1: Ready for Admin Payout (Status: OWNERSHIP_TRANSFERRED)
+        PhoneSale.objects.update_or_create(
             sale_code='PHN-2026-001',
             defaults={
                 'customer': customer_user,
-                'customer_name': 'Rohan Deshmukh',
-                'customer_phone': '9870011223',
-                'customer_email': 'rohan@example.com',
+                'customer_name': 'Pooja Verma',
+                'customer_phone': '9876543212',
+                'customer_email': 'customer@example.com',
                 'variant': v_ip13,
                 'base_price': v_ip13.base_price,
                 'estimated_price': Decimal('22500.00'),
@@ -192,18 +203,16 @@ def run():
                 'pickup_city': 'Bengaluru',
                 'pickup_pincode': '560103',
                 'beneficiary_type': 'UPI',
-                'beneficiary_name': 'Rohan Deshmukh',
-                'beneficiary_upi_id': 'rohandesh@okaxis',
+                'beneficiary_name': 'Pooja Verma',
+                'beneficiary_upi_id': 'pooja@okhdfcbank',
                 'imei_number': '354892109845123',
                 'customer_handover_signed': True,
-                'admin_notes': 'Physical inspection completed. Customer accepted ₹21,000.',
+                'admin_notes': 'Doorstep inspection completed. Ready for UPI payout transfer.',
             }
         )
 
         # Order 2: Already Paid with Base64 screenshot proof and UTR!
-        sample_receipt_svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 350 450' width='350' height='450'><rect width='100%25' height='100%25' fill='%230f172a'/><circle cx='175' cy='70' r='36' fill='%2310b981'/><path d='M160 70 L170 80 L190 60' stroke='white' stroke-width='6' fill='none' stroke-linecap='round'/><text x='175' y='135' font-family='Arial' font-size='22' font-weight='bold' fill='white' text-anchor='middle'>Paid Successfully</text><text x='175' y='175' font-family='Arial' font-size='32' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>%E2%82%B9 24,000</text><rect x='30' y='210' width='290' height='180' rx='8' fill='%231e293b'/><text x='45' y='240' font-family='Arial' font-size='14' fill='%2394a3b8'>Paid to:</text><text x='45' y='265' font-family='Arial' font-size='16' font-weight='bold' fill='white'>Vikram Mehra</text><text x='45' y='285' font-family='Arial' font-size='14' fill='%23cbd5e1'>vikram@icici</text><text x='45' y='320' font-family='Arial' font-size='14' fill='%2394a3b8'>UPI Ref / UTR:</text><text x='45' y='345' font-family='Arial' font-size='15' font-weight='bold' fill='%2310b981'>432109876543</text><text x='45' y='370' font-family='Arial' font-size='12' fill='%2394a3b8'>State Bank of India %E2%80%A2 15-Nov-2026</text></svg>"
-
-        sale_paid, _ = PhoneSale.objects.get_or_create(
+        sale_paid, _ = PhoneSale.objects.update_or_create(
             sale_code='PHN-2026-PAID-01',
             defaults={
                 'customer': customer_user,
@@ -228,7 +237,7 @@ def run():
             }
         )
 
-        Payment.objects.get_or_create(
+        Payment.objects.update_or_create(
             sale=sale_paid,
             defaults={
                 'amount': Decimal('24000.00'),
@@ -240,6 +249,84 @@ def run():
                 'admin_notes': 'Paid via Google Pay business UPI. Transfer confirmed.',
                 'paid_by': admin_user,
                 'is_verified': True,
+            }
+        )
+
+    # Order 3: Assigned to Collection Agent (Status: PICKUP_SCHEDULED)
+    if v_s23:
+        PhoneSale.objects.update_or_create(
+            sale_code='PHN-2026-002',
+            defaults={
+                'customer': customer_user,
+                'customer_name': 'Pooja Verma',
+                'customer_phone': '9876543212',
+                'customer_email': 'customer@example.com',
+                'variant': v_s23,
+                'base_price': v_s23.base_price,
+                'estimated_price': Decimal('31000.00'),
+                'final_price': Decimal('31000.00'),
+                'status': 'PICKUP_SCHEDULED',
+                'assigned_agent': agent_user,
+                'pickup_address': '14th Cross, Indiranagar',
+                'pickup_city': 'Bengaluru',
+                'pickup_pincode': '560038',
+                'pickup_slot': 'Morning (10:00 AM - 1:00 PM)',
+                'beneficiary_type': 'UPI',
+                'beneficiary_name': 'Pooja Verma',
+                'beneficiary_upi_id': 'pooja@okhdfcbank',
+                'customer_handover_signed': False,
+                'admin_notes': 'Agent Ramesh assigned for morning doorstep pickup.',
+            }
+        )
+
+    # Order 4: Revised Offer Sent - Waiting Customer Acceptance (Status: FINAL_OFFER_SENT)
+    if v_op12:
+        sale_revised, _ = PhoneSale.objects.update_or_create(
+            sale_code='PHN-2026-003',
+            defaults={
+                'customer': customer_user,
+                'customer_name': 'Arun Karthik',
+                'customer_phone': '9840192837',
+                'customer_email': 'arun@example.com',
+                'variant': v_op12,
+                'base_price': v_op12.base_price,
+                'estimated_price': Decimal('39000.00'),
+                'final_price': Decimal('36500.00'),
+                'status': 'FINAL_OFFER_SENT',
+                'assigned_agent': agent_user,
+                'pickup_address': 'Prestige Falcon City, Kanakapura Road',
+                'pickup_city': 'Bengaluru',
+                'pickup_pincode': '560062',
+                'beneficiary_type': 'BANK',
+                'beneficiary_name': 'Arun Karthik',
+                'beneficiary_account_no': '9182736450123',
+                'beneficiary_ifsc': 'HDFC0000128',
+                'imei_number': '867123049581726',
+                'customer_handover_signed': False,
+                'admin_notes': 'Minor hairline scratches on back glass during inspection. Reduced by ₹2,500.',
+            }
+        )
+
+    # Order 5: Brand New Request Submitted (Status: SUBMITTED - Awaiting Admin Assignment)
+    if v_pix8:
+        PhoneSale.objects.update_or_create(
+            sale_code='PHN-2026-004',
+            defaults={
+                'customer_name': 'Siddharth Rao',
+                'customer_phone': '9900112233',
+                'customer_email': 'sid@example.com',
+                'variant': v_pix8,
+                'base_price': v_pix8.base_price,
+                'estimated_price': Decimal('42000.00'),
+                'status': 'SUBMITTED',
+                'pickup_address': 'Sobha City, Thanisandra Main Road',
+                'pickup_city': 'Bengaluru',
+                'pickup_pincode': '560077',
+                'pickup_slot': 'Afternoon (1:00 PM - 4:00 PM)',
+                'beneficiary_type': 'UPI',
+                'beneficiary_name': 'Siddharth Rao',
+                'beneficiary_upi_id': 'sidrao@axisbank',
+                'customer_handover_signed': False,
             }
         )
 
