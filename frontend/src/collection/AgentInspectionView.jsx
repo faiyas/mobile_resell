@@ -107,6 +107,8 @@ export default function AgentInspectionView({ currentUser }) {
 
       await api.recordInspection(payload);
       setSuccessMsg(`Inspection recorded for ${selectedSale.sale_code}! Final price set to ₹${Number(suggestedFinalPrice).toLocaleString('en-IN')}`);
+      setPhotos([]);
+      setInspectorNotes('');
       loadAssignedSales();
     } catch (err) {
       alert(err.message || 'Failed to submit inspection');

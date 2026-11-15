@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Lock, Mail, User, Phone, ShieldCheck, ArrowRight, Check } from 'lucide-react';
+import { X, Lock, Mail, User, Phone, ShieldCheck, ArrowRight, Check, UserCheck } from 'lucide-react';
 import { api, setAuthToken, setCurrentUser } from '../services/api';
 
 export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
@@ -55,55 +55,58 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
+      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-200 my-auto max-h-[92vh] flex flex-col">
         
-        {/* Header */}
-        <div className="bg-slate-900 px-6 py-5 text-white flex items-center justify-between">
+        {/* Header (Sticky) */}
+        <div className="bg-slate-900 px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between shrink-0">
           <div>
-            <h3 className="font-bold text-lg">{isRegister ? 'Create Account' : 'Welcome Back'}</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {isRegister ? 'Register to sell phones and track payouts' : 'Login to your customer or staff dashboard'}
+            <h3 className="font-extrabold text-base sm:text-lg">{isRegister ? 'Create Account' : 'Welcome to ReCell'}</h3>
+            <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
+              {isRegister ? 'Register to sell phones and track payouts' : 'Login to Customer, Admin or Agent Portal'}
             </p>
           </div>
           <button 
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Quick Demo Logins banner */}
-        <div className="bg-slate-50 border-b border-slate-200 p-4">
-          <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">⚡ Quick 1-Click Demo Logins:</p>
-          <div className="grid grid-cols-3 gap-2">
+        {/* Quick Demo 1-Click Logins */}
+        <div className="bg-slate-50 border-b border-slate-200 p-3 sm:p-4 shrink-0">
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">⚡ Quick 1-Click Role Logins:</p>
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => handleQuickLogin('admin@buyback.in', 'admin123')}
-              className="px-2 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold shadow-sm transition truncate"
+              className="px-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold shadow-sm transition flex flex-col items-center justify-center text-center"
             >
-              👑 Super Admin
+              <ShieldCheck className="w-3.5 h-3.5 mb-0.5" />
+              <span>Admin</span>
             </button>
             <button
               type="button"
               onClick={() => handleQuickLogin('agent@buyback.in', 'agent123')}
-              className="px-2 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold shadow-sm transition truncate"
+              className="px-2 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold shadow-sm transition flex flex-col items-center justify-center text-center"
             >
-              🛵 Pickup Agent
+              <UserCheck className="w-3.5 h-3.5 mb-0.5" />
+              <span>Agent</span>
             </button>
             <button
               type="button"
               onClick={() => handleQuickLogin('customer@example.com', 'customer123')}
-              className="px-2 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-sm transition truncate"
+              className="px-2 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-sm transition flex flex-col items-center justify-center text-center"
             >
-              👤 Customer
+              <User className="w-3.5 h-3.5 mb-0.5" />
+              <span>Customer</span>
             </button>
           </div>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {/* Form Body (Scrollable if height exceeds screen) */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-3 sm:space-y-4">
           {error && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
               {error}
@@ -119,6 +122,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   <input
                     type="text"
                     required
+                    autoComplete="name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="e.g. Ramesh Patel"
@@ -134,6 +138,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   <input
                     type="tel"
                     required
+                    autoComplete="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="10-digit mobile number"
@@ -164,6 +169,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               <input
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@domain.com"
@@ -179,6 +185,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               <input
                 type="password"
                 required
+                autoComplete={isRegister ? "new-password" : "current-password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -190,7 +197,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-900 hover:bg-black text-white font-bold py-2.5 rounded-xl shadow-md transition flex items-center justify-center gap-2 mt-2"
+            className="w-full bg-slate-900 hover:bg-black text-white font-bold py-3 rounded-xl shadow-md transition flex items-center justify-center gap-2 mt-2"
           >
             {loading ? 'Authenticating...' : isRegister ? 'Create Account' : 'Sign In'}
             <ArrowRight className="w-4 h-4" />

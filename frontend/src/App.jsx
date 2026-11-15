@@ -9,7 +9,7 @@ import AgentInspectionView from './collection/AgentInspectionView';
 import { getCurrentUser, removeAuthToken, removeCurrentUser } from './services/api';
 import { 
   Smartphone, ShieldCheck, Truck, Banknote, Sparkles, 
-  ArrowRight, CheckCircle2, Lock, Search, UserCheck 
+  ArrowRight, CheckCircle2, Lock, Search, UserCheck, User, ShieldAlert, LogOut 
 } from 'lucide-react';
 
 export default function App() {
@@ -20,7 +20,15 @@ export default function App() {
 
   useEffect(() => {
     const user = getCurrentUser();
-    if (user) setCurrentUser(user);
+    if (user) {
+      setCurrentUser(user);
+      // Auto-route staff to their dedicated workspace on load
+      if (user.role === 'ADMIN' && activeTab === 'sell') {
+        setActiveTab('admin');
+      } else if (user.role === 'COLLECTION_AGENT' && activeTab === 'sell') {
+        setActiveTab('inspection');
+      }
+    }
   }, []);
 
   const handleLogout = () => {
@@ -35,6 +43,22 @@ export default function App() {
     setActiveTab('track');
   };
 
+  const handleAuthSuccess = (user) => {
+    setCurrentUser(user);
+    // Strict automatic role-based redirection
+    if (user.role === 'ADMIN') {
+      setActiveTab('admin');
+    } else if (user.role === 'COLLECTION_AGENT') {
+      setActiveTab('inspection');
+    } else {
+      setActiveTab('track');
+    }
+  };
+
+  // Route security guard: enforce permissions
+  const canAccessAdmin = currentUser?.role === 'ADMIN';
+  const canAccessAgent = currentUser?.role === 'COLLECTION_AGENT' || currentUser?.role === 'ADMIN';
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-emerald-500 selection:text-white">
       
@@ -47,14 +71,14 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Main Content Area with generous bottom padding on mobile so fixed bottom bar never overlaps */}
+      {/* Main Content Area */}
       <main className="flex-1 pb-24 md:pb-12">
         
-        {/* Sell Phone Flow */}
+        {/* ================= 1. SELL PHONE (Customer & All) ================= */}
         {activeTab === 'sell' && (
           <div>
             {/* Hero Banner */}
-            <div className="bg-gradient-to-b from-white via-slate-50 to-slate-100 border-b border-slate-200 py-8 sm:py-16 text-center px-4 relative overflow-hidden">
+            <div className="bg-gradient-to-b from-white via-slate-50 to-slate-100 border-b border-slate-200 py-8 sm:py-14 text-center px-4 relative overflow-hidden">
               <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4 relative z-10">
                 <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full text-[11px] sm:text-xs font-extrabold text-emerald-800">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -92,7 +116,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Track Order Flow */}
+        {/* ================= 2. TRACK ORDER (Customer & All) ================= */}
         {activeTab === 'track' && (
           <TrackOrder 
             initialSaleCode={trackedSaleCode}
@@ -100,127 +124,158 @@ export default function App() {
           />
         )}
 
-        {/* Super Admin Dashboard */}
+        {/* ================= 3. SUPER ADMIN DASHBOARD ================= */}
         {activeTab === 'admin' && (
-          <AdminDashboard currentUser={currentUser} />
+          canAccessAdmin ? (
+            <AdminDashboard currentUser={currentUser} />
+          ) : (
+            <div className="max-w-lg mx-auto px-4 py-16 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900">Admin Access Restricted</h3>
+              <p className="text-xs text-slate-500">
+                You must be logged in with an authorized Administrator account to view the operations desk and authorize payouts.
+              </p>
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className="bg-slate-900 text-white font-bold px-6 py-2.5 rounded-xl text-xs hover:bg-black transition"
+              >
+                Sign In as Admin
+              </button>
+            </div>
+          )
         )}
 
-        {/* Collection Agent Portal */}
+        {/* ================= 4. COLLECTION AGENT PORTAL ================= */}
         {activeTab === 'inspection' && (
-          <AgentInspectionView currentUser={currentUser} />
+          canAccessAgent ? (
+            <AgentInspectionView currentUser={currentUser} />
+          ) : (
+            <div className="max-w-lg mx-auto px-4 py-16 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <h3 className="text-xl font-extrabold text-slate-900">Field Agent Access Required</h3>
+              <p className="text-xs text-slate-500">
+                Please log in with your assigned Collection Agent credentials to record device inspections and IMEI checks.
+              </p>
+              <button
+                onClick={() => setAuthModalOpen(true)}
+                className="bg-amber-600 text-white font-bold px-6 py-2.5 rounded-xl text-xs hover:bg-amber-700 transition"
+              >
+                Sign In as Field Agent
+              </button>
+            </div>
+          )
         )}
 
       </main>
 
-      {/* Modern Mobile Bottom Navigation Bar (Fixed for native app feel on small screens) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-2 flex justify-around items-center shadow-2xl md:hidden">
+      {/* ================= MODERN MOBILE BOTTOM NAVIGATION BAR ================= */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-1.5 px-3 flex justify-around items-center shadow-2xl md:hidden">
+        
+        {/* Sell Phone (Always visible) */}
         <button
           onClick={() => setActiveTab('sell')}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition ${
-            activeTab === 'sell' ? 'text-emerald-600 font-extrabold' : 'text-slate-500 hover:text-slate-900 font-medium'
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
+            activeTab === 'sell' ? 'text-emerald-600 font-extrabold' : 'text-slate-500 font-medium'
           }`}
         >
           <Smartphone className="w-5 h-5 mb-0.5" />
           <span className="text-[10px]">Sell Phone</span>
         </button>
 
+        {/* Track Orders (Always visible) */}
         <button
           onClick={() => setActiveTab('track')}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition ${
-            activeTab === 'track' ? 'text-emerald-600 font-extrabold' : 'text-slate-500 hover:text-slate-900 font-medium'
+          className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
+            activeTab === 'track' ? 'text-emerald-600 font-extrabold' : 'text-slate-500 font-medium'
           }`}
         >
           <Search className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Track</span>
+          <span className="text-[10px]">{currentUser?.role === 'CUSTOMER' ? 'My Orders' : 'Track'}</span>
         </button>
 
-        <button
-          onClick={() => {
-            if (!currentUser || currentUser.role !== 'ADMIN') {
-              setAuthModalOpen(true);
-            } else {
-              setActiveTab('admin');
-            }
-          }}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition ${
-            activeTab === 'admin' ? 'text-indigo-600 font-extrabold' : 'text-slate-500 hover:text-slate-900 font-medium'
-          }`}
-        >
-          <ShieldCheck className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Admin</span>
-        </button>
+        {/* Show Admin Desk ONLY to Admin */}
+        {currentUser?.role === 'ADMIN' && (
+          <button
+            onClick={() => setActiveTab('admin')}
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
+              activeTab === 'admin' ? 'text-indigo-600 font-extrabold' : 'text-slate-500 font-medium'
+            }`}
+          >
+            <ShieldCheck className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px]">Admin Desk</span>
+          </button>
+        )}
 
-        <button
-          onClick={() => {
-            if (!currentUser || currentUser.role !== 'COLLECTION_AGENT') {
-              setAuthModalOpen(true);
-            } else {
-              setActiveTab('inspection');
-            }
-          }}
-          className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition ${
-            activeTab === 'inspection' ? 'text-amber-600 font-extrabold' : 'text-slate-500 hover:text-slate-900 font-medium'
-          }`}
-        >
-          <UserCheck className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Agent</span>
-        </button>
+        {/* Show Agent Portal ONLY to Collection Staff & Admin */}
+        {(currentUser?.role === 'COLLECTION_AGENT' || currentUser?.role === 'ADMIN') && (
+          <button
+            onClick={() => setActiveTab('inspection')}
+            className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
+              activeTab === 'inspection' ? 'text-amber-600 font-extrabold' : 'text-slate-500 font-medium'
+            }`}
+          >
+            <UserCheck className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px]">Agent</span>
+          </button>
+        )}
+
+        {/* Account / Login button */}
+        {!currentUser ? (
+          <button
+            onClick={() => setAuthModalOpen(true)}
+            className="flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-slate-500 font-medium"
+          >
+            <User className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px]">Login</span>
+          </button>
+        ) : (
+          <button
+            onClick={handleLogout}
+            className="flex flex-col items-center justify-center py-1 px-2.5 rounded-xl text-slate-500 hover:text-rose-600 font-medium transition"
+          >
+            <LogOut className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px]">Logout</span>
+          </button>
+        )}
       </nav>
 
-      {/* Desktop Floating Quick Role Switcher Pill */}
-      <div className="hidden md:flex fixed bottom-4 right-4 z-40 bg-slate-900/90 text-white backdrop-blur border border-slate-700 rounded-2xl p-2 shadow-2xl items-center gap-2 text-xs">
-        <span className="font-bold text-[10px] text-slate-400 pl-2 uppercase">Switch View:</span>
-        <button
-          onClick={() => setActiveTab('sell')}
-          className={`px-2.5 py-1.5 rounded-lg font-bold transition ${activeTab === 'sell' ? 'bg-emerald-600 text-white' : 'hover:bg-slate-800 text-slate-300'}`}
-        >
-          Customer Sell
-        </button>
-        <button
-          onClick={() => setActiveTab('track')}
-          className={`px-2.5 py-1.5 rounded-lg font-bold transition ${activeTab === 'track' ? 'bg-emerald-600 text-white' : 'hover:bg-slate-800 text-slate-300'}`}
-        >
-          Track Order
-        </button>
-        <button
-          onClick={() => {
-            if (!currentUser || currentUser.role !== 'ADMIN') {
-              setAuthModalOpen(true);
-            } else {
-              setActiveTab('admin');
-            }
-          }}
-          className={`px-2.5 py-1.5 rounded-lg font-bold transition ${activeTab === 'admin' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 text-indigo-300'}`}
-        >
-          Admin Desk
-        </button>
-        <button
-          onClick={() => {
-            if (!currentUser || currentUser.role !== 'COLLECTION_AGENT') {
-              setAuthModalOpen(true);
-            } else {
-              setActiveTab('inspection');
-            }
-          }}
-          className={`px-2.5 py-1.5 rounded-lg font-bold transition ${activeTab === 'inspection' ? 'bg-amber-600 text-white' : 'hover:bg-slate-800 text-amber-300'}`}
-        >
-          Agent Portal
-        </button>
-      </div>
+      {/* Desktop Role Switcher (Visible on medium+ screens for convenience) */}
+      {currentUser?.role === 'ADMIN' && (
+        <div className="hidden md:flex fixed bottom-4 right-4 z-40 bg-slate-900/90 text-white backdrop-blur border border-slate-700 rounded-2xl p-1.5 shadow-2xl items-center gap-1.5 text-xs">
+          <span className="font-bold text-[10px] text-slate-400 pl-2 uppercase">Quick Switch:</span>
+          <button
+            onClick={() => setActiveTab('admin')}
+            className={`px-2.5 py-1.5 rounded-lg font-bold transition ${activeTab === 'admin' ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 text-indigo-300'}`}
+          >
+            👑 Admin Desk
+          </button>
+          <button
+            onClick={() => setActiveTab('inspection')}
+            className={`px-2.5 py-1.5 rounded-lg font-bold transition ${activeTab === 'inspection' ? 'bg-amber-600 text-white' : 'hover:bg-slate-800 text-amber-300'}`}
+          >
+            🛵 Agent View
+          </button>
+          <button
+            onClick={() => setActiveTab('sell')}
+            className={`px-2.5 py-1.5 rounded-lg font-bold transition ${activeTab === 'sell' ? 'bg-emerald-600 text-white' : 'hover:bg-slate-800 text-slate-300'}`}
+          >
+            📱 Customer Sell
+          </button>
+        </div>
+      )}
 
       {/* Footer */}
       <Footer />
 
-      {/* Auth Modal */}
+      {/* Auth Modal with strict role redirection */}
       <AuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        onAuthSuccess={(user) => {
-          setCurrentUser(user);
-          if (user.role === 'ADMIN') setActiveTab('admin');
-          else if (user.role === 'COLLECTION_AGENT') setActiveTab('inspection');
-          else setActiveTab('sell');
-        }}
+        onAuthSuccess={handleAuthSuccess}
       />
 
     </div>

@@ -99,7 +99,7 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-200 max-h-[95vh] flex flex-col">
+      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-200 max-h-[92vh] flex flex-col">
         
         {/* Header */}
         <div className="bg-slate-900 text-white px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
@@ -230,16 +230,16 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
 
               {/* Dynamic Scan-to-Pay QR Code */}
               {qrCodeDataUrl ? (
-                <div className="bg-white p-4 rounded-xl border border-slate-200 text-center flex flex-col items-center justify-center">
-                  <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-2">
+                <div className="bg-white p-3 sm:p-4 rounded-xl border border-slate-200 text-center flex flex-col items-center justify-center">
+                  <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1 mb-1.5">
                     <QrCode className="w-3.5 h-3.5 text-emerald-600" />
-                    Scan with GPay / PhonePe on Phone:
+                    Scan with GPay / PhonePe:
                   </span>
-                  <div className="p-2 bg-white rounded-lg border border-slate-200 shadow-sm">
-                    <img src={qrCodeDataUrl} alt="UPI Payment QR Code" className="w-40 h-40 object-contain mx-auto" />
+                  <div className="p-1.5 bg-white rounded-lg border border-slate-200 shadow-sm">
+                    <img src={qrCodeDataUrl} alt="UPI Payment QR Code" className="w-28 h-28 sm:w-36 sm:h-36 object-contain mx-auto" />
                   </div>
-                  <span className="text-[10px] text-slate-400 mt-2 font-medium">
-                    Pre-fills ₹{Number(amount).toLocaleString('en-IN')} & Customer UPI
+                  <span className="text-[10px] text-slate-400 mt-1.5 font-medium">
+                    Pre-fills ₹{Number(amount).toLocaleString('en-IN')} & UPI
                   </span>
                 </div>
               ) : (
@@ -341,18 +341,18 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
             </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="w-1/3 border border-slate-300 hover:bg-slate-50 font-bold py-3 rounded-xl text-slate-700 transition"
+              className="w-full sm:w-1/3 order-2 sm:order-1 border border-slate-300 hover:bg-slate-50 font-bold py-2.5 sm:py-3 rounded-xl text-slate-700 transition"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2"
+              className="w-full sm:w-2/3 order-1 sm:order-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 sm:py-3 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2"
             >
               {loading ? 'Recording Payout...' : 'Confirm Payment & Mark as PAID'}
               <ArrowRight className="w-4 h-4" />

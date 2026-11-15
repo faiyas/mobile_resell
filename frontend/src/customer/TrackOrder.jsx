@@ -172,6 +172,38 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
       </div>
 
       {/* Results View */}
+      {salesList.length > 1 && (
+        <div className="mb-4">
+          <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">
+            Select Order to Track ({salesList.length} found):
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {salesList.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => setSelectedSale(s)}
+                className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-2 border shrink-0 ${
+                  selectedSale?.id === s.id
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-emerald-500/50'
+                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
+                }`}
+              >
+                <span className="font-mono">{s.sale_code}</span>
+                <span className="text-[11px] opacity-80">{s.brand_name} {s.model_name}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                  s.status === 'PAYMENT_COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
+                  s.status === 'FINAL_OFFER_SENT' ? 'bg-amber-500/20 text-amber-300' :
+                  'bg-slate-700 text-slate-200'
+                }`}>
+                  {s.status === 'PAYMENT_COMPLETED' ? 'PAID' : s.status.replace(/_/g, ' ')}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {selectedSale ? (
         <div className="space-y-6 animate-fade-in">
           
