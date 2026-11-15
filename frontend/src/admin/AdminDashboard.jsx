@@ -111,15 +111,15 @@ export default function AdminDashboard({ currentUser }) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in">
       
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 text-white p-6 sm:p-8 rounded-3xl shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 text-white p-5 sm:p-8 rounded-3xl shadow-xl">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-md">
+          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
             Super Admin Control Center
           </span>
-          <h1 className="text-2xl sm:text-3xl font-black mt-2">
+          <h1 className="text-xl sm:text-3xl font-black mt-2">
             Mobile Buyback Operations Desk
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-[11px] sm:text-xs text-slate-400 mt-1">
             Manage device valuations, assign pickup agents, and authorize UPI / Bank payouts with Base64 proof.
           </p>
         </div>
@@ -127,94 +127,94 @@ export default function AdminDashboard({ currentUser }) {
         <button
           onClick={loadDashboardData}
           disabled={loading}
-          className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-700 transition shrink-0"
+          className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-700 transition w-full sm:w-auto"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-emerald-400' : ''}`} />
           {loading ? 'Refreshing...' : 'Refresh Data'}
         </button>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      {/* Metrics Row (Optimized for 2-column mobile screens like iPhone SE) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-xs font-bold text-slate-400 uppercase">Today's Total Sales</span>
-          <p className="text-3xl font-black text-slate-900 mt-1">{sales.length}</p>
-          <span className="text-[11px] text-slate-500 font-medium mt-1 block">Lifetime buyback submissions</span>
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Sales</span>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">{sales.length}</p>
+          <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-1 truncate">All submissions</span>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-xs font-bold text-amber-600 uppercase">Pending Inspections</span>
-          <p className="text-3xl font-black text-amber-600 mt-1">{pendingInspectionsCount}</p>
-          <span className="text-[11px] text-amber-700 font-medium mt-1 block">Awaiting field agent collection</span>
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <span className="text-[10px] sm:text-xs font-bold text-amber-600 uppercase tracking-wider">Pending Pickup</span>
+          <p className="text-2xl sm:text-3xl font-black text-amber-600 mt-1">{pendingInspectionsCount}</p>
+          <span className="text-[10px] sm:text-[11px] text-amber-700 font-medium mt-1 truncate">Awaiting collection</span>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-emerald-200 bg-emerald-50/30 shadow-sm">
-          <span className="text-xs font-bold text-emerald-700 uppercase">Awaiting Payout</span>
-          <p className="text-3xl font-black text-emerald-600 mt-1">{awaitingPayoutsCount}</p>
-          <span className="text-[11px] text-emerald-700 font-semibold mt-1 block">Ready for QR Scan / UTR Upload</span>
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-emerald-200 bg-emerald-50/40 shadow-sm flex flex-col justify-between">
+          <span className="text-[10px] sm:text-xs font-bold text-emerald-700 uppercase tracking-wider">Awaiting Payout</span>
+          <p className="text-2xl sm:text-3xl font-black text-emerald-600 mt-1">{awaitingPayoutsCount}</p>
+          <span className="text-[10px] sm:text-[11px] text-emerald-700 font-semibold mt-1 truncate">Ready for QR scan</span>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-          <span className="text-xs font-bold text-slate-400 uppercase">Disbursed Payouts</span>
-          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Total Payouts</span>
+          <p className="text-xl sm:text-3xl font-black text-slate-900 mt-1 truncate">
             ₹{Number(paymentsList.total_disbursed).toLocaleString('en-IN')}
           </p>
-          <span className="text-[11px] text-slate-500 font-medium mt-1 block">
-            Across {paymentsList.total_count} verified sales
+          <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-1 truncate">
+            {paymentsList.total_count} verified sales
           </span>
         </div>
 
       </div>
 
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-slate-200 gap-2">
+      {/* Navigation Tabs (Smooth horizontal swipe on mobile) */}
+      <div className="flex border-b border-slate-200 gap-1 overflow-x-auto pb-1 -mx-2 px-2 scrollbar-none">
         <button
           onClick={() => setActiveTab('payouts')}
-          className={`pb-3 px-4 text-xs font-extrabold transition border-b-2 flex items-center gap-1.5 ${
+          className={`pb-2.5 px-3.5 text-xs font-extrabold transition border-b-2 shrink-0 flex items-center gap-1.5 ${
             activeTab === 'payouts'
               ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <IndianRupee className="w-4 h-4" />
+          <IndianRupee className="w-3.5 h-3.5" />
           Payout Desk ({payoutQueue.length})
         </button>
 
         <button
           onClick={() => setActiveTab('sales')}
-          className={`pb-3 px-4 text-xs font-extrabold transition border-b-2 flex items-center gap-1.5 ${
+          className={`pb-2.5 px-3.5 text-xs font-extrabold transition border-b-2 shrink-0 flex items-center gap-1.5 ${
             activeTab === 'sales'
               ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Smartphone className="w-4 h-4" />
-          All Customer Sales ({sales.length})
+          <Smartphone className="w-3.5 h-3.5" />
+          Customer Sales ({sales.length})
         </button>
 
         <button
           onClick={() => setActiveTab('pricing')}
-          className={`pb-3 px-4 text-xs font-extrabold transition border-b-2 flex items-center gap-1.5 ${
+          className={`pb-2.5 px-3.5 text-xs font-extrabold transition border-b-2 shrink-0 flex items-center gap-1.5 ${
             activeTab === 'pricing'
               ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Layers className="w-4 h-4" />
-          Valuation & Pricing Rules
+          <Layers className="w-3.5 h-3.5" />
+          Pricing Rules
         </button>
 
         <button
           onClick={() => setActiveTab('history')}
-          className={`pb-3 px-4 text-xs font-extrabold transition border-b-2 flex items-center gap-1.5 ${
+          className={`pb-2.5 px-3.5 text-xs font-extrabold transition border-b-2 shrink-0 flex items-center gap-1.5 ${
             activeTab === 'history'
               ? 'border-emerald-600 text-emerald-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          <CheckCircle2 className="w-4 h-4" />
-          Payouts History ({paymentsList.total_count})
+          <CheckCircle2 className="w-3.5 h-3.5" />
+          Payout History ({paymentsList.total_count})
         </button>
       </div>
 

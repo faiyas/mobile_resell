@@ -218,17 +218,20 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
               </div>
             </div>
 
-            {/* Visual Stepper */}
+            {/* Visual Stepper (Responsive 5-Step Progress) */}
             <div className="py-2">
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                 {STEPS.map((s, idx) => {
                   const currentIdx = getStepIndex(selectedSale.status);
                   const isDone = currentIdx >= idx;
                   const isCurrent = currentIdx === idx;
+                  const isLastOdd = idx === 4;
                   return (
                     <div 
                       key={s.key} 
-                      className={`p-3 rounded-xl border text-center transition ${
+                      className={`p-2.5 sm:p-3 rounded-xl border text-center transition ${
+                        isLastOdd ? 'col-span-2 sm:col-span-1' : ''
+                      } ${
                         isCurrent
                           ? 'bg-emerald-50 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500/20'
                           : isDone
@@ -243,7 +246,7 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                           <div className="w-4 h-4 rounded-full border border-slate-300" />
                         )}
                       </div>
-                      <span className="text-xs font-bold block">{s.label}</span>
+                      <span className="text-[11px] sm:text-xs font-bold block">{s.label}</span>
                     </div>
                   );
                 })}

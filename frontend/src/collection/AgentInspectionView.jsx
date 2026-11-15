@@ -116,18 +116,18 @@ export default function AgentInspectionView({ currentUser }) {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6 animate-fade-in">
+    <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6 animate-fade-in">
       
       {/* Top Banner */}
-      <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-xl flex items-center justify-between">
+      <div className="bg-slate-900 text-white p-4 sm:p-6 rounded-3xl shadow-xl flex items-center justify-between">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
             Field Collection Agent Portal
           </span>
-          <h2 className="text-xl sm:text-2xl font-black mt-1">
+          <h2 className="text-lg sm:text-2xl font-black mt-1">
             Doorstep Device Inspection & Handover
           </h2>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
             Logged in as: {currentUser?.full_name || 'Pickup Specialist'}
           </p>
         </div>

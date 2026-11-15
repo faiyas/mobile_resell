@@ -98,24 +98,24 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-200 max-h-[94vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in">
+      <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-200 max-h-[95vh] flex flex-col">
         
         {/* Header */}
-        <div className="bg-slate-900 text-white px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-              <IndianRupee className="w-5 h-5" />
+        <div className="bg-slate-900 text-white px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold shrink-0">
+              <IndianRupee className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-base">Authorize & Record Customer Payout</h3>
-                <span className="font-mono text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h3 className="font-extrabold text-sm sm:text-base">Authorize Payout</h3>
+                <span className="font-mono text-[10px] sm:text-xs bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
                   {sale.sale_code}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Pay customer via any UPI/Bank app, then upload proof & UTR to mark order as PAID
+              <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5">
+                Pay customer via UPI/Bank app & upload UTR proof
               </p>
             </div>
           </div>
@@ -128,7 +128,7 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
         </div>
 
         {/* Scrollable Content */}
-        <form onSubmit={handleRecordPayment} className="p-6 overflow-y-auto space-y-6 text-xs">
+        <form onSubmit={handleRecordPayment} className="p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6 text-xs">
           
           {errorMsg && (
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-semibold flex items-center gap-2">

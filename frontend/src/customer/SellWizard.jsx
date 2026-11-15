@@ -149,35 +149,35 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       
-      {/* Wizard Progress Stepper */}
-      <div className="mb-8 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+      {/* Wizard Progress Stepper (Mobile Optimized) */}
+      <div className="mb-6 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex items-center justify-between max-w-3xl mx-auto">
           {[
-            { num: 1, label: 'Select Brand' },
-            { num: 2, label: 'Model & Variant' },
-            { num: 3, label: 'Condition' },
-            { num: 4, label: 'Indicative Price' },
-            { num: 5, label: 'Pickup & UPI' },
+            { num: 1, label: 'Brand' },
+            { num: 2, label: 'Model' },
+            { num: 3, label: 'Checks' },
+            { num: 4, label: 'Offer' },
+            { num: 5, label: 'Payout' },
           ].map((s, idx) => (
-            <div key={s.num} className="flex items-center">
+            <div key={s.num} className="flex items-center flex-1 justify-center">
               <div className="flex flex-col items-center">
                 <div 
-                  className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs transition-colors ${
+                  className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs transition-colors ${
                     step === s.num
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20 ring-4 ring-emerald-100'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20 ring-2 sm:ring-4 ring-emerald-100'
                       : step > s.num
                       ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-slate-100 text-slate-400'
                   }`}
                 >
-                  {step > s.num ? <Check className="w-4 h-4 stroke-[3]" /> : s.num}
+                  {step > s.num ? <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" /> : s.num}
                 </div>
-                <span className={`text-[11px] font-semibold mt-1.5 hidden sm:block ${step >= s.num ? 'text-slate-800' : 'text-slate-400'}`}>
+                <span className={`text-[10px] sm:text-[11px] font-semibold mt-1 truncate ${step >= s.num ? 'text-slate-800' : 'text-slate-400'}`}>
                   {s.label}
                 </span>
               </div>
               {idx < 4 && (
-                <div className={`w-8 sm:w-16 h-0.5 mx-1 sm:mx-2 rounded ${step > s.num ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                <div className={`flex-1 h-0.5 mx-1 sm:mx-2 rounded ${step > s.num ? 'bg-emerald-500' : 'bg-slate-200'}`} />
               )}
             </div>
           ))}

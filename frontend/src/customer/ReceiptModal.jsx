@@ -35,45 +35,45 @@ export default function ReceiptModal({ receiptData, onClose }) {
         </div>
 
         {/* Printable Receipt Body */}
-        <div className="p-8 overflow-y-auto space-y-6 text-slate-800 text-sm print:p-0">
+        <div className="p-4 sm:p-8 overflow-y-auto space-y-5 sm:space-y-6 text-slate-800 text-sm print:p-0">
           
           {/* Header */}
-          <div className="flex justify-between items-start border-b border-slate-200 pb-5">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-3 border-b border-slate-200 pb-4 sm:pb-5">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-black tracking-tight text-slate-900">ReCell</span>
+                <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">ReCell</span>
                 <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">VERIFIED BUYBACK</span>
               </div>
-              <p className="text-xs text-slate-500 mt-1">ReCell Buyback Services India Pvt. Ltd.</p>
-              <p className="text-xs text-slate-500">GSTIN: 29AAAAA0000A1Z5 · Bengaluru, KA</p>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">ReCell Buyback Services India Pvt. Ltd.</p>
+              <p className="text-[11px] sm:text-xs text-slate-500">GSTIN: 29AAAAA0000A1Z5 · Bengaluru, KA</p>
             </div>
-            <div className="text-right">
-              <span className="text-xs font-bold text-slate-400 uppercase">Receipt No.</span>
-              <p className="font-mono font-bold text-slate-900">{receiptData.receipt_number}</p>
-              <span className="text-xs text-slate-400 block mt-1">Date & Time:</span>
-              <p className="text-xs font-medium text-slate-700">{receiptData.date}</p>
+            <div className="text-left sm:text-right bg-slate-50 sm:bg-transparent p-2.5 sm:p-0 rounded-lg">
+              <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase">Receipt No.</span>
+              <p className="font-mono font-bold text-slate-900 text-xs sm:text-sm">{receiptData.receipt_number}</p>
+              <span className="text-[10px] sm:text-xs text-slate-400 block mt-0.5">Date & Time:</span>
+              <p className="text-[11px] sm:text-xs font-medium text-slate-700">{receiptData.date}</p>
             </div>
           </div>
 
           {/* Status Stamp */}
-          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center justify-between">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-800">Payment Status</span>
-              <h4 className="text-lg font-black text-emerald-700 mt-0.5">COMPLETED & VERIFIED (PAID)</h4>
-              <p className="text-xs text-emerald-900 mt-0.5">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-emerald-800">Payment Status</span>
+              <h4 className="text-base sm:text-lg font-black text-emerald-700 mt-0.5">COMPLETED & VERIFIED (PAID)</h4>
+              <p className="text-[11px] sm:text-xs text-emerald-900 mt-0.5">
                 Bank / UPI Reference (UTR): <strong className="font-mono text-emerald-800">{receiptData.utr_number}</strong>
               </p>
             </div>
-            <div className="text-right">
-              <span className="text-xs text-slate-500 block">Total Payout Disbursed:</span>
-              <span className="text-2xl font-extrabold text-emerald-700">
+            <div className="text-left sm:text-right border-t sm:border-t-0 pt-2 sm:pt-0 border-emerald-200">
+              <span className="text-[10px] sm:text-xs text-slate-500 block">Total Payout Disbursed:</span>
+              <span className="text-xl sm:text-2xl font-extrabold text-emerald-700">
                 ₹{Number(receiptData.payout_amount).toLocaleString('en-IN')}
               </span>
             </div>
           </div>
 
           {/* Details Grid */}
-          <div className="grid grid-cols-2 gap-4 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-xs">
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1.5">
               <span className="font-bold text-slate-400 uppercase">Seller / Customer</span>
               <p className="font-bold text-slate-900 text-sm">{receiptData.customer_name}</p>
