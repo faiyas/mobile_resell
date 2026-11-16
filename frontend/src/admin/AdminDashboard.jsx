@@ -35,6 +35,10 @@ export default function AdminDashboard({ currentUser }) {
   const [editingOption, setEditingOption] = useState(null);
   const [newDeductionValue, setNewDeductionValue] = useState('');
 
+  // Agent assignment state
+  const [assigningLoading, setAssigningLoading] = useState(false);
+  const [successToast, setSuccessToast] = useState('');
+
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -64,19 +68,32 @@ export default function AdminDashboard({ currentUser }) {
   const awaitingPayoutsCount = sales.filter(s => ['OWNERSHIP_TRANSFERRED', 'CUSTOMER_ACCEPTED'].includes(s.status)).length;
   const completedCount = sales.filter(s => s.status === 'PAYMENT_COMPLETED').length;
 
+  const handleOpenAssignModal = (s) => {
+    setAssignSale(s);
+    setSelectedAgentId(s.assigned_agent ? String(s.assigned_agent) : (agents[0]?.id ? String(agents[0].id) : ''));
+    setPickupDate(s.pickup_date || new Date().toISOString().split('T')[0]);
+    setPickupSlot(s.pickup_slot || 'Morning (10:00 AM - 1:00 PM)');
+  };
+
   const handleAssignPickup = async (e) => {
     e.preventDefault();
     if (!assignSale) return;
+    setAssigningLoading(true);
     try {
       await api.assignPickup(assignSale.id, {
         agent_id: selectedAgentId,
         pickup_date: pickupDate,
         pickup_slot: pickupSlot,
       });
+      const code = assignSale.sale_code;
       setAssignSale(null);
+      setSuccessToast(`Pickup scheduled & assigned successfully for order ${code}!`);
+      setTimeout(() => setSuccessToast(''), 3500);
       loadDashboardData();
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Failed to assign agent');
+    } finally {
+      setAssigningLoading(false);
     }
   };
 
@@ -134,6 +151,13 @@ export default function AdminDashboard({ currentUser }) {
           {loading ? 'Refreshing...' : 'Refresh Data'}
         </button>
       </div>
+
+      {successToast && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fade-in shadow-sm">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{successToast}</span>
+        </div>
+      )}
 
       {/* Metrics Row (Optimized for 2-column mobile screens like iPhone SE) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
@@ -350,7 +374,7 @@ export default function AdminDashboard({ currentUser }) {
                     </td>
                     <td className="py-3.5 px-3">
                       <p className="font-semibold text-slate-800">{s.brand_name} {s.model_name}</p>
-                      <p className="text-slate-500 text-[11px]">{s.variant_details?.storage}</p>
+                      <p className="text-slate-500 text-[11px]">{s.storage || s.variant_details?.storage || ''}</p>
                     </td>
                     <td className="py-3.5 px-3 font-bold">
                       <span className="text-slate-900">
@@ -377,7 +401,7 @@ export default function AdminDashboard({ currentUser }) {
                     <td className="py-3.5 px-3 text-right space-x-1">
                       {['SUBMITTED', 'PICKUP_SCHEDULED'].includes(s.status) && (
                         <button
-                          onClick={() => setAssignSale(s)}
+                          onClick={() => handleOpenAssignModal(s)}
                           className="px-2.5 py-1 bg-slate-900 hover:bg-black text-white rounded-lg text-[11px] font-bold transition"
                         >
                           Schedule
@@ -536,15 +560,16 @@ export default function AdminDashboard({ currentUser }) {
                 <button
                   type="button"
                   onClick={() => setAssignSale(null)}
-                  className="w-1/2 border border-slate-300 py-2 rounded-xl font-bold"
+                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="w-1/2 bg-slate-900 text-white py-2 rounded-xl font-bold hover:bg-black"
+                  disabled={assigningLoading}
+                  className="w-1/2 bg-slate-900 text-white py-2.5 rounded-xl font-bold hover:bg-black transition flex items-center justify-center gap-1.5"
                 >
-                  Confirm Schedule
+                  {assigningLoading ? 'Assigning Agent...' : 'Confirm Schedule'}
                 </button>
               </div>
             </form>

@@ -184,7 +184,7 @@ export default function AgentInspectionView({ currentUser }) {
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Inspecting Order</span>
                 <h3 className="text-lg font-black text-slate-900">
-                  {selectedSale.brand_name} {selectedSale.model_name} ({selectedSale.variant_details?.storage})
+                  {selectedSale.brand_name} {selectedSale.model_name} ({selectedSale.storage || selectedSale.variant_details?.storage || ''})
                 </h3>
                 <p className="text-slate-500 text-xs mt-0.5">
                   Customer: {selectedSale.customer_name} ({selectedSale.customer_phone})
