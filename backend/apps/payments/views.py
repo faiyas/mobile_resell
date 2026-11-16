@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from .models import Payment
-from .serializers import PaymentRecordSerializer, PaymentDetailSerializer
+from .serializers import PaymentRecordSerializer, PaymentDetailSerializer, PaymentListSerializer
 from apps.sales.models import PhoneSale
 
 @api_view(['GET'])
@@ -101,13 +101,13 @@ def payments_list_view(request):
     if request.user.role != 'ADMIN':
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
-    payments = Payment.objects.all().select_related('sale__variant__model__brand', 'paid_by')
+    payments = Payment.objects.all().select_related('sale__variant__model__brand', 'paid_by').defer('payment_proof_base64')
     total_disbursed = sum(p.amount for p in payments)
     
     return Response({
         'total_count': payments.count(),
         'total_disbursed': float(total_disbursed),
-        'payments': PaymentDetailSerializer(payments, many=True).data,
+        'payments': PaymentListSerializer(payments, many=True).data,
     })
 
 @api_view(['GET'])

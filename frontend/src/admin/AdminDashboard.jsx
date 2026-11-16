@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   IndianRupee, Smartphone, Clock, CheckCircle2, AlertCircle, 
   Search, Filter, QrCode, Upload, Eye, UserPlus, RefreshCw, 
-  Layers, ShieldAlert, Award, FileText, ChevronRight 
+  Layers, ShieldAlert, Award, FileText, ChevronRight, Sparkles 
 } from 'lucide-react';
 import { api } from '../services/api';
 import PayoutModal from './PayoutModal';
 import ReceiptModal from '../customer/ReceiptModal';
+import CataloguePricingManager from './CataloguePricingManager';
 
 export default function AdminDashboard({ currentUser }) {
   const [activeTab, setActiveTab] = useState('payouts'); // 'payouts' | 'sales' | 'pricing' | 'history'
@@ -197,12 +198,15 @@ export default function AdminDashboard({ currentUser }) {
           onClick={() => setActiveTab('pricing')}
           className={`pb-2.5 px-3.5 text-xs font-extrabold transition border-b-2 shrink-0 flex items-center gap-1.5 ${
             activeTab === 'pricing'
-              ? 'border-emerald-600 text-emerald-700'
+              ? 'border-indigo-600 text-indigo-700'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
-          Pricing Rules
+          Phone Catalogue & Pricing
+          <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
+            New
+          </span>
         </button>
 
         <button
@@ -407,56 +411,9 @@ export default function AdminDashboard({ currentUser }) {
         </div>
       )}
 
-      {/* ================= TAB 3: PRICING ENGINE ================= */}
+      {/* ================= TAB 3: PHONE CATALOGUE & PRICING ================= */}
       {activeTab === 'pricing' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
-            <div>
-              <h3 className="text-base font-extrabold text-slate-900">
-                Condition Deductions & Valuation Engine
-              </h3>
-              <p className="text-xs text-slate-500">
-                Configure default rupee deductions applied when a customer ticks a defect during self-assessment.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {conditionCategories.map((cat) => (
-                <div key={cat.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50 space-y-3">
-                  <h4 className="font-extrabold text-slate-900 text-xs flex items-center justify-between">
-                    <span>{cat.name}</span>
-                    <span className="text-[10px] text-slate-400 font-normal">{cat.options?.length || 0} rules</span>
-                  </h4>
-
-                  <div className="space-y-2">
-                    {cat.options?.map((opt) => (
-                      <div key={opt.id} className="bg-white p-2.5 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
-                        <div>
-                          <p className="font-bold text-slate-800">{opt.title}</p>
-                          <span className="text-[10px] text-slate-400 font-mono">{opt.code}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-rose-600 text-xs">
-                            -₹{Number(opt.default_deduction_value).toLocaleString('en-IN')}
-                          </span>
-                          <button
-                            onClick={() => {
-                              setEditingOption(opt);
-                              setNewDeductionValue(opt.default_deduction_value);
-                            }}
-                            className="text-[11px] font-bold text-slate-600 hover:text-emerald-600 px-2 py-0.5 border border-slate-200 rounded hover:bg-slate-50"
-                          >
-                            Edit
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <CataloguePricingManager />
       )}
 
       {/* ================= TAB 4: PAYOUTS HISTORY ================= */}

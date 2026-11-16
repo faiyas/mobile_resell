@@ -1,5 +1,6 @@
 from django.db import models
-from apps.catalog.models import PhoneModel
+from django.conf import settings
+from apps.catalog.models import PhoneModel, StorageVariant
 
 class ConditionCategory(models.Model):
     name = models.CharField(max_length=100) # e.g. Display & Screen, Battery Health, Camera & FaceID, Body Condition
@@ -28,6 +29,16 @@ class ConditionOption(models.Model):
     
     deduction_type = models.CharField(max_length=20, choices=DEDUCTION_TYPE_CHOICES, default='FLAT')
     default_deduction_value = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    # Smart Valuation Controls
+    exclusive_group = models.CharField(
+        max_length=50, blank=True, default='', 
+        help_text="Mutually exclusive group (e.g. 'screen_glass'). Options in the same group take highest deduction instead of double-penalizing."
+    )
+    is_rejection = models.BooleanField(
+        default=False, 
+        help_text="If True, selecting this flags safety rejection or zero payout (e.g. swollen battery, activation lock)"
+    )
     
     display_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
@@ -49,3 +60,19 @@ class ModelPricingOverride(models.Model):
 
     def __str__(self):
         return f"{self.phone_model} - {self.option.code}: ₹{self.override_deduction_value}"
+
+class PriceHistory(models.Model):
+    """Audit log of historical price changes for variant base prices"""
+    variant = models.ForeignKey(StorageVariant, on_delete=models.CASCADE, related_name='price_history')
+    old_base_price = models.DecimalField(max_digits=10, decimal_places=2)
+    new_base_price = models.DecimalField(max_digits=10, decimal_places=2)
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    reason = models.CharField(max_length=255, default='Market price adjustment')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.variant}: ₹{self.old_base_price} ➔ ₹{self.new_base_price} on {self.created_at.strftime('%Y-%m-%d')}"
+

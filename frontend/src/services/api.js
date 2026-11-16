@@ -54,20 +54,44 @@ export const api = {
   getAgents: () => request('/auth/agents/'),
 
   // Catalog
-  getBrands: (includeModels = false) => request(`/catalog/brands/?include_models=${includeModels}`),
-  getModels: (brandId) => request(`/catalog/models/${brandId ? `?brand=${brandId}` : ''}`),
-  getModelDetail: (id) => request(`/catalog/models/${id}/`),
-  createVariant: (data) => request('/catalog/variants/', { method: 'POST', body: JSON.stringify(data) }),
+  getBrands: (includeModels = false, all = false) => request(`/catalog/brands/?include_models=${includeModels}&all=${all}`),
+  createBrand: (data) => request('/catalog/brands/', { method: 'POST', body: JSON.stringify(data) }),
+  updateBrand: (id, data) => request(`/catalog/brands/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteBrand: (id) => request(`/catalog/brands/${id}/`, { method: 'DELETE' }),
 
-  // Valuation
-  getConditionCategories: () => request('/valuation/conditions/'),
+  getModels: (brandId, all = false) => request(`/catalog/models/?${brandId ? `brand=${brandId}&` : ''}all=${all}`),
+  getModelDetail: (id) => request(`/catalog/models/${id}/`),
+  createModel: (data) => request('/catalog/models/', { method: 'POST', body: JSON.stringify(data) }),
+  updateModel: (id, data) => request(`/catalog/models/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteModel: (id) => request(`/catalog/models/${id}/`, { method: 'DELETE' }),
+
+  getVariants: (modelId, all = false) => request(`/catalog/variants/?${modelId ? `model=${modelId}&` : ''}all=${all}`),
+  createVariant: (data) => request('/catalog/variants/', { method: 'POST', body: JSON.stringify(data) }),
+  updateVariant: (id, data) => request(`/catalog/variants/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteVariant: (id) => request(`/catalog/variants/${id}/`, { method: 'DELETE' }),
+
+  // Valuation & Dynamic Pricing
+  getConditionCategories: (all = false) => request(`/valuation/conditions/?all=${all}`),
+  createConditionCategory: (data) => request('/valuation/conditions/', { method: 'POST', body: JSON.stringify(data) }),
+  updateConditionCategory: (id, data) => request(`/valuation/conditions/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteConditionCategory: (id) => request(`/valuation/conditions/${id}/`, { method: 'DELETE' }),
+
+  getConditionOptions: (categoryId, all = false) => request(`/valuation/options/?${categoryId ? `category=${categoryId}&` : ''}all=${all}`),
+  createConditionOption: (data) => request('/valuation/options/', { method: 'POST', body: JSON.stringify(data) }),
+  updateConditionOption: (id, data) => request(`/valuation/options/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteConditionOption: (id) => request(`/valuation/options/${id}/`, { method: 'DELETE' }),
+
   calculateEstimate: (variantId, selectedCodes) => 
     request('/valuation/estimate/', {
       method: 'POST',
       body: JSON.stringify({ variant_id: variantId, selected_option_codes: selectedCodes })
     }),
-  updateConditionOption: (id, data) => 
-    request(`/valuation/conditions/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+  previewValuation: (variantId, selectedCodes) => 
+    request('/valuation/pricing/preview/', {
+      method: 'POST',
+      body: JSON.stringify({ variant_id: variantId, selected_option_codes: selectedCodes })
+    }),
+  getPriceHistory: (variantId) => request(`/valuation/pricing/history/${variantId ? `?variant=${variantId}` : ''}`),
 
   // Sales
   submitSale: (payload) => request('/sales/', { method: 'POST', body: JSON.stringify(payload) }),

@@ -3,15 +3,22 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from .models import ConditionCategory, ConditionOption, ModelPricingOverride
-from .serializers import ConditionCategorySerializer, ConditionOptionSerializer, EstimateCalculationSerializer
+from .models import ConditionCategory, ConditionOption, ModelPricingOverride, PriceHistory
+from .serializers import (
+    ConditionCategorySerializer, ConditionOptionSerializer, 
+    EstimateCalculationSerializer, PriceHistorySerializer
+)
 from apps.catalog.models import StorageVariant
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def condition_categories_view(request):
     if request.method == 'GET':
-        categories = ConditionCategory.objects.filter(is_active=True)
+        show_all = request.GET.get('all', 'false').lower() == 'true'
+        if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
+            categories = ConditionCategory.objects.all()
+        else:
+            categories = ConditionCategory.objects.filter(is_active=True)
         serializer = ConditionCategorySerializer(categories, many=True)
         return Response(serializer.data)
     
@@ -24,12 +31,91 @@ def condition_categories_view(request):
             return Response(ConditionCategorySerializer(cat).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([AllowAny])
+def condition_category_detail_view(request, pk):
+    try:
+        category = ConditionCategory.objects.get(pk=pk)
+    except ConditionCategory.DoesNotExist:
+        return Response({'detail': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(ConditionCategorySerializer(category).data)
+
+    if not request.user.is_authenticated or request.user.role != 'ADMIN':
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'PUT':
+        serializer = ConditionCategorySerializer(category, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        category.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def condition_options_view(request):
+    if request.method == 'GET':
+        category_id = request.GET.get('category')
+        show_all = request.GET.get('all', 'false').lower() == 'true'
+        if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
+            options = ConditionOption.objects.all().select_related('category')
+        else:
+            options = ConditionOption.objects.filter(is_active=True).select_related('category')
+        
+        if category_id:
+            options = options.filter(category_id=category_id)
+        serializer = ConditionOptionSerializer(options, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
+        if not request.user.is_authenticated or request.user.role != 'ADMIN':
+            return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = ConditionOptionSerializer(data=request.data)
+        if serializer.is_valid():
+            opt = serializer.save()
+            return Response(ConditionOptionSerializer(opt).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([AllowAny])
+def condition_option_detail_view(request, pk):
+    try:
+        option = ConditionOption.objects.get(pk=pk)
+    except ConditionOption.DoesNotExist:
+        return Response({'detail': 'Option not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(ConditionOptionSerializer(option).data)
+
+    if not request.user.is_authenticated or request.user.role != 'ADMIN':
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method in ['PUT', 'PATCH']:
+        serializer = ConditionOptionSerializer(option, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        option.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def calculate_estimate_view(request):
     """
-    Core dynamic valuation engine.
-    Calculates estimated buyback price from base price and chosen defects/answers.
+    Robust dynamic valuation engine.
+    Calculates estimated buyback price with:
+    - Base price
+    - Flat and percentage deductions
+    - Mutually exclusive conflict guards
+    - Safety/rejection locks
     """
     serializer = EstimateCalculationSerializer(data=request.data)
     if not serializer.is_valid():
@@ -41,31 +127,66 @@ def calculate_estimate_view(request):
     try:
         variant = StorageVariant.objects.select_related('model__brand').get(id=variant_id, is_active=True)
     except StorageVariant.DoesNotExist:
-        return Response({'detail': 'Storage variant not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'detail': 'Storage variant not found or inactive'}, status=status.HTTP_404_NOT_FOUND)
 
     base_price = variant.base_price
     min_price = variant.min_price
     phone_model = variant.model
 
     # Fetch selected condition options
-    options = ConditionOption.objects.filter(code__in=selected_codes, is_active=True)
+    options = list(ConditionOption.objects.filter(code__in=selected_codes, is_active=True))
     
+    # Check for safety / ownership rejections (e.g. Swollen battery, iCloud lock)
+    rejection_reasons = []
+    for opt in options:
+        if opt.is_rejection:
+            rejection_reasons.append(opt.title)
+
+    if rejection_reasons:
+        return Response({
+            'brand': phone_model.brand.name,
+            'model': phone_model.name,
+            'variant': f"{variant.ram} / {variant.storage}" if variant.ram else variant.storage,
+            'base_price': float(base_price),
+            'min_price': 0.0,
+            'total_deduction': float(base_price),
+            'estimated_price': 0.0,
+            'is_rejected': True,
+            'rejection_reasons': rejection_reasons,
+            'message': 'Device cannot be accepted for buyback due to safety hazards or ownership lock.',
+            'currency': 'INR',
+            'deductions': [],
+        })
+
     # Fetch overrides if any for this model
     overrides = {
         mo.option_id: mo.override_deduction_value
         for mo in ModelPricingOverride.objects.filter(phone_model=phone_model)
     }
 
-    deductions_breakdown = []
-    total_deduction = Decimal('0.00')
+    # Group options by exclusive_group
+    exclusive_groups = {}
+    standalone_options = []
 
     for opt in options:
         if not opt.is_defect:
             continue
+        if opt.exclusive_group and opt.exclusive_group.strip():
+            grp = opt.exclusive_group.strip().lower()
+            if grp not in exclusive_groups:
+                exclusive_groups[grp] = []
+            exclusive_groups[grp].append(opt)
+        else:
+            standalone_options.append(opt)
 
+    deductions_breakdown = []
+    total_deduction = Decimal('0.00')
+
+    # 1. Process Standalone deductions
+    for opt in standalone_options:
         if opt.id in overrides:
             amt = overrides[opt.id]
-            rule_type = "Model Override"
+            rule_type = "Model Override (Flat)"
         else:
             if opt.deduction_type == 'PERCENTAGE':
                 amt = (base_price * opt.default_deduction_value) / Decimal('100.00')
@@ -83,6 +204,38 @@ def calculate_estimate_view(request):
             'rule_type': rule_type
         })
 
+    # 2. Process Exclusive Groups (take only the maximum deduction in the group to avoid double-charging)
+    for grp_name, grp_opts in exclusive_groups.items():
+        highest_amt = Decimal('0.00')
+        chosen_opt = None
+        chosen_rule_type = ""
+
+        for opt in grp_opts:
+            if opt.id in overrides:
+                amt = overrides[opt.id]
+                rtype = "Model Override (Flat)"
+            else:
+                if opt.deduction_type == 'PERCENTAGE':
+                    amt = (base_price * opt.default_deduction_value) / Decimal('100.00')
+                    rtype = f"{opt.default_deduction_value}% of Base"
+                else:
+                    amt = opt.default_deduction_value
+                    rtype = "Standard Flat"
+
+            if amt > highest_amt or chosen_opt is None:
+                highest_amt = amt
+                chosen_opt = opt
+                chosen_rule_type = rtype
+
+        total_deduction += highest_amt
+        deductions_breakdown.append({
+            'code': chosen_opt.code,
+            'title': f"{chosen_opt.title} (Exclusive Group: {grp_name})",
+            'category': chosen_opt.category.name,
+            'deduction_amount': float(highest_amt),
+            'rule_type': f"{chosen_rule_type} [Max group rule applied]"
+        })
+
     estimated_price = max(base_price - total_deduction, min_price)
 
     return Response({
@@ -93,24 +246,23 @@ def calculate_estimate_view(request):
         'min_price': float(min_price),
         'total_deduction': float(total_deduction),
         'estimated_price': float(estimated_price),
+        'is_rejected': False,
         'currency': 'INR',
         'deductions': deductions_breakdown,
     })
 
-@api_view(['PUT'])
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def update_condition_option_view(request, pk):
-    """Admin updates deduction price for a question option"""
+def price_history_list_view(request):
+    """Admin view of all price changes and audit log"""
     if request.user.role != 'ADMIN':
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
     
-    try:
-        option = ConditionOption.objects.get(pk=pk)
-    except ConditionOption.DoesNotExist:
-        return Response({'detail': 'Option not found'}, status=status.HTTP_404_NOT_FOUND)
+    variant_id = request.GET.get('variant')
+    queryset = PriceHistory.objects.all().select_related('variant__model__brand', 'changed_by')
+    if variant_id:
+        queryset = queryset.filter(variant_id=variant_id)
+    
+    serializer = PriceHistorySerializer(queryset, many=True)
+    return Response(serializer.data)
 
-    serializer = ConditionOptionSerializer(option, data=request.data, partial=True)
-    if serializer.is_valid():
-        serializer.save()
-        return Response(serializer.data)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

@@ -2,9 +2,13 @@ from rest_framework import serializers
 from .models import Brand, PhoneModel, StorageVariant
 
 class StorageVariantSerializer(serializers.ModelSerializer):
+    brand_name = serializers.ReadOnlyField(source='model.brand.name')
+    model_name = serializers.ReadOnlyField(source='model.name')
+    model_id = serializers.ReadOnlyField(source='model.id')
+
     class Meta:
         model = StorageVariant
-        fields = ['id', 'model', 'ram', 'storage', 'base_price', 'min_price', 'is_active']
+        fields = ['id', 'model', 'model_id', 'brand_name', 'model_name', 'ram', 'storage', 'base_price', 'min_price', 'is_active', 'created_at']
 
 class PhoneModelSerializer(serializers.ModelSerializer):
     variants = StorageVariantSerializer(many=True, read_only=True)

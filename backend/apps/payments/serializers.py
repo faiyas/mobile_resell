@@ -31,3 +31,24 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
             'utr_number', 'payment_proof_base64', 'admin_notes',
             'paid_by_name', 'paid_at', 'is_verified'
         ]
+
+class PaymentListSerializer(serializers.ModelSerializer):
+    """Fast list view of payments without transmitting heavy Base64 screenshot proof"""
+    sale_code = serializers.ReadOnlyField(source='sale.sale_code')
+    model_name = serializers.ReadOnlyField(source='sale.variant.model.name')
+    brand_name = serializers.ReadOnlyField(source='sale.variant.model.brand.name')
+    paid_by_name = serializers.ReadOnlyField(source='paid_by.full_name')
+    has_proof = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Payment
+        fields = [
+            'id', 'sale', 'sale_code', 'model_name', 'brand_name',
+            'amount', 'payment_method', 'beneficiary_name',
+            'beneficiary_upi_id', 'beneficiary_account_no', 'beneficiary_ifsc',
+            'utr_number', 'has_proof', 'admin_notes',
+            'paid_by_name', 'paid_at', 'is_verified'
+        ]
+
+    def get_has_proof(self, obj):
+        return bool(obj.payment_proof_base64)

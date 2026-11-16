@@ -6,10 +6,10 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-16">
-          
+
           {/* Logo */}
-          <div 
-            onClick={() => setActiveTab(currentUser?.role === 'ADMIN' ? 'admin' : currentUser?.role === 'COLLECTION_AGENT' ? 'inspection' : 'sell')} 
+          <div
+            onClick={() => setActiveTab(currentUser?.role === 'ADMIN' ? 'admin' : currentUser?.role === 'COLLECTION_AGENT' ? 'inspection' : 'sell')}
             className="flex items-center gap-2 cursor-pointer group shrink-0"
           >
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
@@ -28,35 +28,32 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
           <nav className="hidden md:flex items-center gap-1">
             <button
               onClick={() => setActiveTab('sell')}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors ${
-                activeTab === 'sell' 
-                  ? 'bg-emerald-50 text-emerald-700' 
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors ${activeTab === 'sell'
+                  ? 'bg-emerald-50 text-emerald-700'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
+                }`}
             >
               Sell Old Phone
             </button>
             <button
               onClick={() => setActiveTab('track')}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 ${
-                activeTab === 'track' 
-                  ? 'bg-emerald-50 text-emerald-700' 
+              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 ${activeTab === 'track'
+                  ? 'bg-emerald-50 text-emerald-700'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
+                }`}
             >
               <Search className="w-4 h-4" />
               {currentUser?.role === 'CUSTOMER' ? 'My Orders' : 'Track Status'}
             </button>
-            
+
             {/* Show Admin Dashboard ONLY to Admin */}
             {currentUser?.role === 'ADMIN' && (
               <button
                 onClick={() => setActiveTab('admin')}
-                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 ${
-                  activeTab === 'admin' 
-                    ? 'bg-indigo-50 text-indigo-700' 
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 ${activeTab === 'admin'
+                    ? 'bg-indigo-50 text-indigo-700'
                     : 'text-indigo-600 hover:bg-indigo-50'
-                }`}
+                  }`}
               >
                 <ShieldCheck className="w-4 h-4" />
                 Admin Dashboard
@@ -67,11 +64,10 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             {(currentUser?.role === 'COLLECTION_AGENT' || currentUser?.role === 'ADMIN') && (
               <button
                 onClick={() => setActiveTab('inspection')}
-                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 ${
-                  activeTab === 'inspection' 
-                    ? 'bg-amber-50 text-amber-700' 
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 ${activeTab === 'inspection'
+                    ? 'bg-amber-50 text-amber-700'
                     : 'text-amber-600 hover:bg-amber-50'
-                }`}
+                  }`}
               >
                 <UserCheck className="w-4 h-4" />
                 Collection Agent Portal
@@ -87,10 +83,9 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
                   <p className="text-xs font-bold text-slate-800 leading-none truncate max-w-[120px] sm:max-w-none">
                     {currentUser.full_name || currentUser.email}
                   </p>
-                  <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wide ${
-                    currentUser.role === 'ADMIN' ? 'text-indigo-600' :
-                    currentUser.role === 'COLLECTION_AGENT' ? 'text-amber-600' : 'text-emerald-600'
-                  }`}>
+                  <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wide ${currentUser.role === 'ADMIN' ? 'text-indigo-600' :
+                      currentUser.role === 'COLLECTION_AGENT' ? 'text-amber-600' : 'text-emerald-600'
+                    }`}>
                     {currentUser.role === 'ADMIN' ? '👑 Admin' : currentUser.role === 'COLLECTION_AGENT' ? '🛵 Agent' : '👤 Customer'}
                   </span>
                 </div>

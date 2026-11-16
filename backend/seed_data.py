@@ -10,7 +10,7 @@ django.setup()
 
 from apps.accounts.models import User
 from apps.catalog.models import Brand, PhoneModel, StorageVariant
-from apps.valuation.models import ConditionCategory, ConditionOption, ModelPricingOverride
+from apps.valuation.models import ConditionCategory, ConditionOption, ModelPricingOverride, PriceHistory
 from apps.sales.models import PhoneSale, PhoneSaleConditionAnswer
 from apps.inspections.models import DeviceInspection, InspectionPhoto
 from apps.payments.models import Payment
@@ -78,31 +78,34 @@ def run():
         defaults={'description': 'Speakers, Mic, Wi-Fi, Bluetooth, Cellular call quality', 'icon_name': 'Wifi', 'display_order': 5}
     )
 
-    # Question Options & Deductions
+    # Question Options & Deductions (With Exclusive Groups and Rejection Rules)
     options_data = [
-        # Screen
-        (cat_display, 'SCREEN_CRACKED', 'Screen is cracked or broken', 'Visible cracks, spiderweb cracks on glass', True, 'FLAT', Decimal('3500.00'), 1),
-        (cat_display, 'DISPLAY_LINES', 'Display has colored lines, bleeding or black spots', 'OLED/LCD damage or green lines', True, 'FLAT', Decimal('4000.00'), 2),
-        (cat_display, 'TOUCH_ISSUE', 'Touch is erratic or not responding in some areas', 'Dead touch zones', True, 'FLAT', Decimal('2500.00'), 3),
+        # Screen (Exclusive group 'screen_glass' ensures minor scratch and full crack don't double charge)
+        (cat_display, 'SCREEN_MINOR_SCRATCH', 'Minor hairline screen scratches', 'Light surface micro-scratches', True, 'FLAT', Decimal('500.00'), 'screen_glass', False, 1),
+        (cat_display, 'SCREEN_CRACKED', 'Screen glass is cracked or broken', 'Visible cracks, spiderweb cracks on glass', True, 'FLAT', Decimal('3500.00'), 'screen_glass', False, 2),
+        (cat_display, 'DISPLAY_LINES', 'Display has colored lines, bleeding or black spots', 'OLED/LCD damage or green lines', True, 'PERCENTAGE', Decimal('15.00'), '', False, 3),
+        (cat_display, 'TOUCH_ISSUE', 'Touch is erratic or not responding in some areas', 'Dead touch zones', True, 'FLAT', Decimal('2500.00'), '', False, 4),
         
-        # Body
-        (cat_body, 'BODY_MINOR_SCRATCHES', 'Minor scratches on body / frame', 'Light signs of normal daily use', True, 'FLAT', Decimal('500.00'), 1),
-        (cat_body, 'BODY_DENTS', 'Dents or chipped corners on frame', 'Impact drops or bent frame', True, 'FLAT', Decimal('1500.00'), 2),
-        (cat_body, 'BACK_GLASS_BROKEN', 'Back glass is cracked or broken', 'Cracks on rear glass panel', True, 'FLAT', Decimal('2500.00'), 3),
+        # Body (Exclusive group 'body_damage')
+        (cat_body, 'BODY_MINOR_SCRATCHES', 'Minor scratches on body / frame', 'Light signs of normal daily use', True, 'FLAT', Decimal('500.00'), 'body_damage', False, 1),
+        (cat_body, 'BODY_DENTS', 'Dents or chipped corners on frame', 'Impact drops or bent frame', True, 'FLAT', Decimal('1500.00'), 'body_damage', False, 2),
+        (cat_body, 'BACK_GLASS_BROKEN', 'Back glass is cracked or broken', 'Cracks on rear glass panel', True, 'FLAT', Decimal('2500.00'), '', False, 3),
 
         # Camera
-        (cat_camera, 'REAR_CAMERA_FAIL', 'Rear camera blurry, jittery or not working', 'Camera lens cracked or sensor dead', True, 'FLAT', Decimal('2000.00'), 1),
-        (cat_camera, 'FACEID_FAIL', 'Face ID or Fingerprint scanner not working', 'Biometric sensor failure', True, 'FLAT', Decimal('1500.00'), 2),
+        (cat_camera, 'REAR_CAMERA_FAIL', 'Rear camera blurry, jittery or not working', 'Camera lens cracked or sensor dead', True, 'FLAT', Decimal('2000.00'), '', False, 1),
+        (cat_camera, 'FACEID_FAIL', 'Face ID or Fingerprint scanner not working', 'Biometric sensor failure', True, 'FLAT', Decimal('1500.00'), '', False, 2),
 
         # Battery
-        (cat_battery, 'BATTERY_DEGRADED', 'Battery health below 80% / Service Recommended', 'Frequent charging required', True, 'FLAT', Decimal('1200.00'), 1),
+        (cat_battery, 'BATTERY_DEGRADED', 'Battery health below 80% / Service Recommended', 'Frequent charging required', True, 'PERCENTAGE', Decimal('8.00'), '', False, 1),
+        (cat_battery, 'BATTERY_SWOLLEN', 'Battery is swollen / back cover bulging', 'Safety hazard: fire/explosion risk', True, 'FLAT', Decimal('0.00'), '', True, 2),
 
-        # Hardware
-        (cat_hardware, 'SPEAKER_MIC_FAIL', 'Earpiece speaker or microphone issue', 'Call audio is distorted or silent', True, 'FLAT', Decimal('800.00'), 1),
+        # Hardware & Security Rejection
+        (cat_hardware, 'SPEAKER_MIC_FAIL', 'Earpiece speaker or microphone issue', 'Call audio is distorted or silent', True, 'FLAT', Decimal('800.00'), '', False, 1),
+        (cat_hardware, 'ICLOUD_LOCKED', 'Apple iCloud / Google FRP Account Lock Active', 'Ownership lock active on device', True, 'FLAT', Decimal('0.00'), '', True, 2),
     ]
 
-    for cat, code, title, desc, is_defect, d_type, val, order in options_data:
-        ConditionOption.objects.get_or_create(
+    for cat, code, title, desc, is_defect, d_type, val, grp, is_rej, order in options_data:
+        ConditionOption.objects.update_or_create(
             code=code,
             defaults={
                 'category': cat,
@@ -111,6 +114,8 @@ def run():
                 'is_defect': is_defect,
                 'deduction_type': d_type,
                 'default_deduction_value': val,
+                'exclusive_group': grp,
+                'is_rejection': is_rej,
                 'display_order': order
             }
         )
@@ -330,7 +335,30 @@ def run():
             }
         )
 
+    # 5. Price History Audit Sample
+    if v_ip13:
+        PriceHistory.objects.get_or_create(
+            variant=v_ip13,
+            old_base_price=Decimal('28000.00'),
+            new_base_price=Decimal('26000.00'),
+            defaults={
+                'changed_by': admin_user,
+                'reason': 'Market markdown post festive season',
+            }
+        )
+    if v_s23:
+        PriceHistory.objects.get_or_create(
+            variant=v_s23,
+            old_base_price=Decimal('33000.00'),
+            new_base_price=Decimal('31000.00'),
+            defaults={
+                'changed_by': admin_user,
+                'reason': 'Flagship depreciation adjustment',
+            }
+        )
+
     print("✅ Sample live orders seeded with Base64 payment proof")
+    print("✅ Price history audit entries seeded")
     print("🎉 SEED COMPLETED SUCCESSFULLY!")
 
 if __name__ == '__main__':

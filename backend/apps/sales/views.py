@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from .models import PhoneSale, PhoneSaleConditionAnswer
-from .serializers import PhoneSaleDetailSerializer, PhoneSaleCreateSerializer
+from .serializers import PhoneSaleDetailSerializer, PhoneSaleListSerializer, PhoneSaleCreateSerializer
 from apps.catalog.models import StorageVariant
 from apps.valuation.models import ConditionOption, ModelPricingOverride
 from apps.accounts.models import User
@@ -39,7 +39,11 @@ def sales_list_create_view(request):
         if status_filter:
             queryset = queryset.filter(status=status_filter)
 
-        serializer = PhoneSaleDetailSerializer(queryset, many=True)
+        is_full = request.GET.get('full', 'false').lower() == 'true'
+        if is_full:
+            serializer = PhoneSaleDetailSerializer(queryset, many=True)
+        else:
+            serializer = PhoneSaleListSerializer(queryset, many=True)
         return Response(serializer.data)
 
     elif request.method == 'POST':
