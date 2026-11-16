@@ -353,58 +353,114 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
             </button>
           </div>
 
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-900 flex items-start gap-3">
-            <HelpCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold">Honest answers give the most accurate price estimate.</p>
-              <p className="text-amber-800 mt-0.5">Tick any defects below if applicable. If your device has no problems, leave them unticked to receive the top offer.</p>
+          {/* Mint Condition Shortcut */}
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-slate-900 text-sm">Is your phone like new with zero defects?</h4>
+                <p className="text-xs text-slate-600">If your device has no scratches, cracks or hardware issues, get the maximum valuation.</p>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedDefectCodes([]);
+                computeValuation();
+              }}
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow transition shrink-0 whitespace-nowrap"
+            >
+              ✓ Mint Condition (Top Price)
+            </button>
           </div>
 
-          {/* Condition Categories and options */}
+          <div className="text-center sm:text-left">
+            <h3 className="text-lg font-black text-slate-900">Check Your Phone's Condition:</h3>
+            <p className="text-xs text-slate-500">Tap any picture that matches visible defects on your phone. If none apply, leave unselected.</p>
+          </div>
+
+          {/* Condition Categories with Visual Cards */}
           <div className="space-y-6">
             {conditionCategories.map((cat) => (
-              <div key={cat.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                    <Smartphone className="w-4 h-4" />
+              <div key={cat.id} className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 text-sm">{cat.name}</h4>
+                      <p className="text-[11px] text-slate-500">{cat.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-sm">{cat.name}</h4>
-                    <p className="text-xs text-slate-500">{cat.description}</p>
-                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md">
+                    {cat.options?.filter(o => selectedDefectCodes.includes(o.code)).length || 0} Reported
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {cat.options?.map((opt) => {
                     const isChecked = selectedDefectCodes.includes(opt.code);
                     return (
                       <div
                         key={opt.id}
                         onClick={() => toggleDefectCode(opt.code)}
-                        className={`cursor-pointer p-3.5 rounded-xl border transition flex items-start justify-between ${
+                        className={`cursor-pointer rounded-2xl border-2 p-3 transition flex flex-col justify-between active:scale-[0.98] select-none ${
                           isChecked
-                            ? 'bg-rose-50 border-rose-300 shadow-sm'
-                            : 'bg-slate-50 border-slate-200 hover:border-slate-300'
+                            ? opt.is_rejection
+                              ? 'bg-rose-50 border-rose-500 shadow-md ring-2 ring-rose-500/20'
+                              : 'bg-amber-50/80 border-amber-500 shadow-md ring-2 ring-amber-500/20'
+                            : 'bg-slate-50/60 border-slate-200 hover:border-slate-300 hover:bg-white shadow-sm'
                         }`}
                       >
-                        <div className="pr-2">
-                          <p className={`font-bold text-xs ${isChecked ? 'text-rose-900' : 'text-slate-800'}`}>
-                            {opt.title}
-                          </p>
-                          <p className="text-[11px] text-slate-500 mt-0.5">{opt.description}</p>
-                          <span className={`inline-block mt-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                            isChecked ? 'bg-rose-200 text-rose-800' : 'bg-slate-200 text-slate-600'
+                        {/* Top selection indicator */}
+                        <div className="flex justify-between items-center mb-2">
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                            isChecked
+                              ? opt.is_rejection ? 'bg-rose-600 text-white' : 'bg-amber-600 text-white'
+                              : 'bg-slate-200 text-slate-700'
                           }`}>
-                            Deduction: -₹{Number(opt.default_deduction_value).toLocaleString('en-IN')}
+                            {isChecked ? (opt.is_rejection ? '🛑 Rejection' : '⚠️ Selected') : 'Tap if applies'}
                           </span>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
+                            isChecked
+                              ? opt.is_rejection ? 'border-rose-600 bg-rose-600 text-white' : 'border-amber-600 bg-amber-600 text-white'
+                              : 'border-slate-300 bg-white'
+                          }`}>
+                            {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                          </div>
                         </div>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {}}
-                          className="mt-1 w-4 h-4 text-rose-600 rounded border-slate-300 focus:ring-rose-500"
-                        />
+
+                        {/* Visual Defect Photograph / Illustration */}
+                        <div className="w-full h-32 sm:h-36 rounded-xl bg-white border border-slate-200/80 overflow-hidden flex items-center justify-center mb-2.5 p-2 shadow-inner">
+                          {opt.image_base64 ? (
+                            <img src={opt.image_base64} alt={opt.title} className="max-h-full max-w-full object-contain" />
+                          ) : (
+                            <Smartphone className="w-12 h-12 text-slate-300" />
+                          )}
+                        </div>
+
+                        {/* Text & Deduction */}
+                        <div>
+                          <h5 className={`font-black text-xs sm:text-sm leading-tight ${isChecked ? 'text-slate-900' : 'text-slate-800'}`}>
+                            {opt.title}
+                          </h5>
+                          {opt.description && (
+                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{opt.description}</p>
+                          )}
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 text-[10px]">
+                            <span className="text-slate-400 font-bold uppercase">Impact</span>
+                            {opt.is_rejection ? (
+                              <span className="font-black text-rose-600">Rejects Offer (₹0)</span>
+                            ) : opt.deduction_type === 'PERCENTAGE' ? (
+                              <span className="font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">-{opt.default_deduction_value}%</span>
+                            ) : (
+                              <span className="font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">-₹{Number(opt.default_deduction_value).toLocaleString('en-IN')}</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
@@ -413,13 +469,16 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
             ))}
           </div>
 
-          <div className="flex justify-end pt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200">
+            <span className="text-xs text-slate-500 font-bold">
+              {selectedDefectCodes.length} {selectedDefectCodes.length === 1 ? 'Defect' : 'Defects'} Selected
+            </span>
             <button
               onClick={computeValuation}
               disabled={valuing}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center gap-2 text-base"
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 text-base active:scale-98"
             >
-              {valuing ? 'Calculating Offer...' : 'Get Estimated Price'}
+              {valuing ? 'Calculating Best Offer...' : 'See My Estimated Cash Offer'}
               <ArrowRight className="w-5 h-5" />
             </button>
           </div>

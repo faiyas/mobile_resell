@@ -25,6 +25,7 @@ class ConditionOption(models.Model):
     code = models.CharField(max_length=50, unique=True, help_text="e.g. SCREEN_CRACKED, BATTERY_SERVICE")
     title = models.CharField(max_length=150) # e.g. "Screen is broken or cracked"
     description = models.CharField(max_length=255, blank=True, default='')
+    image_base64 = models.TextField(blank=True, default='', help_text="Base64 photo of the defect or clean condition")
     is_defect = models.BooleanField(default=True, help_text="True if this condition deducts money")
     
     deduction_type = models.CharField(max_length=20, choices=DEDUCTION_TYPE_CHOICES, default='FLAT')

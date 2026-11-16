@@ -10,6 +10,7 @@ class ConditionOptionSerializer(serializers.ModelSerializer):
         model = ConditionOption
         fields = [
             'id', 'category', 'category_name', 'code', 'title', 'description',
+            'image_base64',
             'is_defect', 'deduction_type', 'default_deduction_value',
             'exclusive_group', 'is_rejection',
             'display_order', 'is_active'

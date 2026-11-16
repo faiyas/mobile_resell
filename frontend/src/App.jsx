@@ -108,6 +108,84 @@ export default function App() {
               </div>
             </div>
 
+            {/* 3 Giant Visual Action Tiles */}
+            <div className="max-w-5xl mx-auto px-3 sm:px-6 pt-6 sm:pt-8">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-5">
+                
+                {/* 1. SELL MY PHONE */}
+                <div 
+                  onClick={() => {
+                    const el = document.getElementById('sell-wizard-anchor');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="cursor-pointer bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-3xl p-5 sm:p-6 shadow-xl shadow-emerald-600/20 hover:scale-[1.02] transition flex flex-col justify-between group min-h-[140px]"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+                      <Smartphone className="w-6 h-6 text-white" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full">
+                      Sell Old Phone
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black mt-3">Sell Old Mobile</h3>
+                    <p className="text-xs text-emerald-100 mt-0.5">Instant price estimate & free home pickup</p>
+                    <span className="inline-flex items-center gap-1 font-bold text-xs mt-2 text-white">
+                      Start Selling <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. TRACK MY PHONE */}
+                <div 
+                  onClick={() => setActiveTab('track')}
+                  className="cursor-pointer bg-white border-2 border-slate-200 hover:border-amber-400 hover:shadow-lg rounded-3xl p-5 sm:p-6 transition flex flex-col justify-between group min-h-[140px]"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                      <Truck className="w-6 h-6" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full">
+                      Orders
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-slate-900 mt-3">Track My Phone</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Where is my assigned agent & inspection?</p>
+                    <span className="inline-flex items-center gap-1 font-bold text-xs mt-2 text-amber-700">
+                      Check Status <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </div>
+                </div>
+
+                {/* 3. MY PAYMENT */}
+                <div 
+                  onClick={() => setActiveTab('track')}
+                  className="cursor-pointer bg-white border-2 border-slate-200 hover:border-indigo-400 hover:shadow-lg rounded-3xl p-5 sm:p-6 transition flex flex-col justify-between group min-h-[140px]"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                      <Banknote className="w-6 h-6" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full">
+                      Payouts
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-black text-slate-900 mt-3">My Payment</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">UPI transfer receipt & UTR reference</p>
+                    <span className="inline-flex items-center gap-1 font-bold text-xs mt-2 text-indigo-700">
+                      View Receipts <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <div id="sell-wizard-anchor" className="pt-2" />
+
             {/* Step-by-Step Selling Wizard */}
             <SellWizard 
               onOrderCreated={handleOrderCreated}

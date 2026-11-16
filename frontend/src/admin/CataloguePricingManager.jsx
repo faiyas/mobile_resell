@@ -3,7 +3,7 @@ import {
   Smartphone, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, 
   Search, Filter, RefreshCw, Layers, Shield, IndianRupee, 
   HelpCircle, Sparkles, ChevronRight, Check, X, ArrowRight,
-  TrendingDown, TrendingUp, History, AlertTriangle, Eye, ShieldAlert
+  TrendingDown, TrendingUp, History, AlertTriangle, Eye, ShieldAlert, Upload
 } from 'lucide-react';
 import { api } from '../services/api';
 import { fileToBase64 } from '../utils/imageCompressor';
@@ -45,7 +45,7 @@ export default function CataloguePricingManager() {
   const [optionModalOpen, setOptionModalOpen] = useState(false);
   const [editingOption, setEditingOption] = useState(null);
   const [optionForm, setOptionForm] = useState({
-    category: '', code: '', title: '', description: '',
+    category: '', code: '', title: '', description: '', image_base64: '',
     deduction_type: 'FLAT', default_deduction_value: '500',
     exclusive_group: '', is_rejection: false, display_order: 0, is_active: true
   });
@@ -382,6 +382,7 @@ export default function CataloguePricingManager() {
         code: opt.code,
         title: opt.title,
         description: opt.description || '',
+        image_base64: opt.image_base64 || '',
         deduction_type: opt.deduction_type,
         default_deduction_value: opt.default_deduction_value,
         exclusive_group: opt.exclusive_group || '',
@@ -396,6 +397,7 @@ export default function CataloguePricingManager() {
         code: `DEFECT_${Date.now().toString().slice(-6)}`,
         title: '',
         description: '',
+        image_base64: '',
         deduction_type: 'FLAT',
         default_deduction_value: '1000',
         exclusive_group: '',
@@ -851,8 +853,19 @@ export default function CataloguePricingManager() {
                   {options.map((opt) => (
                     <tr key={opt.id} className="hover:bg-slate-50 transition">
                       <td className="py-3 px-4">
-                        <strong className="text-slate-900 block">{opt.title}</strong>
-                        <span className="text-[11px] text-slate-500 font-mono">{opt.code}</span>
+                        <div className="flex items-center gap-2.5">
+                          {opt.image_base64 ? (
+                            <img src={opt.image_base64} alt="" className="w-10 h-10 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 p-0.5" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-[9px] font-bold shrink-0">
+                              No Pic
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <strong className="text-slate-900 block truncate max-w-xs">{opt.title}</strong>
+                            <span className="text-[10px] text-slate-500 font-mono">{opt.code}</span>
+                          </div>
+                        </div>
                       </td>
                       <td className="py-3 px-4 font-semibold text-slate-700">
                         {opt.category_name || categories.find(c => c.id === opt.category)?.name}
@@ -1604,6 +1617,44 @@ export default function CataloguePricingManager() {
                   placeholder="e.g. Display glass cracked or shattered"
                   className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
                 />
+              </div>
+
+              {/* Visual Photo Upload for Customer Card */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Visual Defect Photo / Illustration</label>
+                <div className="flex items-center gap-3">
+                  {optionForm.image_base64 && (
+                    <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1">
+                      <img src={optionForm.image_base64} alt="" className="w-full h-full object-contain" />
+                      <button
+                        type="button"
+                        onClick={() => setOptionForm({ ...optionForm, image_base64: '' })}
+                        className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  )}
+                  <label className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-2.5 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const b64 = await fileToBase64(file, 400, 0.75);
+                          setOptionForm(prev => ({ ...prev, image_base64: b64 }));
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <Upload className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
+                    <span className="text-xs font-bold text-slate-700 block">
+                      {optionForm.image_base64 ? 'Change Visual Photo' : 'Upload Visual Photo (Photo / Icon)'}
+                    </span>
+                    <span className="text-[9px] text-slate-400">Displayed to customer on condition quiz card</span>
+                  </label>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
