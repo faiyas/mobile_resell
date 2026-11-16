@@ -80,12 +80,13 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             {currentUser ? (
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="text-right">
-                  <p className="text-xs font-bold text-slate-800 leading-none truncate max-w-[120px] sm:max-w-none">
+                  <p className="text-xs font-bold text-slate-800 leading-none truncate max-w-[85px] xs:max-w-[120px] sm:max-w-none">
                     {currentUser.full_name || currentUser.email}
                   </p>
-                  <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wide ${currentUser.role === 'ADMIN' ? 'text-indigo-600' :
-                      currentUser.role === 'COLLECTION_AGENT' ? 'text-amber-600' : 'text-emerald-600'
-                    }`}>
+                  <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wide ${
+                    currentUser.role === 'ADMIN' ? 'text-indigo-600' :
+                    currentUser.role === 'COLLECTION_AGENT' ? 'text-amber-600' : 'text-emerald-600'
+                  }`}>
                     {currentUser.role === 'ADMIN' ? '👑 Admin' : currentUser.role === 'COLLECTION_AGENT' ? '🛵 Agent' : '👤 Customer'}
                   </span>
                 </div>
@@ -109,9 +110,9 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
 
             <button
               onClick={() => setActiveTab('sell')}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl shadow-sm transition flex items-center gap-1 shrink-0"
+              className={`${currentUser ? 'hidden sm:flex' : 'flex'} bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl shadow-sm transition items-center gap-1 shrink-0 whitespace-nowrap`}
             >
-              <span>Sell Phone</span>
+              <span>Get Price</span>
               <ArrowRight className="w-3.5 h-3.5 hidden sm:inline" />
             </button>
           </div>

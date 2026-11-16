@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Smartphone, ShieldCheck, Camera, Check, AlertCircle, 
-  MapPin, Clock, ArrowRight, UserCheck, Lock, Upload, CheckCircle2 
+  MapPin, Clock, ArrowRight, UserCheck, Lock, Upload, 
+  CheckCircle2, RefreshCw, X, FileText, ChevronDown, ChevronUp, AlertTriangle
 } from 'lucide-react';
 import { api } from '../services/api';
 import { fileToBase64 } from '../utils/imageCompressor';
@@ -9,9 +10,11 @@ import { fileToBase64 } from '../utils/imageCompressor';
 export default function AgentInspectionView({ currentUser }) {
   const [assignedSales, setAssignedSales] = useState([]);
   const [selectedSale, setSelectedSale] = useState(null);
+  const [saleDetails, setSaleDetails] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
-  // Inspection form
+  // Inspection form state
   const [switchesOn, setSwitchesOn] = useState(true);
   const [screenWorking, setScreenWorking] = useState(true);
   const [screenGlassBroken, setScreenGlassBroken] = useState(false);
@@ -31,19 +34,28 @@ export default function AgentInspectionView({ currentUser }) {
   const [inspectorNotes, setInspectorNotes] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
+  const [feedback, setFeedback] = useState(null); // { type: 'success' | 'error', message: string, status: string }
+  const [showCustomerAnswers, setShowCustomerAnswers] = useState(true);
+
+  const feedbackRef = useRef(null);
 
   useEffect(() => {
     loadAssignedSales();
   }, []);
 
-  const loadAssignedSales = async () => {
+  const loadAssignedSales = async (preserveSelectedId = null) => {
     setLoading(true);
     try {
       const data = await api.getSales();
       setAssignedSales(data);
-      if (data.length > 0 && !selectedSale) {
-        selectOrderForInspection(data[0]);
+      if (data.length > 0) {
+        const target = preserveSelectedId 
+          ? data.find(s => s.id === preserveSelectedId) || data[0]
+          : (selectedSale ? data.find(s => s.id === selectedSale.id) || data[0] : data[0]);
+        selectOrderForInspection(target);
+      } else {
+        setSelectedSale(null);
+        setSaleDetails(null);
       }
     } catch (e) {
       console.error(e);
@@ -52,11 +64,57 @@ export default function AgentInspectionView({ currentUser }) {
     }
   };
 
-  const selectOrderForInspection = (sale) => {
+  const selectOrderForInspection = async (sale) => {
+    if (!sale) return;
     setSelectedSale(sale);
     setSuggestedFinalPrice(sale.final_price || sale.estimated_price);
     setVerifiedImei(sale.imei_number || '');
-    setSuccessMsg('');
+    setFeedback(null);
+    setPhotos([]);
+
+    // Fetch full order details including customer's self-reported conditions & existing inspection
+    setLoadingDetail(true);
+    try {
+      const detail = await api.getSaleByCode(sale.sale_code);
+      setSaleDetails(detail);
+      
+      if (detail.inspection) {
+        // Pre-populate with existing inspection data
+        const insp = detail.inspection;
+        setSwitchesOn(Boolean(insp.switches_on));
+        setScreenWorking(Boolean(insp.screen_working));
+        setScreenGlassBroken(Boolean(insp.screen_glass_broken));
+        setTouchWorking(Boolean(insp.touch_working));
+        setCameraWorking(Boolean(insp.camera_working));
+        setBatteryHealthy(Boolean(insp.battery_healthy));
+        setBodyCondition(insp.body_condition || 'GOOD');
+        setCloudLocksRemoved(Boolean(insp.cloud_locks_removed));
+        setCustomerIdVerified(Boolean(insp.customer_id_verified));
+        if (insp.verified_imei) setVerifiedImei(insp.verified_imei);
+        if (insp.suggested_final_price) setSuggestedFinalPrice(insp.suggested_final_price);
+        if (insp.inspector_notes) setInspectorNotes(insp.inspector_notes);
+        if (insp.photos && Array.isArray(insp.photos)) {
+          setPhotos(insp.photos.map(p => ({ label: p.label, image_base64: p.image_base64 })));
+        }
+      } else {
+        // Reset to default pass state
+        setSwitchesOn(true);
+        setScreenWorking(true);
+        setScreenGlassBroken(false);
+        setTouchWorking(true);
+        setCameraWorking(true);
+        setBatteryHealthy(true);
+        setBodyCondition('GOOD');
+        setCloudLocksRemoved(true);
+        setCustomerIdVerified(true);
+        setInspectorNotes('');
+        setPhotos([]);
+      }
+    } catch (err) {
+      console.error("Error loading order detail:", err);
+    } finally {
+      setLoadingDetail(false);
+    }
   };
 
   const handlePhotoUpload = async (e, label) => {
@@ -65,10 +123,16 @@ export default function AgentInspectionView({ currentUser }) {
 
     try {
       const base64 = await fileToBase64(file, 1000, 0.7);
-      setPhotos([...photos, { label, image_base64: base64 }]);
+      setPhotos(prev => [...prev, { label, image_base64: base64 }]);
     } catch (err) {
       alert("Failed to process photo: " + err.message);
     }
+    // Reset file input
+    e.target.value = '';
+  };
+
+  const removePhoto = (index) => {
+    setPhotos(prev => prev.filter((_, idx) => idx !== index));
   };
 
   const handleSubmitInspection = async (e) => {
@@ -76,16 +140,23 @@ export default function AgentInspectionView({ currentUser }) {
     if (!selectedSale) return;
 
     if (!cloudLocksRemoved) {
-      alert("CRITICAL: iCloud / Google FRP Account must be removed by the customer before taking possession!");
+      alert("CRITICAL REQUIREMENT: Apple iCloud or Google FRP account MUST be signed out and device factory reset before proceeding!");
       return;
     }
 
-    if (!verifiedImei.trim() || verifiedImei.length < 8) {
-      alert("Please enter the verified device IMEI number (dial *#06# on phone).");
+    if (!verifiedImei.trim() || verifiedImei.trim().length < 8) {
+      alert("Please enter the verified 15-digit device IMEI number (dial *#06# on phone keypad).");
+      return;
+    }
+
+    if (!suggestedFinalPrice || Number(suggestedFinalPrice) <= 0) {
+      alert("Please enter a valid final buyback price.");
       return;
     }
 
     setSubmitting(true);
+    setFeedback(null);
+
     try {
       const payload = {
         sale_id: selectedSale.id,
@@ -105,300 +176,612 @@ export default function AgentInspectionView({ currentUser }) {
         photos: photos,
       };
 
-      await api.recordInspection(payload);
-      setSuccessMsg(`Inspection recorded for ${selectedSale.sale_code}! Final price set to ₹${Number(suggestedFinalPrice).toLocaleString('en-IN')}`);
-      setPhotos([]);
-      setInspectorNotes('');
-      loadAssignedSales();
+      const res = await api.recordInspection(payload);
+      const newStatus = res.sale_status || (
+        Number(suggestedFinalPrice) === Number(selectedSale.estimated_price)
+          ? 'OWNERSHIP_TRANSFERRED' 
+          : 'FINAL_OFFER_SENT'
+      );
+
+      // Instant local reflection in state
+      const updatedSale = {
+        ...selectedSale,
+        status: newStatus,
+        final_price: suggestedFinalPrice,
+        imei_number: verifiedImei.trim(),
+        has_inspection: true,
+      };
+
+      setSelectedSale(updatedSale);
+      setAssignedSales(prev => prev.map(s => s.id === selectedSale.id ? { ...s, ...updatedSale } : s));
+
+      setFeedback({
+        type: 'success',
+        status: newStatus,
+        message: newStatus === 'OWNERSHIP_TRANSFERRED'
+          ? `✓ Inspection Recorded! Price matches estimate (₹${Number(suggestedFinalPrice).toLocaleString('en-IN')}). Ownership transferred to ReCell. Ready for Admin Payout Disbursal.`
+          : `✓ Inspection Submitted! Revised offer of ₹${Number(suggestedFinalPrice).toLocaleString('en-IN')} sent to customer. Status updated to FINAL OFFER SENT.`
+      });
+
+      // Smooth scroll to feedback for clear mobile visibility
+      setTimeout(() => {
+        if (feedbackRef.current) {
+          feedbackRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+
+      // Silently refresh list from server in background
+      api.getSales().then(freshData => {
+        if (freshData) setAssignedSales(freshData);
+      }).catch(console.error);
+
     } catch (err) {
-      alert(err.message || 'Failed to submit inspection');
+      setFeedback({
+        type: 'error',
+        message: err.message || 'Failed to submit inspection. Please check device data and retry.'
+      });
     } finally {
       setSubmitting(false);
     }
   };
 
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'OWNERSHIP_TRANSFERRED':
+        return <span className="text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full inline-flex items-center gap-1">✓ Handover Done</span>;
+      case 'FINAL_OFFER_SENT':
+        return <span className="text-[10px] font-extrabold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full inline-flex items-center gap-1">⏳ Offer Sent</span>;
+      case 'PAYMENT_PROCESSED':
+        return <span className="text-[10px] font-extrabold uppercase bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full inline-flex items-center gap-1">💰 Paid</span>;
+      case 'PICKUP_ASSIGNED':
+        return <span className="text-[10px] font-extrabold uppercase bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full inline-flex items-center gap-1">🛵 Assigned</span>;
+      case 'FINAL_OFFER_REJECTED':
+        return <span className="text-[10px] font-extrabold uppercase bg-rose-100 text-rose-800 px-2 py-0.5 rounded-full inline-flex items-center gap-1">✕ Rejected</span>;
+      default:
+        return <span className="text-[10px] font-extrabold uppercase bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">{status?.replace(/_/g, ' ') || 'Pending'}</span>;
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-4 py-4 sm:py-8 space-y-4 sm:space-y-6 animate-fade-in">
+    <div className="max-w-5xl mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-6">
       
-      {/* Top Banner */}
-      <div className="bg-slate-900 text-white p-4 sm:p-6 rounded-3xl shadow-xl flex items-center justify-between">
-        <div>
-          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
-            Field Collection Agent Portal
-          </span>
-          <h2 className="text-lg sm:text-2xl font-black mt-1">
+      {/* Top Header Card */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg flex items-center justify-between">
+        <div className="min-w-0 pr-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+              Field Collection Agent
+            </span>
+            <span className="text-[9px] sm:text-[10px] text-slate-400">
+              {assignedSales.length} {assignedSales.length === 1 ? 'Pickup' : 'Pickups'} Assigned
+            </span>
+          </div>
+          <h2 className="text-base sm:text-2xl font-black mt-1 truncate">
             Doorstep Device Inspection & Handover
           </h2>
-          <p className="text-[11px] sm:text-xs text-slate-400 mt-0.5">
-            Logged in as: {currentUser?.full_name || 'Pickup Specialist'}
+          <p className="text-[10px] sm:text-xs text-slate-400 truncate">
+            Agent: <strong className="text-slate-200">{currentUser?.full_name || 'Pickup Specialist'}</strong>
           </p>
         </div>
+
+        <button
+          onClick={() => loadAssignedSales(selectedSale?.id)}
+          disabled={loading}
+          title="Refresh assigned queue"
+          className="p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition shrink-0 active:scale-95"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-400' : ''}`} />
+        </button>
       </div>
 
-      {successMsg && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold flex items-center gap-2">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          <span>{successMsg}</span>
+      {/* MOBILE QUEUE SELECTOR (Horizontal scroll on mobile <md) */}
+      <div className="block md:hidden">
+        <div className="flex items-center justify-between mb-1.5 px-0.5">
+          <span className="text-xs font-black text-slate-900 flex items-center gap-1">
+            <span>🛵 Your Assigned Pickups:</span>
+            <span className="bg-slate-200 text-slate-800 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
+              {assignedSales.length}
+            </span>
+          </span>
+          <span className="text-[10px] text-slate-500">Tap card to inspect</span>
         </div>
-      )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
-        {/* Left: Pickup Queue */}
-        <div className="space-y-3">
-          <h4 className="font-extrabold text-slate-900 text-sm">Assigned Pickups:</h4>
-          
-          <div className="space-y-2">
-            {assignedSales.map((s) => (
+        <div className="flex gap-2 overflow-x-auto pb-2 pt-0.5 scrollbar-none snap-x -mx-1 px-1">
+          {assignedSales.map((s) => {
+            const isSelected = selectedSale?.id === s.id;
+            return (
               <div
                 key={s.id}
                 onClick={() => selectOrderForInspection(s)}
-                className={`cursor-pointer p-3.5 rounded-2xl border transition ${
-                  selectedSale?.id === s.id
-                    ? 'bg-amber-50 border-amber-500 shadow-sm ring-2 ring-amber-500/20'
-                    : 'bg-white border-slate-200 hover:border-slate-300'
+                className={`snap-start shrink-0 w-[240px] p-2.5 rounded-2xl border transition text-left cursor-pointer active:scale-98 ${
+                  isSelected
+                    ? 'bg-amber-50 border-amber-500 shadow-md ring-2 ring-amber-500/20'
+                    : 'bg-white border-slate-200 shadow-sm'
                 }`}
               >
-                <div className="flex justify-between items-start">
-                  <span className="font-mono text-[10px] font-bold bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-mono text-[10px] font-black bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">
                     {s.sale_code}
                   </span>
-                  <span className="text-[10px] font-bold text-emerald-700">
-                    Est: ₹{Number(s.estimated_price).toLocaleString('en-IN')}
-                  </span>
+                  {getStatusBadge(s.status)}
                 </div>
-                <h5 className="font-bold text-slate-900 text-xs mt-1.5">
+                <h5 className="font-extrabold text-slate-900 text-xs truncate">
                   {s.brand_name} {s.model_name}
                 </h5>
-                <p className="text-[11px] text-slate-500 mt-0.5 truncate">{s.customer_name} · {s.pickup_city}</p>
+                <div className="flex justify-between items-center text-[11px] mt-1 text-slate-500">
+                  <span className="truncate max-w-[120px]">{s.customer_name}</span>
+                  <span className="font-black text-emerald-700">₹{Number(s.final_price || s.estimated_price).toLocaleString('en-IN')}</span>
+                </div>
               </div>
-            ))}
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Main Grid: Left Queue on Desktop, Right Inspection Form */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+        
+        {/* DESKTOP PICKUP QUEUE (Hidden on mobile, visible on md+) */}
+        <div className="hidden md:block space-y-3">
+          <div className="flex justify-between items-center">
+            <h4 className="font-black text-slate-900 text-sm flex items-center gap-1.5">
+              <span>🛵 Assigned Pickups</span>
+              <span className="bg-slate-200 text-slate-800 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
+                {assignedSales.length}
+              </span>
+            </h4>
+          </div>
+          
+          <div className="space-y-2 max-h-[750px] overflow-y-auto pr-1">
+            {assignedSales.map((s) => {
+              const isSelected = selectedSale?.id === s.id;
+              return (
+                <div
+                  key={s.id}
+                  onClick={() => selectOrderForInspection(s)}
+                  className={`cursor-pointer p-3 rounded-2xl border transition ${
+                    isSelected
+                      ? 'bg-amber-50 border-amber-500 shadow-sm ring-2 ring-amber-500/20'
+                      : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-mono text-[10px] font-bold bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">
+                      {s.sale_code}
+                    </span>
+                    {getStatusBadge(s.status)}
+                  </div>
+                  <h5 className="font-bold text-slate-900 text-xs mt-1">
+                    {s.brand_name} {s.model_name}
+                  </h5>
+                  <p className="text-[11px] text-slate-500 truncate mt-0.5">{s.customer_name} · {s.pickup_city}</p>
+                  <div className="flex justify-between items-center text-[11px] mt-1.5 pt-1.5 border-t border-slate-100">
+                    <span className="text-slate-400">Offer:</span>
+                    <span className="font-black text-emerald-700">
+                      ₹{Number(s.final_price || s.estimated_price).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Right: Active Inspection Checklist */}
+        {/* ACTIVE INSPECTION FORM */}
         {selectedSale ? (
-          <form onSubmit={handleSubmitInspection} className="md:col-span-2 bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-6 text-xs">
+          <form 
+            onSubmit={handleSubmitInspection} 
+            className="md:col-span-2 bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-3 sm:p-6 shadow-sm space-y-4 sm:space-y-6 text-xs"
+          >
             
-            <div className="flex justify-between items-start border-b border-slate-100 pb-4">
-              <div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase">Inspecting Order</span>
-                <h3 className="text-lg font-black text-slate-900">
-                  {selectedSale.brand_name} {selectedSale.model_name} ({selectedSale.storage || selectedSale.variant_details?.storage || ''})
-                </h3>
-                <p className="text-slate-500 text-xs mt-0.5">
-                  Customer: {selectedSale.customer_name} ({selectedSale.customer_phone})
-                </p>
+            {/* Device Overview Banner */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 sm:p-4 space-y-2">
+              <div className="flex justify-between items-start gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-mono text-[10px] font-black bg-slate-900 text-white px-2 py-0.5 rounded">
+                      {selectedSale.sale_code}
+                    </span>
+                    {getStatusBadge(selectedSale.status)}
+                  </div>
+                  <h3 className="text-base sm:text-xl font-black text-slate-900 mt-1 truncate">
+                    {selectedSale.brand_name} {selectedSale.model_name}
+                  </h3>
+                  <p className="text-slate-500 text-[11px] sm:text-xs">
+                    Storage: <strong className="text-slate-800">{selectedSale.storage || selectedSale.variant_details?.storage || 'Standard'}</strong>
+                  </p>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-bold block">Original Estimate</span>
+                  <span className="text-base sm:text-2xl font-black text-emerald-600">
+                    ₹{Number(selectedSale.estimated_price).toLocaleString('en-IN')}
+                  </span>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="text-[10px] text-slate-400 uppercase block">Indicative Offer</span>
-                <span className="text-xl font-black text-slate-700">
-                  ₹{Number(selectedSale.estimated_price).toLocaleString('en-IN')}
-                </span>
+
+              {/* Customer Contact & Address */}
+              <div className="pt-2 border-t border-slate-200/80 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-slate-600">
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="font-bold text-slate-800">Customer:</span>
+                  <span className="truncate">{selectedSale.customer_name} ({selectedSale.customer_phone})</span>
+                </div>
+                <div className="flex items-center gap-1.5 truncate">
+                  <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <span className="truncate">{selectedSale.pickup_address}, {selectedSale.pickup_city}</span>
+                </div>
               </div>
             </div>
 
-            {/* Hardware Checklist */}
-            <div className="space-y-3">
-              <h4 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                <Smartphone className="w-4 h-4 text-emerald-600" /> 1. Functional Verification
-              </h4>
+            {/* Customer Self-Reported Conditions (Expandable) */}
+            {saleDetails?.answers && saleDetails.answers.length > 0 && (
+              <div className="border border-blue-200 bg-blue-50/60 rounded-2xl p-3">
+                <div 
+                  onClick={() => setShowCustomerAnswers(!showCustomerAnswers)}
+                  className="flex justify-between items-center cursor-pointer select-none"
+                >
+                  <span className="font-extrabold text-blue-900 text-[11px] sm:text-xs flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    Customer's Self-Reported Valuation Answers ({saleDetails.answers.length})
+                  </span>
+                  <button type="button" className="text-blue-700">
+                    {showCustomerAnswers ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+                {showCustomerAnswers && (
+                  <div className="mt-2.5 pt-2 border-t border-blue-200/60 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {saleDetails.answers.map((ans, idx) => (
+                      <div key={idx} className="bg-white/80 border border-blue-100 rounded-lg p-1.5 px-2 text-[10px] flex justify-between items-center">
+                        <span className="text-slate-700 truncate mr-2 font-medium">
+                          <strong className="text-blue-950 font-bold">{ans.category_name}:</strong> {ans.option_title}
+                        </span>
+                        {Number(ans.deduction_applied) > 0 ? (
+                          <span className="text-rose-600 font-extrabold shrink-0">-₹{Number(ans.deduction_applied).toLocaleString('en-IN')}</span>
+                        ) : (
+                          <span className="text-emerald-700 font-bold shrink-0">✓ Clean</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* STEP 1: Hardware & Functional Checklist */}
+            <div className="space-y-2.5">
+              <div className="flex justify-between items-center">
+                <h4 className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
+                  <Smartphone className="w-4 h-4 text-emerald-600" /> 1. Functional Verification Checklist
+                </h4>
+                <span className="text-[10px] text-slate-400">Verify in person</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 cursor-pointer transition select-none">
                   <input
                     type="checkbox"
                     checked={switchesOn}
                     onChange={(e) => setSwitchesOn(e.target.checked)}
-                    className="w-4 h-4 text-emerald-600 rounded"
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
                   />
-                  <span className="font-bold text-slate-800">Phone powers on</span>
+                  <div className="leading-tight">
+                    <span className="font-bold text-slate-800 block text-xs">Phone Powers On</span>
+                    <span className="text-[10px] text-slate-500">Boots to OS without looping</span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+                <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 cursor-pointer transition select-none">
                   <input
                     type="checkbox"
                     checked={screenWorking}
                     onChange={(e) => setScreenWorking(e.target.checked)}
-                    className="w-4 h-4 text-emerald-600 rounded"
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
                   />
-                  <span className="font-bold text-slate-800">Display (No lines/spots)</span>
+                  <div className="leading-tight">
+                    <span className="font-bold text-slate-800 block text-xs">Display Clean & Intact</span>
+                    <span className="text-[10px] text-slate-500">No lines, black dots or tint</span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+                <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 cursor-pointer transition select-none">
                   <input
                     type="checkbox"
                     checked={touchWorking}
                     onChange={(e) => setTouchWorking(e.target.checked)}
-                    className="w-4 h-4 text-emerald-600 rounded"
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
                   />
-                  <span className="font-bold text-slate-800">Touch responsiveness OK</span>
+                  <div className="leading-tight">
+                    <span className="font-bold text-slate-800 block text-xs">Touchscreen Fully Responsive</span>
+                    <span className="text-[10px] text-slate-500">Smooth swipe across edges</span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+                <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 cursor-pointer transition select-none">
                   <input
                     type="checkbox"
                     checked={cameraWorking}
                     onChange={(e) => setCameraWorking(e.target.checked)}
-                    className="w-4 h-4 text-emerald-600 rounded"
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
                   />
-                  <span className="font-bold text-slate-800">Camera & Sensors OK</span>
+                  <div className="leading-tight">
+                    <span className="font-bold text-slate-800 block text-xs">Cameras & Sensors OK</span>
+                    <span className="text-[10px] text-slate-500">Front, back & flash functional</span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+                <label className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 cursor-pointer transition select-none">
                   <input
                     type="checkbox"
                     checked={batteryHealthy}
                     onChange={(e) => setBatteryHealthy(e.target.checked)}
-                    className="w-4 h-4 text-emerald-600 rounded"
+                    className="w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500"
                   />
-                  <span className="font-bold text-slate-800">Battery healthy (&gt;80%)</span>
+                  <div className="leading-tight">
+                    <span className="font-bold text-slate-800 block text-xs">Battery Healthy (&gt;80%)</span>
+                    <span className="text-[10px] text-slate-500">Holds charge, no swelling</span>
+                  </div>
                 </label>
 
-                <label className="flex items-center gap-2 p-2.5 rounded-xl border border-slate-200 bg-slate-50 cursor-pointer">
+                <label className={`flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition select-none ${
+                  screenGlassBroken ? 'border-rose-300 bg-rose-50' : 'border-slate-200 bg-slate-50 hover:bg-slate-100'
+                }`}>
                   <input
                     type="checkbox"
                     checked={screenGlassBroken}
                     onChange={(e) => setScreenGlassBroken(e.target.checked)}
-                    className="w-4 h-4 text-rose-600 rounded"
+                    className="w-4 h-4 text-rose-600 rounded focus:ring-rose-500"
                   />
-                  <span className="font-bold text-rose-800">Screen Glass Broken?</span>
+                  <div className="leading-tight">
+                    <span className="font-bold text-rose-800 block text-xs">Screen Glass Cracked?</span>
+                    <span className="text-[10px] text-rose-600">Physical hairline or web crack</span>
+                  </div>
                 </label>
+              </div>
+
+              {/* Body Cosmetic Condition */}
+              <div className="pt-1">
+                <label className="block font-bold text-slate-700 mb-1 text-xs">Body & Frame Cosmetic Condition</label>
+                <select
+                  value={bodyCondition}
+                  onChange={(e) => setBodyCondition(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl bg-white font-medium text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                >
+                  <option value="FLAWLESS">Flawless (No scratches, Like New)</option>
+                  <option value="GOOD">Good (Light micro-scratches)</option>
+                  <option value="FAIR">Fair (Visible scuffs / small dents)</option>
+                  <option value="HEAVY_WEAR">Heavy Wear (Cracked back or bent frame)</option>
+                </select>
               </div>
             </div>
 
-            {/* Body Condition */}
-            <div>
-              <label className="block font-bold text-slate-700 mb-1">Body & Frame Cosmetic Grade</label>
-              <select
-                value={bodyCondition}
-                onChange={(e) => setBodyCondition(e.target.value)}
-                className="w-full p-2.5 border border-slate-300 rounded-xl"
-              >
-                <option value="FLAWLESS">Flawless (No scratches, Like New)</option>
-                <option value="GOOD">Good (Light micro-scratches)</option>
-                <option value="FAIR">Fair (Visible scuffs / small dents)</option>
-                <option value="HEAVY_WEAR">Heavy Wear (Cracked back or bent frame)</option>
-              </select>
-            </div>
-
-            {/* Security & Ownership Check */}
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
-              <h4 className="font-extrabold text-amber-900 flex items-center gap-1.5">
+            {/* STEP 2: Security & IMEI Verification */}
+            <div className="bg-amber-50/70 border border-amber-300 rounded-2xl p-3 sm:p-4 space-y-3">
+              <h4 className="font-extrabold text-amber-950 text-xs sm:text-sm flex items-center gap-1.5">
                 <Lock className="w-4 h-4 text-amber-700" /> 2. Security & IMEI Verification (Mandatory)
               </h4>
 
               <div className="space-y-2">
-                <label className="flex items-center gap-2 font-bold text-amber-950 cursor-pointer">
+                <label className="flex items-start gap-2.5 font-bold text-amber-950 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     required
                     checked={cloudLocksRemoved}
                     onChange={(e) => setCloudLocksRemoved(e.target.checked)}
-                    className="w-4 h-4 text-emerald-600 rounded"
+                    className="w-4 h-4 text-emerald-600 rounded mt-0.5"
                   />
-                  <span>Apple iCloud / Google FRP Account has been removed & factory reset</span>
+                  <span className="text-xs leading-tight">
+                    Apple iCloud / Google FRP Account has been completely removed & phone factory reset *
+                  </span>
                 </label>
 
-                <label className="flex items-center gap-2 font-bold text-amber-950 cursor-pointer">
+                <label className="flex items-start gap-2.5 font-bold text-amber-950 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={customerIdVerified}
                     onChange={(e) => setCustomerIdVerified(e.target.checked)}
-                    className="w-4 h-4 text-emerald-600 rounded"
+                    className="w-4 h-4 text-emerald-600 rounded mt-0.5"
                   />
-                  <span>Seller Aadhaar / Govt ID verified</span>
+                  <span className="text-xs leading-tight">
+                    Seller Identity verified with Govt ID (Aadhaar / Driving License / PAN)
+                  </span>
                 </label>
               </div>
 
               <div>
-                <label className="block font-bold text-amber-950 mb-1">Verified IMEI Number (Dial *#06#) *</label>
+                <label className="block font-extrabold text-amber-950 mb-1 text-xs">
+                  Verified Device IMEI Number (Dial *#06# on phone) *
+                </label>
                 <input
                   type="text"
                   required
+                  maxLength={20}
                   value={verifiedImei}
-                  onChange={(e) => setVerifiedImei(e.target.value)}
-                  placeholder="15-digit IMEI number"
-                  className="w-full p-2 border border-amber-300 rounded-xl font-mono uppercase bg-white text-xs"
+                  onChange={(e) => setVerifiedImei(e.target.value.replace(/[^0-9]/g, ''))}
+                  placeholder="Enter 15-digit IMEI number"
+                  className="w-full p-2.5 border border-amber-300 rounded-xl font-mono tracking-wider bg-white text-xs text-slate-900 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
+                <span className="text-[10px] text-amber-800 mt-0.5 block">
+                  Must match the physical device dialer (*#06#) to ensure authentic ownership.
+                </span>
               </div>
             </div>
 
-            {/* Base64 Device Photo Evidence */}
+            {/* STEP 3: Base64 Photos Upload */}
             <div className="space-y-2">
-              <span className="font-bold text-slate-800 flex items-center gap-1.5">
-                <Camera className="w-4 h-4 text-emerald-600" />
-                3. Device Condition Photographs (Base64 Stored)
-              </span>
+              <div className="flex justify-between items-center">
+                <span className="font-extrabold text-slate-800 text-xs sm:text-sm flex items-center gap-1.5">
+                  <Camera className="w-4 h-4 text-emerald-600" />
+                  3. Device Condition Photographs (Base64 Proof)
+                </span>
+                <span className="text-[10px] text-slate-400 font-bold">{photos.length} Attached</span>
+              </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {['Front Screen', 'Back Body', 'Defect Close-up'].map((label, idx) => (
-                  <label key={idx} className="border-2 border-dashed border-slate-300 rounded-xl p-3 text-center cursor-pointer hover:border-emerald-500 bg-slate-50 transition block">
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Front Screen', tip: 'Screen on' },
+                  { label: 'Back Body', tip: 'Camera / back' },
+                  { label: 'Defect Zoom', tip: 'Any scratches' },
+                ].map((item, idx) => (
+                  <label 
+                    key={idx} 
+                    className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-2 sm:p-3 text-center cursor-pointer bg-slate-50 hover:bg-emerald-50/30 transition block select-none"
+                  >
                     <input
                       type="file"
                       accept="image/*"
                       capture="environment"
-                      onChange={(e) => handlePhotoUpload(e, label)}
+                      onChange={(e) => handlePhotoUpload(e, item.label)}
                       className="hidden"
                     />
-                    <Upload className="w-4 h-4 text-slate-400 mx-auto mb-1" />
-                    <span className="text-[11px] font-bold text-slate-700 block">{label}</span>
-                    <span className="text-[9px] text-slate-400">Tap to snap</span>
+                    <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 mx-auto mb-1" />
+                    <span className="text-[10px] sm:text-xs font-bold text-slate-700 block truncate">{item.label}</span>
+                    <span className="text-[8px] sm:text-[9px] text-slate-400 hidden xs:block">{item.tip}</span>
                   </label>
                 ))}
               </div>
 
+              {/* Photo Preview Thumbnails with Remove */}
               {photos.length > 0 && (
-                <div className="flex gap-2 pt-2 overflow-x-auto">
+                <div className="flex gap-2 pt-1 overflow-x-auto pb-1">
                   {photos.map((p, i) => (
-                    <div key={i} className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden shrink-0 relative bg-black">
+                    <div key={i} className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-slate-200 overflow-hidden shrink-0 group shadow-sm bg-black">
                       <img src={p.image_base64} alt={p.label} className="w-full h-full object-cover" />
+                      <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] text-center py-0.5 truncate px-1">
+                        {p.label}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(i)}
+                        className="absolute top-1 right-1 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700 transition"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Final Offer Calculation */}
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+            {/* STEP 4: Final Offer Price Calculation */}
+            <div className="bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-200 space-y-2.5">
               <div className="flex items-center justify-between">
-                <label className="font-extrabold text-slate-900">
+                <label className="font-extrabold text-slate-900 text-xs sm:text-sm">
                   Recommended Final Buyback Price (₹) *
                 </label>
-                <span className="text-[10px] text-slate-500">Subject to customer acceptance</span>
+                <button
+                  type="button"
+                  onClick={() => setSuggestedFinalPrice(selectedSale.estimated_price)}
+                  className="text-[10px] text-emerald-700 font-bold bg-emerald-100 hover:bg-emerald-200 px-2 py-0.5 rounded-lg transition"
+                >
+                  Reset to Original Estimate
+                </button>
               </div>
 
-              <input
-                type="number"
-                step="100"
-                required
-                value={suggestedFinalPrice}
-                onChange={(e) => setSuggestedFinalPrice(e.target.value)}
-                className="w-full p-3 border border-slate-300 rounded-xl text-xl font-black text-emerald-600 bg-white"
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">₹</span>
+                <input
+                  type="number"
+                  step="50"
+                  min="0"
+                  required
+                  value={suggestedFinalPrice}
+                  onChange={(e) => setSuggestedFinalPrice(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2.5 border border-slate-300 rounded-xl text-lg sm:text-xl font-black text-emerald-700 bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
 
               <input
                 type="text"
                 value={inspectorNotes}
                 onChange={(e) => setInspectorNotes(e.target.value)}
-                placeholder="Inspection notes for customer (e.g. Minor scratches observed on frame, -₹500 applied)"
-                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-white"
+                placeholder="Agent notes for customer (e.g. Minor scratches observed on edges, -₹500 applied)"
+                className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-white focus:ring-2 focus:ring-slate-400 focus:outline-none"
               />
             </div>
 
+            {/* INLINE LIVE FEEDBACK & STATUS REFLECTION BANNER (Positioned right above submit) */}
+            <div ref={feedbackRef}>
+              {feedback && (
+                <div className={`p-3.5 sm:p-4 rounded-2xl border text-xs font-bold animate-fade-in ${
+                  feedback.type === 'success'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-sm'
+                    : 'bg-rose-50 border-rose-300 text-rose-900 shadow-sm'
+                }`}>
+                  <div className="flex items-start gap-2.5">
+                    {feedback.type === 'success' ? (
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                    )}
+                    <div className="space-y-1">
+                      <p className="leading-snug">{feedback.message}</p>
+                      {feedback.status && (
+                        <div className="text-[11px] font-medium text-emerald-800">
+                          Current Order Status: <strong className="font-extrabold">{feedback.status.replace(/_/g, ' ')}</strong>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* If already inspected and no fresh feedback, show verified status indicator */}
+              {!feedback && (selectedSale.has_inspection || selectedSale.status === 'OWNERSHIP_TRANSFERRED' || selectedSale.status === 'FINAL_OFFER_SENT') && (
+                <div className="p-3 bg-slate-100 border border-slate-200 text-slate-700 rounded-2xl text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="font-bold">
+                      {selectedSale.status === 'OWNERSHIP_TRANSFERRED' 
+                        ? 'Handover Completed · Ownership Transferred to ReCell'
+                        : selectedSale.status === 'FINAL_OFFER_SENT'
+                        ? 'Revised Final Offer Sent to Customer'
+                        : 'Inspection Recorded'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-bold">
+                    Agreed: ₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* SUBMIT BUTTON */}
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-slate-900 hover:bg-black text-white font-extrabold py-3.5 rounded-2xl shadow transition flex items-center justify-center gap-2 text-sm"
+              className={`w-full text-white font-black py-3.5 rounded-2xl shadow-md transition flex items-center justify-center gap-2 text-xs sm:text-sm active:scale-98 ${
+                submitting
+                  ? 'bg-slate-700 cursor-not-allowed'
+                  : selectedSale.has_inspection
+                  ? 'bg-emerald-700 hover:bg-emerald-800'
+                  : 'bg-slate-900 hover:bg-black'
+              }`}
             >
-              {submitting ? 'Submitting Inspection...' : 'Confirm Inspection & Submit Final Offer'}
-              <ArrowRight className="w-4 h-4" />
+              {submitting ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Recording Inspection & Evidence...</span>
+                </>
+              ) : selectedSale.has_inspection ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Update Inspection & Final Offer</span>
+                </>
+              ) : (
+                <>
+                  <span>Confirm Inspection & Submit Final Offer</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
 
           </form>
         ) : (
-          <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-400">
-            Select a pickup order from the queue to start device inspection.
+          <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 text-center text-slate-400">
+            <Smartphone className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+            <p className="font-bold text-slate-700">No Pickup Selected</p>
+            <p className="text-xs text-slate-400 mt-1">Select an assigned order from the queue above to record device inspection.</p>
           </div>
         )}
 
