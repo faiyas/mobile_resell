@@ -55,7 +55,7 @@ class ApiService {
 
   // ================= 1. AUTHENTICATION =================
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/accounts/login/');
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/login/');
     final res = await http.post(
       url,
       headers: _headers,
@@ -74,7 +74,7 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> register(Map<String, dynamic> payload) async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/accounts/register/');
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/register/');
     final res = await http.post(
       url,
       headers: _headers,

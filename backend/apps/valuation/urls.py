@@ -16,6 +16,7 @@ urlpatterns = [
     
     # Dynamic Valuation Calculation Engine & Simulator
     path('estimate/', calculate_estimate_view, name='valuation-estimate'),
+    path('calculate-estimate/', calculate_estimate_view, name='valuation-calc-estimate'),
     path('pricing/preview/', calculate_estimate_view, name='valuation-preview'),
     
     # Price History & Audit Log

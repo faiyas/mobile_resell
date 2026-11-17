@@ -3,4 +3,5 @@ from .views import record_inspection_view
 
 urlpatterns = [
     path('', record_inspection_view, name='record-inspection'),
+    path('record/', record_inspection_view, name='record-inspection-alias'),
 ]
