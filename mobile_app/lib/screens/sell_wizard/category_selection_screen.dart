@@ -1,0 +1,522 @@
+import 'package:flutter/material.dart';
+import '../../config/theme.dart';
+import '../../models/models.dart';
+import '../../services/api_service.dart';
+import 'questionnaire_screen.dart';
+
+class CategorySelectionScreen extends StatefulWidget {
+  final DeviceCategoryModel? selectedCategory;
+  final int? initialBrandId;
+
+  const CategorySelectionScreen({
+    super.key,
+    this.selectedCategory,
+    this.initialBrandId,
+  });
+
+  @override
+  State<CategorySelectionScreen> createState() => _CategorySelectionScreenState();
+}
+
+class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
+  final ApiService _api = ApiService();
+
+  // Wizard Sub-steps: 0 = Category, 1 = Brand, 2 = Model & Variant
+  int _wizardStep = 0;
+
+  DeviceCategoryModel? _category;
+  BrandModel? _brand;
+  SeriesModel? _series;
+  PhoneModelItem? _model;
+  StorageVariantModel? _variant;
+
+  List<DeviceCategoryModel> _categories = [];
+  List<BrandModel> _brands = [];
+  List<SeriesModel> _seriesList = [];
+  List<PhoneModelItem> _models = [];
+  List<StorageVariantModel> _variants = [];
+
+  bool _loading = false;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _category = widget.selectedCategory;
+    if (_category != null) {
+      _wizardStep = 1;
+      _loadBrands();
+    } else {
+      _loadCategories();
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() => _loading = true);
+    try {
+      final cats = await _api.getDeviceCategories();
+      setState(() {
+        _categories = cats;
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadBrands() async {
+    setState(() => _loading = true);
+    try {
+      final brands = await _api.getBrands(categoryId: _category?.id);
+      setState(() {
+        _brands = brands;
+        _loading = false;
+      });
+
+      if (widget.initialBrandId != null) {
+        final found = brands.firstWhere(
+          (b) => b.id == widget.initialBrandId,
+          orElse: () => brands.first,
+        );
+        _selectBrand(found);
+      }
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _selectBrand(BrandModel brand) async {
+    setState(() {
+      _brand = brand;
+      _wizardStep = 2;
+      _series = null;
+      _model = null;
+      _variant = null;
+      _loading = true;
+    });
+
+    try {
+      final s = await _api.getSeries(brandId: brand.id);
+      final m = await _api.getModels(brandId: brand.id);
+      setState(() {
+        _seriesList = s;
+        _models = m;
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _selectSeries(SeriesModel? series) async {
+    setState(() {
+      _series = series;
+      _loading = true;
+    });
+    try {
+      final m = await _api.getModels(
+        brandId: _brand!.id,
+        seriesId: series?.id,
+      );
+      setState(() {
+        _models = m;
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _selectModel(PhoneModelItem model) async {
+    setState(() {
+      _model = model;
+      _loading = true;
+    });
+
+    try {
+      final v = await _api.getVariants(model.id);
+      setState(() {
+        _variants = v;
+        if (v.isNotEmpty) _variant = v.first;
+        _loading = false;
+      });
+    } catch (_) {
+      setState(() => _loading = false);
+    }
+  }
+
+  void _proceedToQuestionnaire() {
+    if (_variant == null || _model == null || _brand == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuestionnaireScreen(
+          category: _category,
+          brand: _brand!,
+          model: _model!,
+          variant: _variant!,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.canvas,
+      appBar: AppBar(
+        title: Text(
+          _wizardStep == 0
+              ? 'Select Category'
+              : _wizardStep == 1
+                  ? 'Select Brand'
+                  : '${_brand?.name ?? ''} Models',
+        ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (_wizardStep > 0) {
+              setState(() => _wizardStep--);
+            } else {
+              Navigator.pop(context);
+            }
+          },
+        ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+          : _wizardStep == 0
+              ? _buildCategoryStep()
+              : _wizardStep == 1
+                  ? _buildBrandStep()
+                  : _buildModelStep(),
+      bottomNavigationBar: _wizardStep == 2 && _variant != null
+          ? Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(top: BorderSide(color: AppTheme.border)),
+              ),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Estimated Base Value',
+                            style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            '₹${_variant!.basePrice.toStringAsFixed(0)}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.darkGreen,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: _proceedToQuestionnaire,
+                      child: const Row(
+                        children: [
+                          Text('Continue to Inspection'),
+                          SizedBox(width: 6),
+                          Icon(Icons.arrow_forward_rounded, size: 16),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildCategoryStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Sell Your Device',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Choose a device category to calculate its highest buyback quotation.',
+            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(height: 16),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.1,
+            ),
+            itemCount: _categories.length,
+            itemBuilder: (context, idx) {
+              final cat = _categories[idx];
+              return InkWell(
+                onTap: () {
+                  setState(() {
+                    _category = cat;
+                    _wizardStep = 1;
+                  });
+                  _loadBrands();
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.lightGreen,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Icons.phone_android, color: AppTheme.primaryGreen, size: 28),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        cat.name,
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Tap to proceed',
+                        style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBrandStep() {
+    final filtered = _brands.where((b) => b.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            decoration: const InputDecoration(
+              hintText: 'Search brand (e.g. Apple, Samsung, OnePlus)...',
+              prefixIcon: Icon(Icons.search, color: AppTheme.primaryGreen),
+            ),
+            onChanged: (val) => setState(() => _searchQuery = val),
+          ),
+        ),
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 0.95,
+            ),
+            itemCount: filtered.length,
+            itemBuilder: (context, idx) {
+              final brand = filtered[idx];
+              return InkWell(
+                onTap: () => _selectBrand(brand),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.phone_android, size: 28, color: AppTheme.primaryGreen),
+                      const SizedBox(height: 8),
+                      Text(
+                        brand.name,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModelStep() {
+    return Column(
+      children: [
+        // Series Pills (e.g. All, iPhone 11 Series, iPhone 12 Series)
+        if (_seriesList.isNotEmpty)
+          Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                _buildSeriesPill(null, 'All'),
+                ..._seriesList.map((s) => _buildSeriesPill(s, s.name)),
+              ],
+            ),
+          ),
+
+        // Models Grid
+        Expanded(
+          child: _models.isEmpty
+              ? const Center(child: Text('No models available for this selection'))
+              : GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio: 0.95,
+                  ),
+                  itemCount: _models.length,
+                  itemBuilder: (context, idx) {
+                    final item = _models[idx];
+                    final isSelected = _model?.id == item.id;
+
+                    return InkWell(
+                      onTap: () => _selectModel(item),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected ? AppTheme.primaryGreen : AppTheme.border,
+                            width: isSelected ? 2 : 1,
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: isSelected ? AppTheme.lightGreen : AppTheme.canvas,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(Icons.smartphone, size: 28, color: AppTheme.primaryGreen),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              item.name,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Year: ${item.releaseYear}',
+                              style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+
+        // Storage Variants Selector
+        if (_model != null && _variants.isNotEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: AppTheme.border)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Select Storage Variant for ${_model!.name}:',
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: _variants.map((v) {
+                    final isSelected = _variant?.id == v.id;
+                    return ChoiceChip(
+                      label: Text('${v.storage} (₹${v.basePrice.toStringAsFixed(0)})'),
+                      selected: isSelected,
+                      selectedColor: AppTheme.lightGreen,
+                      labelStyle: TextStyle(
+                        color: isSelected ? AppTheme.darkGreen : AppTheme.textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 11,
+                      ),
+                      onSelected: (val) {
+                        if (val) setState(() => _variant = v);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSeriesPill(SeriesModel? s, String label) {
+    final isSelected = (s == null && _series == null) || (_series?.id == s?.id);
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label),
+        selected: isSelected,
+        selectedColor: AppTheme.lightGreen,
+        checkmarkColor: AppTheme.primaryGreen,
+        labelStyle: TextStyle(
+          color: isSelected ? AppTheme.darkGreen : AppTheme.textSecondary,
+          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+          fontSize: 11,
+        ),
+        onSelected: (_) => _selectSeries(s),
+      ),
+    );
+  }
+}
