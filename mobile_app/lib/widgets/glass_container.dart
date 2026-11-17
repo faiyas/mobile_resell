@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../config/theme.dart';
 
 class GlassContainer extends StatelessWidget {
   final Widget child;
@@ -8,7 +7,7 @@ class GlassContainer extends StatelessWidget {
   final double? height;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
-  final double borderRadius;
+  final BorderRadiusGeometry borderRadius;
   final double blur;
   final Color? color;
   final Gradient? gradient;
@@ -16,21 +15,25 @@ class GlassContainer extends StatelessWidget {
   final List<BoxShadow>? boxShadow;
   final VoidCallback? onTap;
 
-  const GlassContainer({
+  GlassContainer({
     super.key,
     required this.child,
     this.width,
     this.height,
     this.padding,
     this.margin,
-    this.borderRadius = 24.0,
+    dynamic borderRadius,
     this.blur = 16.0,
     this.color,
     this.gradient,
     this.border,
     this.boxShadow,
     this.onTap,
-  });
+  }) : borderRadius = borderRadius == null
+            ? BorderRadius.circular(24.0)
+            : (borderRadius is num
+                ? BorderRadius.circular(borderRadius.toDouble())
+                : (borderRadius as BorderRadiusGeometry));
 
   @override
   Widget build(BuildContext context) {
@@ -51,10 +54,10 @@ class GlassContainer extends StatelessWidget {
             offset: const Offset(0, 4),
           ),
         ],
-        borderRadius: BorderRadius.circular(borderRadius),
+        borderRadius: borderRadius,
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(borderRadius),
+        borderRadius: borderRadius,
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
           child: Container(
@@ -72,7 +75,7 @@ class GlassContainer extends StatelessWidget {
                     ],
                     stops: const [0.0, 0.6, 1.0],
                   ),
-              borderRadius: BorderRadius.circular(borderRadius),
+              borderRadius: borderRadius,
               border: border ??
                   Border.all(
                     color: Colors.white.withValues(alpha: 0.85),
@@ -88,7 +91,7 @@ class GlassContainer extends StatelessWidget {
     if (onTap != null) {
       return InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(borderRadius),
+        borderRadius: borderRadius is BorderRadius ? (borderRadius as BorderRadius) : BorderRadius.circular(24.0),
         child: content,
       );
     }

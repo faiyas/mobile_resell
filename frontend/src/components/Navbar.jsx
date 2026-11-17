@@ -1,7 +1,7 @@
 import React from 'react';
-import { 
-  Smartphone, Search, User, LogOut, ShieldCheck, 
-  ArrowRight, UserCheck, MapPin, ChevronDown, CheckCircle2 
+import {
+  Smartphone, Search, User, LogOut, ShieldCheck,
+  ArrowRight, UserCheck, MapPin, ChevronDown, CheckCircle2
 } from 'lucide-react';
 
 export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAuth, onLogout, selectedCity = 'Tirupur', onSelectCity }) {
@@ -73,22 +73,20 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
           <nav className="hidden md:flex items-center gap-1.5 text-xs sm:text-sm font-bold">
             <button
               onClick={() => setActiveTab('sell')}
-              className={`px-3.5 py-2 rounded-xl transition ${
-                activeTab === 'sell'
-                  ? 'bg-[#E8F8ED] text-[#087C38] border border-[#0BAA4B]/20 font-black shadow-sm'
-                  : 'text-[#17251C] hover:bg-white/60 hover:text-[#0BAA4B]'
-              }`}
+              className={`px-3.5 py-2 rounded-xl transition ${activeTab === 'sell'
+                ? 'bg-[#E8F8ED] text-[#087C38] border border-[#0BAA4B]/20 font-black shadow-sm'
+                : 'text-[#17251C] hover:bg-white/60 hover:text-[#0BAA4B]'
+                }`}
             >
               Sell Device
             </button>
 
             <button
               onClick={() => setActiveTab('track')}
-              className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 ${
-                activeTab === 'track'
-                  ? 'bg-[#E8F8ED] text-[#087C38] border border-[#0BAA4B]/20 font-black shadow-sm'
-                  : 'text-[#17251C] hover:bg-white/60 hover:text-[#0BAA4B]'
-              }`}
+              className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 ${activeTab === 'track'
+                ? 'bg-[#E8F8ED] text-[#087C38] border border-[#0BAA4B]/20 font-black shadow-sm'
+                : 'text-[#17251C] hover:bg-white/60 hover:text-[#0BAA4B]'
+                }`}
             >
               <Search className="w-4 h-4 text-[#0BAA4B]" />
               {currentUser?.role === 'CUSTOMER' ? 'My Orders' : 'Track Status'}
@@ -98,11 +96,10 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             {currentUser?.role === 'ADMIN' && (
               <button
                 onClick={() => setActiveTab('admin')}
-                className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${
-                  activeTab === 'admin'
-                    ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/25'
-                    : 'text-[#087C38] bg-[#E8F8ED] hover:bg-[#0BAA4B] hover:text-white'
-                }`}
+                className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${activeTab === 'admin'
+                  ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/25'
+                  : 'text-[#087C38] bg-[#E8F8ED] hover:bg-[#0BAA4B] hover:text-white'
+                  }`}
               >
                 <ShieldCheck className="w-4 h-4" />
                 Admin Desk
@@ -113,11 +110,10 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             {(currentUser?.role === 'COLLECTION_AGENT' || currentUser?.role === 'ADMIN') && (
               <button
                 onClick={() => setActiveTab('inspection')}
-                className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${
-                  activeTab === 'inspection'
-                    ? 'bg-amber-600 text-white shadow-md'
-                    : 'text-amber-800 bg-amber-50 hover:bg-amber-100'
-                }`}
+                className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${activeTab === 'inspection'
+                  ? 'bg-amber-600 text-white shadow-md'
+                  : 'text-amber-800 bg-amber-50 hover:bg-amber-100'
+                  }`}
               >
                 <UserCheck className="w-4 h-4" />
                 Agent Inspection
@@ -133,10 +129,9 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
                   <p className="text-xs font-black text-[#17251C] leading-none truncate max-w-[85px] xs:max-w-[120px] sm:max-w-none">
                     {currentUser.full_name || currentUser.email}
                   </p>
-                  <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wide ${
-                    currentUser.role === 'ADMIN' ? 'text-[#087C38]' :
+                  <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wide ${currentUser.role === 'ADMIN' ? 'text-[#087C38]' :
                     currentUser.role === 'COLLECTION_AGENT' ? 'text-amber-600' : 'text-[#0BAA4B]'
-                  }`}>
+                    }`}>
                     {currentUser.role === 'ADMIN' ? '👑 Admin' : currentUser.role === 'COLLECTION_AGENT' ? '🛵 Agent' : '👤 Customer'}
                   </span>
                 </div>

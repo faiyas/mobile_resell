@@ -1,6 +1,5 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
@@ -151,7 +150,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         value: a.id,
                         child: Text('${a.fullName} (${a.phone})', style: const TextStyle(fontSize: 12)),
                       );
-                    }).toList>,
+                    }).toList(),
                     onChanged: (val) {
                       if (val != null) setDialogState(() => selectedAgentId = val);
                     },
@@ -321,7 +320,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         try {
                           await _api.recordPayment(order.id, {
                             'amount': amount,
-                            'method': order.beneficiaryType ?? 'UPI',
+                            'method': order.beneficiaryType,
                             'transaction_reference': utr,
                             'notes': 'Disbursed via 1103 RECELL Admin Desk',
                           });

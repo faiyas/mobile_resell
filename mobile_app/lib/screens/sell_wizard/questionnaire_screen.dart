@@ -496,7 +496,6 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
       ),
     );
   }
-  }
 
   IconData _getOptionIcon(String code) {
     final c = code.toLowerCase();

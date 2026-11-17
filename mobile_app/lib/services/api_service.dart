@@ -305,6 +305,12 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> recordPayment(int saleId, Map<String, dynamic> payload) {
+    final Map<String, dynamic> p = Map<String, dynamic>.from(payload);
+    p['sale_id'] = saleId;
+    return recordPayout(p);
+  }
+
   Future<Map<String, dynamic>> updateConditionOption(int optionId, Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/valuation/options/$optionId/');
     final res = await http.put(

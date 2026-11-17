@@ -265,9 +265,9 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
                                             ],
                                           ),
                                         ),
-                                      );
-                                    },
-                                  ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
 
