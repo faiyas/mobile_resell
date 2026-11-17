@@ -1,7 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import '../../widgets/glass_container.dart';
 import 'quote_and_booking_screen.dart';
 
 class QuestionnaireScreen extends StatefulWidget {
@@ -199,111 +201,125 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.canvas,
-      appBar: AppBar(
-        title: Text('${widget.brand.name} · ${widget.model.name}'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: _previousStep,
-        ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            backgroundColor: AppTheme.border,
-            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryGreen),
-            minHeight: 4,
+      extendBody: true,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.82),
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              child: AppBar(
+                backgroundColor: Colors.transparent,
+                title: Text('${widget.brand.name} · ${widget.model.name}'),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: _previousStep,
+                ),
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: AppTheme.border.withValues(alpha: 0.5),
+                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryGreen),
+                    minHeight: 4,
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Step Pill
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.lightGreen,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text(
-                    'Step ${_currentStepIndex + 1} of ${_steps.length}',
-                    style: const TextStyle(
-                      color: AppTheme.darkGreen,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 11,
+      body: GlassBackgroundMesh(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Step Pill
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppTheme.lightGreen.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2)),
+                    ),
+                    child: Text(
+                      'Step ${_currentStepIndex + 1} of ${_steps.length}',
+                      style: const TextStyle(
+                        color: AppTheme.darkGreen,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 11,
+                      ),
                     ),
                   ),
+                  Text(
+                    isMultiple ? 'Multiple selections allowed' : 'Select one option',
+                    style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Step Title & Subtitle
+              Text(
+                currentStep.name,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.textPrimary,
                 ),
+              ),
+              if (currentStep.subtitle.isNotEmpty) ...[
+                const SizedBox(height: 4),
                 Text(
-                  isMultiple ? 'Multiple selections allowed' : 'Select one option',
-                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+                  currentStep.subtitle,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
               ],
-            ),
-            const SizedBox(height: 10),
+              const SizedBox(height: 16),
 
-            // Step Title & Subtitle
-            Text(
-              currentStep.name,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            if (currentStep.subtitle.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                currentStep.subtitle,
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-              ),
-            ],
-            const SizedBox(height: 16),
+              // Visual Option Cards Grid
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 1.12,
+                ),
+                itemCount: currentStep.options.length,
+                itemBuilder: (context, idx) {
+                  final opt = currentStep.options[idx];
+                  final isSelected = _selectedOptionCodes.contains(opt.code);
 
-            // Visual Option Cards Grid
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: currentStep.options.length <= 4 ? 2 : 2,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-                childAspectRatio: 1.12,
-              ),
-              itemCount: currentStep.options.length,
-              itemBuilder: (context, idx) {
-                final opt = currentStep.options[idx];
-                final isSelected = _selectedOptionCodes.contains(opt.code);
-
-                return InkWell(
-                  onTap: () => _toggleOption(opt, isMultiple),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: isSelected
-                            ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen)
-                            : AppTheme.border,
-                        width: isSelected ? 2 : 1,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: (opt.isRejection ? Colors.red : AppTheme.primaryGreen).withValues(alpha: 0.15),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ]
-                          : [],
-                    ),
+                  return GlassContainer(
+                    borderRadius: 20,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    border: Border.all(
+                      color: isSelected
+                          ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen)
+                          : Colors.white.withValues(alpha: 0.85),
+                      width: isSelected ? 2.5 : 1.5,
+                    ),
+                    color: isSelected
+                        ? (opt.isRejection
+                            ? Colors.red.shade50.withValues(alpha: 0.8)
+                            : AppTheme.lightGreen.withValues(alpha: 0.75))
+                        : Colors.white.withValues(alpha: 0.8),
+                    onTap: () => _toggleOption(opt, isMultiple),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -371,100 +387,115 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                         ),
                       ],
                     ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // Pro Tip Card
+              if (currentStep.proTip.isNotEmpty)
+                GlassContainer(
+                  padding: const EdgeInsets.all(14),
+                  borderRadius: 18,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('💡', style: TextStyle(fontSize: 16)),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Pro Tip',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.darkGreen,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              currentStep.proTip,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 20),
-
-            // Pro Tip Card
-            if (currentStep.proTip.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightGreen,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2)),
                 ),
+
+              const SizedBox(height: 30),
+            ],
+          ),
+        ),
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        color: Colors.transparent,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(26),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: SafeArea(
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('💡', style: TextStyle(fontSize: 16)),
-                    const SizedBox(width: 10),
+                    OutlinedButton(
+                      onPressed: _previousStep,
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppTheme.border),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Text('Previous', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Pro Tip',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.darkGreen,
+                      child: ElevatedButton(
+                        onPressed: _nextStep,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              _currentStepIndex == _steps.length - 1
+                                  ? 'Get Exact Quote'
+                                  : 'Continue',
+                              style: const TextStyle(fontWeight: FontWeight.w900),
                             ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            currentStep.proTip,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.textPrimary,
-                            ),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            const Icon(Icons.arrow_forward_rounded, size: 16),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-
-            const SizedBox(height: 30),
-          ],
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: AppTheme.border)),
-        ),
-        child: SafeArea(
-          child: Row(
-            children: [
-              OutlinedButton(
-                onPressed: _previousStep,
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppTheme.border),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Text('Previous', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _nextStep,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _currentStepIndex == _steps.length - 1
-                            ? 'Get Exact Quote'
-                            : 'Continue',
-                        style: const TextStyle(fontWeight: FontWeight.w900),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.arrow_forward_rounded, size: 16),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
+  }
   }
 
   IconData _getOptionIcon(String code) {

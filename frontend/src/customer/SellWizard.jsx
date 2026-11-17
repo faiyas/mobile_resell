@@ -103,14 +103,13 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
     setSelectedBrand(brand);
     setSelectedModel(null);
     setSelectedVariant(null);
-    setSelectedSeriesId('ALL');
     try {
-      const [seriesData, modelsData] = await Promise.all([
-        api.getSeries(brand.id),
+      const [modelsData, seriesData] = await Promise.all([
         api.getModels(brand.id),
+        api.getSeries(brand.id),
       ]);
-      setSeriesList(seriesData);
       setModels(modelsData);
+      setSeriesList(seriesData);
       setCurrentScreen(3);
     } catch (e) {
       console.error(e);
@@ -121,27 +120,34 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
     setSelectedModel(model);
     if (model.variants && model.variants.length > 0) {
       setSelectedVariant(model.variants[0]);
+    } else {
+      setSelectedVariant(null);
     }
   };
 
-  const toggleOptionCode = (code, exclusiveGroup = null) => {
-    if (exclusiveGroup) {
-      // Find other options in this exclusive group and replace
-      const currentCategory = questionSteps[questionStepIndex];
-      const groupCodes = currentCategory?.options?.filter(o => o.exclusive_group === exclusiveGroup).map(o => o.code) || [];
-      const filtered = selectedOptionCodes.filter(c => !groupCodes.includes(c));
-      if (!selectedOptionCodes.includes(code)) {
-        setSelectedOptionCodes([...filtered, code]);
-      } else {
-        setSelectedOptionCodes(filtered);
+  const toggleOptionCode = (code, exclusiveGroup) => {
+    setSelectedOptionCodes((prev) => {
+      let next = [...prev];
+      if (next.includes(code)) {
+        return next.filter((c) => c !== code);
       }
-    } else {
-      if (selectedOptionCodes.includes(code)) {
-        setSelectedOptionCodes(selectedOptionCodes.filter(c => c !== code));
-      } else {
-        setSelectedOptionCodes([...selectedOptionCodes, code]);
+      // If code is from an exclusive group, remove other codes in the same category step
+      const currentCat = questionSteps[questionStepIndex];
+      if (currentCat) {
+        const catCodes = currentCat.options.map((o) => o.code);
+        // Mutual exclusion: if selecting a defect, uncheck "no defect" and vice versa
+        if (code.toLowerCase().includes('good') || code.toLowerCase().includes('flawless') || code.toLowerCase().includes('no_defect')) {
+          next = next.filter((c) => !catCodes.includes(c));
+        } else {
+          next = next.filter((c) => {
+            const isGood = c.toLowerCase().includes('good') || c.toLowerCase().includes('flawless') || c.toLowerCase().includes('no_defect');
+            return !isGood;
+          });
+        }
       }
-    }
+      next.push(code);
+      return next;
+    });
   };
 
   const computeValuation = async () => {
@@ -204,8 +210,8 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-6">
 
-      {/* TOP CATEGORY PILLS BAR (Matching Reference Image Header) */}
-      <div className="bg-white rounded-2xl p-2 border border-[#E7EEE9] shadow-sm flex items-center gap-2 overflow-x-auto scrollbar-none">
+      {/* TOP CATEGORY PILLS BAR */}
+      <div className="glass-panel rounded-2xl p-2 flex items-center gap-2 overflow-x-auto scrollbar-none shadow-sm">
         {categories.map((cat) => {
           const isSelected = selectedCategory?.id === cat.id;
           return (
@@ -217,8 +223,8 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
               }}
               className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition shrink-0 flex items-center gap-2 ${
                 isSelected
-                  ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
-                  : 'text-[#17251C] hover:bg-[#F7FAF8] hover:text-[#0BAA4B]'
+                  ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/25'
+                  : 'text-[#17251C] hover:bg-white/60 hover:text-[#0BAA4B]'
               }`}
             >
               <span>{cat.name === 'Mobile' ? '📱' : cat.name === 'Tablet' ? '📟' : cat.name === 'Laptop' ? '💻' : cat.name === 'Smartwatch' ? '⌚' : '🔌'}</span>
@@ -247,9 +253,9 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   handleSelectCategory(cat);
                   setCurrentScreen(2);
                 }}
-                className="cursor-pointer bg-white border-2 border-[#E7EEE9] hover:border-[#0BAA4B] hover:shadow-xl hover:shadow-[#0BAA4B]/10 rounded-3xl p-5 text-center transition flex flex-col items-center justify-between min-h-[170px] group"
+                className="cursor-pointer glass-card glass-card-hover rounded-3xl p-5 text-center transition flex flex-col items-center justify-between min-h-[170px] group"
               >
-                <div className="w-14 h-14 rounded-2xl bg-[#E8F8ED] text-[#0BAA4B] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                <div className="w-14 h-14 rounded-2xl bg-[#E8F8ED] text-[#0BAA4B] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform border border-[#0BAA4B]/20">
                   {cat.name === 'Mobile' ? '📱' : cat.name === 'Tablet' ? '📟' : cat.name === 'Laptop' ? '💻' : cat.name === 'Smartwatch' ? '⌚' : cat.name === 'Dead Phone' ? '⚠️' : '🔌'}
                 </div>
                 <div>
@@ -268,10 +274,10 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
       {/* ================= SCREEN 2: CHOOSE BRAND ================= */}
       {currentScreen === 2 && (
         <div className="space-y-4 animate-fade-in">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#E7EEE9] pb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/80 pb-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-2 py-0.5 rounded-full">
+                <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-2 py-0.5 rounded-full border border-[#0BAA4B]/20">
                   {selectedCategory?.name || 'Device'}
                 </span>
                 <h3 className="text-xl sm:text-2xl font-black text-[#17251C]">Choose Your Brand</h3>
@@ -286,7 +292,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 placeholder="Search brand..."
                 value={brandSearch}
                 onChange={(e) => setBrandSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-white border border-[#E7EEE9] rounded-xl text-xs font-bold text-[#17251C] focus:ring-2 focus:ring-[#0BAA4B] focus:outline-none"
+                className="w-full pl-9 pr-3 py-2 glass-input rounded-xl text-xs font-bold text-[#17251C] focus:outline-none"
               />
             </div>
           </div>
@@ -296,13 +302,13 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
               <div
                 key={brand.id}
                 onClick={() => handleSelectBrand(brand)}
-                className="group cursor-pointer bg-white border-2 border-[#E7EEE9] hover:border-[#0BAA4B] hover:shadow-lg rounded-2xl p-4 text-center transition flex flex-col items-center justify-center min-h-[140px]"
+                className="group cursor-pointer glass-card glass-card-hover rounded-2xl p-4 text-center transition flex flex-col items-center justify-center min-h-[140px]"
               >
                 <div className="w-16 h-12 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
                   {brand.logo_base64 ? (
                     <img src={brand.logo_base64} alt={brand.name} className="max-h-10 max-w-full object-contain" />
                   ) : (
-                    <Smartphone className="w-8 h-8 text-[#7B8980]" />
+                    <Smartphone className="w-8 h-8 text-[#0BAA4B]" />
                   )}
                 </div>
                 <h4 className="font-black text-[#17251C] text-xs sm:text-sm group-hover:text-[#0BAA4B] transition">{brand.name}</h4>
@@ -316,12 +322,12 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
       {currentScreen === 3 && (
         <div className="space-y-5 animate-fade-in">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#E7EEE9] pb-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-white/80 pb-4">
             <div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentScreen(2)}
-                  className="p-1 rounded-lg hover:bg-slate-100 text-[#7B8980]"
+                  className="p-1 rounded-lg hover:bg-white/60 text-[#7B8980]"
                 >
                   <ArrowLeft className="w-4 h-4" />
                 </button>
@@ -339,12 +345,12 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 placeholder="Search device model..."
                 value={modelSearch}
                 onChange={(e) => setModelSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 bg-white border border-[#E7EEE9] rounded-xl text-xs font-bold text-[#17251C] focus:ring-2 focus:ring-[#0BAA4B] focus:outline-none"
+                className="w-full pl-9 pr-3 py-2 glass-input rounded-xl text-xs font-bold text-[#17251C] focus:outline-none"
               />
             </div>
           </div>
 
-          {/* Series Filter Pills (e.g. All, iPhone 11 Series, iPhone 12 Series) */}
+          {/* Series Filter Pills */}
           {seriesList.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
               <button
@@ -352,7 +358,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 className={`px-3 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap ${
                   selectedSeriesId === 'ALL'
                     ? 'bg-[#0BAA4B] text-white shadow-sm'
-                    : 'bg-white text-[#7B8980] border border-[#E7EEE9] hover:bg-slate-50'
+                    : 'glass-card text-[#7B8980] hover:bg-white'
                 }`}
               >
                 All Series
@@ -364,7 +370,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   className={`px-3 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap ${
                     selectedSeriesId === s.id
                       ? 'bg-[#0BAA4B] text-white shadow-sm'
-                      : 'bg-white text-[#7B8980] border border-[#E7EEE9] hover:bg-slate-50'
+                      : 'glass-card text-[#7B8980] hover:bg-white'
                   }`}
                 >
                   {s.name}
@@ -384,17 +390,17 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                     <div
                       key={m.id}
                       onClick={() => handleSelectModel(m)}
-                      className={`cursor-pointer rounded-2xl border-2 p-3 text-center transition flex flex-col items-center justify-between min-h-[160px] ${
+                      className={`cursor-pointer rounded-2xl p-3 text-center transition flex flex-col items-center justify-between min-h-[160px] ${
                         isSelected
-                          ? 'border-[#0BAA4B] bg-[#E8F8ED]/60 shadow-md ring-2 ring-[#0BAA4B]/20'
-                          : 'border-[#E7EEE9] bg-white hover:border-[#0BAA4B]/60'
+                          ? 'border-2 border-[#0BAA4B] bg-[#E8F8ED]/70 shadow-md ring-2 ring-[#0BAA4B]/20'
+                          : 'glass-card glass-card-hover'
                       }`}
                     >
-                      <div className="w-16 h-20 bg-slate-50 rounded-xl flex items-center justify-center p-1.5 overflow-hidden">
+                      <div className="w-16 h-20 bg-white/70 rounded-xl flex items-center justify-center p-1.5 overflow-hidden border border-white/80">
                         {m.image_base64 ? (
                           <img src={m.image_base64} alt={m.name} className="max-h-full object-contain" />
                         ) : (
-                          <Smartphone className="w-8 h-8 text-[#7B8980]" />
+                          <Smartphone className="w-8 h-8 text-[#0BAA4B]" />
                         )}
                       </div>
                       <div>
@@ -410,7 +416,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
             </div>
 
             {/* Storage Variants Column */}
-            <div className="bg-white border-2 border-[#E7EEE9] rounded-3xl p-5 shadow-sm space-y-4">
+            <div className="glass-panel rounded-3xl p-5 shadow-sm space-y-4">
               <h4 className="font-black text-sm text-[#17251C] flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-[#0BAA4B]" />
                 Select Storage Variant:
@@ -428,7 +434,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                           className={`cursor-pointer p-3 rounded-2xl border-2 transition flex items-center justify-between ${
                             isVarSelected
                               ? 'border-[#0BAA4B] bg-[#0BAA4B] text-white shadow-md'
-                              : 'border-[#E7EEE9] bg-[#F7FAF8] text-[#17251C] hover:border-[#0BAA4B]/40'
+                              : 'glass-card text-[#17251C] hover:border-[#0BAA4B]/40'
                           }`}
                         >
                           <div>
@@ -474,10 +480,10 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
             if (!currentCat) return null;
 
             return (
-              <div className="bg-white border-2 border-[#E7EEE9] rounded-3xl p-5 sm:p-7 shadow-sm space-y-5">
+              <div className="glass-panel rounded-3xl p-5 sm:p-7 shadow-sm space-y-5">
                 
                 {/* Step indicator header */}
-                <div className="flex items-center justify-between border-b border-[#E7EEE9] pb-3">
+                <div className="flex items-center justify-between border-b border-white/80 pb-3">
                   <div>
                     <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-2.5 py-0.5 rounded-full border border-[#0BAA4B]/20">
                       Step {questionStepIndex + 2} of 11
@@ -503,7 +509,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   </div>
                 )}
 
-                {/* Question Options Cards (Visual A/B Cards) */}
+                {/* Question Options Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
                   {currentCat.options?.map((opt) => {
                     const isSelected = selectedOptionCodes.includes(opt.code);
@@ -511,12 +517,12 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                       <div
                         key={opt.id}
                         onClick={() => toggleOptionCode(opt.code, opt.exclusive_group)}
-                        className={`cursor-pointer rounded-2xl border-2 p-3.5 transition flex flex-col justify-between active:scale-[0.98] select-none ${
+                        className={`cursor-pointer rounded-2xl p-3.5 transition flex flex-col justify-between active:scale-[0.98] select-none ${
                           isSelected
                             ? opt.is_rejection
-                              ? 'border-rose-600 bg-rose-50 shadow-md ring-2 ring-rose-500/20'
-                              : 'border-[#0BAA4B] bg-[#E8F8ED]/70 shadow-md ring-2 ring-[#0BAA4B]/20'
-                            : 'border-[#E7EEE9] bg-[#F7FAF8] hover:border-[#0BAA4B]/50 hover:bg-white'
+                              ? 'border-2 border-rose-600 bg-rose-50/90 shadow-md ring-2 ring-rose-500/20'
+                              : 'border-2 border-[#0BAA4B] bg-[#E8F8ED]/90 shadow-md ring-2 ring-[#0BAA4B]/20'
+                            : 'glass-card glass-card-hover'
                         }`}
                       >
                         {/* Top Indicator */}
@@ -524,7 +530,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                           <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
                             isSelected
                               ? opt.is_rejection ? 'bg-rose-600 text-white' : 'bg-[#0BAA4B] text-white'
-                              : 'bg-slate-200 text-slate-700'
+                              : 'bg-white/80 text-slate-700 border border-white'
                           }`}>
                             {isSelected ? '✓ Selected' : 'Tap to select'}
                           </span>
@@ -536,7 +542,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                         </div>
 
                         {/* Visual Image */}
-                        <div className="w-full h-32 sm:h-36 rounded-xl bg-white border border-[#E7EEE9] overflow-hidden flex items-center justify-center p-2 mb-2 shadow-inner">
+                        <div className="w-full h-32 sm:h-36 rounded-xl bg-white/80 border border-white overflow-hidden flex items-center justify-center p-2 mb-2 shadow-inner">
                           {opt.image_base64 ? (
                             <img src={opt.image_base64} alt={opt.title} className="max-h-full max-w-full object-contain" />
                           ) : (
@@ -549,7 +555,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                           {opt.description && (
                             <p className="text-[10px] text-[#7B8980] mt-0.5 line-clamp-1">{opt.description}</p>
                           )}
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#E7EEE9] text-[10px]">
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/80 text-[10px]">
                             <span className="text-[#7B8980] font-bold">Price Impact</span>
                             {opt.is_rejection ? (
                               <span className="font-black text-rose-600">Rejects Offer (₹0)</span>
@@ -570,7 +576,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 </div>
 
                 {/* Navigation Buttons: Previous & Continue */}
-                <div className="flex items-center justify-between pt-4 border-t border-[#E7EEE9]">
+                <div className="flex items-center justify-between pt-4 border-t border-white/80">
                   <button
                     onClick={() => {
                       if (questionStepIndex > 0) {
@@ -579,7 +585,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                         setCurrentScreen(3);
                       }
                     }}
-                    className="flex items-center gap-1.5 text-xs font-black text-[#17251C] bg-white border border-[#E7EEE9] hover:bg-slate-50 px-4 py-2.5 rounded-xl transition"
+                    className="flex items-center gap-1.5 text-xs font-black text-[#17251C] glass-card hover:bg-white px-4 py-2.5 rounded-xl transition"
                   >
                     <ArrowLeft className="w-3.5 h-3.5" /> Previous
                   </button>
@@ -608,9 +614,9 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
       {currentScreen === 5 && valuationResult && (
         <div className="max-w-xl mx-auto space-y-5 animate-fade-in">
           
-          {/* Green Hero Quote Banner */}
-          <div className="bg-gradient-to-br from-[#0BAA4B] via-[#087C38] to-[#0D4722] text-white rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-3">
-            <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full inline-block">
+          {/* Emerald Gradient Hero Quote Banner */}
+          <div className="bg-gradient-to-br from-[#0BAA4B] via-[#087C38] to-[#0D4722] text-white rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-3 border border-white/30">
+            <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 backdrop-blur px-3 py-1 rounded-full inline-block border border-white/20">
               Indicative Buyback Valuation
             </span>
             <h3 className="text-xl sm:text-2xl font-black">
@@ -625,18 +631,18 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
             </div>
 
             <p className="text-[11px] text-[#E8F8ED] max-w-sm mx-auto">
-              Subject to physical doorstep verification by our collection agent before payout.
+              Subject to physical doorstep verification by our 1103 RECELL collection specialist before payout.
             </p>
           </div>
 
-          {/* Transparent Price Summary Card */}
-          <div className="bg-white border-2 border-[#E7EEE9] rounded-3xl p-5 sm:p-6 space-y-3 text-xs shadow-sm">
-            <h4 className="font-black text-sm text-[#17251C] border-b border-[#E7EEE9] pb-2">
+          {/* Transparent Price Summary Frosted Card */}
+          <div className="glass-panel rounded-3xl p-5 sm:p-6 space-y-3 text-xs shadow-sm">
+            <h4 className="font-black text-sm text-[#17251C] border-b border-white/80 pb-2">
               Price Summary Breakdown:
             </h4>
 
             <div className="flex justify-between items-center py-1">
-              <span className="text-[#7B8980]">Base Market Price (Mint condition):</span>
+              <span className="text-[#7B8980]">Base Catalog Value (Mint):</span>
               <strong className="text-[#17251C] font-black">₹{Number(valuationResult.base_price).toLocaleString('en-IN')}</strong>
             </div>
 
@@ -647,8 +653,8 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
               </div>
             ))}
 
-            <div className="flex justify-between items-center pt-3 border-t border-[#E7EEE9] text-sm">
-              <span className="font-black text-[#17251C]">Final Estimated Offer:</span>
+            <div className="flex justify-between items-center pt-3 border-t border-white/80 text-sm">
+              <span className="font-black text-[#17251C]">Net Doorstep Payout:</span>
               <span className="text-xl font-black text-[#0BAA4B]">
                 ₹{Number(valuationResult.estimated_price).toLocaleString('en-IN')}
               </span>
@@ -659,7 +665,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setCurrentScreen(4)}
-              className="w-1/3 bg-white border border-[#E7EEE9] hover:bg-slate-50 text-[#17251C] font-black py-3.5 rounded-2xl transition text-xs"
+              className="w-1/3 glass-card hover:bg-white text-[#17251C] font-black py-3.5 rounded-2xl transition text-xs"
             >
               ← Edit Answers
             </button>
@@ -667,7 +673,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
               onClick={() => setCurrentScreen(6)}
               className="w-2/3 bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black py-3.5 rounded-2xl shadow-xl shadow-[#0BAA4B]/20 transition flex items-center justify-center gap-2 text-sm"
             >
-              Proceed to Pickup <ArrowRight className="w-4 h-4" />
+              Proceed to Doorstep Pickup <ArrowRight className="w-4 h-4" />
             </button>
           </div>
 
@@ -676,10 +682,10 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
 
       {/* ================= SCREEN 6: DOORSTEP BOOKING & PAYOUT DETAILS ================= */}
       {currentScreen === 6 && (
-        <form onSubmit={handleSubmitBooking} className="max-w-xl mx-auto bg-white border-2 border-[#E7EEE9] rounded-3xl p-5 sm:p-7 shadow-sm space-y-5 animate-fade-in text-xs">
+        <form onSubmit={handleSubmitBooking} className="max-w-xl mx-auto glass-panel rounded-3xl p-5 sm:p-7 shadow-sm space-y-5 animate-fade-in text-xs">
           
-          <div className="border-b border-[#E7EEE9] pb-3">
-            <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-2.5 py-0.5 rounded-full">
+          <div className="border-b border-white/80 pb-3">
+            <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-2.5 py-0.5 rounded-full border border-[#0BAA4B]/20">
               Final Step
             </span>
             <h3 className="text-lg sm:text-xl font-black text-[#17251C] mt-1">Book Free Doorstep Pickup</h3>
@@ -698,7 +704,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="e.g. Mohamed K."
-                  className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
+                  className="w-full p-2.5 glass-input rounded-xl font-bold"
                 />
               </div>
               <div>
@@ -709,7 +715,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
                   placeholder="e.g. 9876543210"
-                  className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
+                  className="w-full p-2.5 glass-input rounded-xl font-bold"
                 />
               </div>
             </div>
@@ -726,7 +732,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
               value={pickupAddress}
               onChange={(e) => setPickupAddress(e.target.value)}
               placeholder="Door No, Street Name, Area / Landmark"
-              className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-medium bg-[#F7FAF8]"
+              className="w-full p-2.5 glass-input rounded-xl font-medium"
             />
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -736,7 +742,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   required
                   value={pickupCity}
                   onChange={(e) => setPickupCity(e.target.value)}
-                  className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
+                  className="w-full p-2.5 glass-input rounded-xl font-bold"
                 />
               </div>
               <div>
@@ -746,7 +752,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   required
                   value={pickupPincode}
                   onChange={(e) => setPickupPincode(e.target.value)}
-                  className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
+                  className="w-full p-2.5 glass-input rounded-xl font-bold"
                 />
               </div>
             </div>
@@ -763,12 +769,12 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 required
                 value={pickupDate}
                 onChange={(e) => setPickupDate(e.target.value)}
-                className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
+                className="w-full p-2.5 glass-input rounded-xl font-bold"
               />
               <select
                 value={pickupSlot}
                 onChange={(e) => setPickupSlot(e.target.value)}
-                className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
+                className="w-full p-2.5 glass-input rounded-xl font-bold"
               >
                 <option value="Morning (10:00 AM - 1:00 PM)">Morning (10:00 AM - 1:00 PM)</option>
                 <option value="Afternoon (1:00 PM - 5:00 PM)">Afternoon (1:00 PM - 5:00 PM)</option>
@@ -790,7 +796,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 className={`p-3 rounded-2xl border-2 font-black transition ${
                   beneficiaryType === 'UPI'
                     ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38]'
-                    : 'border-[#E7EEE9] bg-white text-[#7B8980]'
+                    : 'glass-card text-[#7B8980]'
                 }`}
               >
                 Instant UPI (GPay / PhonePe)
@@ -801,7 +807,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 className={`p-3 rounded-2xl border-2 font-black transition ${
                   beneficiaryType === 'BANK'
                     ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38]'
-                    : 'border-[#E7EEE9] bg-white text-[#7B8980]'
+                    : 'glass-card text-[#7B8980]'
                 }`}
               >
                 Direct Bank Transfer
@@ -817,7 +823,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   value={beneficiaryUpiId}
                   onChange={(e) => setBeneficiaryUpiId(e.target.value)}
                   placeholder="e.g. 9876543210@paytm"
-                  className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
+                  className="w-full p-2.5 glass-input rounded-xl font-bold"
                 />
               </div>
             ) : (
@@ -828,7 +834,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   placeholder="Bank Account Number"
                   value={beneficiaryAccountNo}
                   onChange={(e) => setBeneficiaryAccountNo(e.target.value)}
-                  className="p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
+                  className="p-2.5 glass-input rounded-xl font-bold"
                 />
                 <input
                   type="text"
@@ -836,7 +842,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   placeholder="IFSC Code"
                   value={beneficiaryIfsc}
                   onChange={(e) => setBeneficiaryIfsc(e.target.value.toUpperCase())}
-                  className="p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8] font-mono"
+                  className="p-2.5 glass-input rounded-xl font-bold font-mono"
                 />
               </div>
             )}
@@ -845,9 +851,9 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#0BAA4B]/20 transition flex items-center justify-center gap-2 text-sm"
+            className="w-full bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#0BAA4B]/25 transition flex items-center justify-center gap-2 text-sm"
           >
-            {submitting ? 'Confirming Doorstep Pickup...' : 'Confirm Doorstep Pickup Booking →'}
+            {submitting ? 'Confirming Doorstep Pickup...' : 'Confirm Free Doorstep Pickup Booking →'}
           </button>
 
         </form>
@@ -855,9 +861,9 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
 
       {/* ================= SCREEN 7: ORDER CONFIRMATION & TRACKING TIMELINE ================= */}
       {currentScreen === 7 && createdOrder && (
-        <div className="max-w-xl mx-auto bg-white border-2 border-[#E7EEE9] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 animate-fade-in text-center">
+        <div className="max-w-xl mx-auto glass-panel rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 animate-fade-in text-center">
           
-          <div className="w-16 h-16 rounded-full bg-[#E8F8ED] text-[#0BAA4B] flex items-center justify-center mx-auto shadow-md shadow-[#0BAA4B]/20">
+          <div className="w-16 h-16 rounded-full bg-[#E8F8ED] text-[#0BAA4B] flex items-center justify-center mx-auto shadow-md shadow-[#0BAA4B]/20 border border-[#0BAA4B]/30">
             <CheckCircle2 className="w-9 h-9" />
           </div>
 
@@ -867,7 +873,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
           </div>
 
           {/* Request ID Badge */}
-          <div className="bg-[#F7FAF8] border border-[#E7EEE9] rounded-2xl p-4 flex items-center justify-between">
+          <div className="glass-card rounded-2xl p-4 flex items-center justify-between">
             <div className="text-left">
               <span className="text-[10px] text-[#7B8980] font-black uppercase">Request ID</span>
               <h4 className="text-lg font-black text-[#17251C] font-mono">{createdOrder.sale_code}</h4>
@@ -878,14 +884,14 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 setCopiedCode(true);
                 setTimeout(() => setCopiedCode(false), 2000);
               }}
-              className="px-3 py-1.5 bg-white border border-[#E7EEE9] rounded-xl text-xs font-black text-[#0BAA4B] hover:bg-[#E8F8ED] transition flex items-center gap-1"
+              className="px-3 py-1.5 bg-white border border-[#0BAA4B]/30 rounded-xl text-xs font-black text-[#0BAA4B] hover:bg-[#E8F8ED] transition flex items-center gap-1 shadow-sm"
             >
               <Copy className="w-3.5 h-3.5" />
               <span>{copiedCode ? 'Copied!' : 'Copy'}</span>
             </button>
           </div>
 
-          {/* 5-Stage Visual Timeline matching reference image */}
+          {/* 5-Stage Visual Timeline */}
           <div className="text-left space-y-4 pt-2">
             <h4 className="font-black text-sm text-[#17251C]">Live Order Status:</h4>
             
@@ -905,7 +911,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
               <div className="relative pl-5">
                 <div className="absolute -left-[19px] top-0.5 w-4 h-4 rounded-full bg-slate-300" />
                 <strong className="text-xs text-[#7B8980] block font-black">3. Pickup Scheduled</strong>
-                <span className="text-[10px] text-[#7B8980]">Assigned to Ramesh Kumar (Pickup Specialist)</span>
+                <span className="text-[10px] text-[#7B8980]">Assigned to field pickup specialist</span>
               </div>
 
               <div className="relative pl-5">
@@ -929,7 +935,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
               setSelectedVariant(null);
               setSelectedOptionCodes([]);
             }}
-            className="w-full bg-[#17251C] hover:bg-black text-white font-black py-3.5 rounded-2xl transition text-xs"
+            className="w-full bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black py-3.5 rounded-2xl shadow-lg transition text-xs"
           >
             Sell Another Device →
           </button>

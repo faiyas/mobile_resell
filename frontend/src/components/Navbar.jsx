@@ -14,9 +14,9 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
   ];
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E7EEE9] shadow-sm">
-      {/* Top micro bar for categories (matching reference image) */}
-      <div className="hidden lg:block bg-[#F7FAF8] border-b border-[#E7EEE9] py-1.5 px-4 text-xs font-semibold text-[#17251C]">
+    <header className="sticky top-0 z-30 glass-nav shadow-sm">
+      {/* Top micro bar for categories */}
+      <div className="hidden lg:block bg-white/60 backdrop-blur-md border-b border-white/80 py-1.5 px-4 text-xs font-semibold text-[#17251C]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <span className="text-[10px] font-black uppercase text-[#0BAA4B] tracking-wider">Fast Services:</span>
@@ -46,12 +46,12 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-18">
 
-          {/* X-PHONES Brand Logo */}
+          {/* 1103 RECELL Brand Logo */}
           <div
             onClick={() => setActiveTab(currentUser?.role === 'ADMIN' ? 'admin' : currentUser?.role === 'COLLECTION_AGENT' ? 'inspection' : 'sell')}
             className="flex items-center gap-2.5 cursor-pointer group shrink-0 select-none"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] flex items-center justify-center text-white shadow-lg shadow-[#0BAA4B]/20 group-hover:scale-105 transition-transform font-black text-sm">
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] flex items-center justify-center text-white shadow-lg shadow-[#0BAA4B]/25 group-hover:scale-105 transition-transform font-black text-sm border border-white/40">
               1103
             </div>
             <div>
@@ -69,14 +69,14 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             </div>
           </div>
 
-          {/* Desktop Navigation Links (Strict Role-Based) */}
+          {/* Desktop Navigation Links */}
           <nav className="hidden md:flex items-center gap-1.5 text-xs sm:text-sm font-bold">
             <button
               onClick={() => setActiveTab('sell')}
-              className={`px-3 py-2 rounded-xl transition ${
+              className={`px-3.5 py-2 rounded-xl transition ${
                 activeTab === 'sell'
-                  ? 'bg-[#E8F8ED] text-[#087C38]'
-                  : 'text-[#17251C] hover:bg-[#F7FAF8] hover:text-[#0BAA4B]'
+                  ? 'bg-[#E8F8ED] text-[#087C38] border border-[#0BAA4B]/20 font-black shadow-sm'
+                  : 'text-[#17251C] hover:bg-white/60 hover:text-[#0BAA4B]'
               }`}
             >
               Sell Device
@@ -84,10 +84,10 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
 
             <button
               onClick={() => setActiveTab('track')}
-              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 ${
                 activeTab === 'track'
-                  ? 'bg-[#E8F8ED] text-[#087C38]'
-                  : 'text-[#17251C] hover:bg-[#F7FAF8] hover:text-[#0BAA4B]'
+                  ? 'bg-[#E8F8ED] text-[#087C38] border border-[#0BAA4B]/20 font-black shadow-sm'
+                  : 'text-[#17251C] hover:bg-white/60 hover:text-[#0BAA4B]'
               }`}
             >
               <Search className="w-4 h-4 text-[#0BAA4B]" />
@@ -100,12 +100,12 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
                 onClick={() => setActiveTab('admin')}
                 className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${
                   activeTab === 'admin'
-                    ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
+                    ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/25'
                     : 'text-[#087C38] bg-[#E8F8ED] hover:bg-[#0BAA4B] hover:text-white'
                 }`}
               >
                 <ShieldCheck className="w-4 h-4" />
-                Admin CMS Desk
+                Admin Desk
               </button>
             )}
 
@@ -143,7 +143,7 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
                 <button
                   onClick={onLogout}
                   title="Logout"
-                  className="p-2 rounded-xl border border-[#E7EEE9] text-[#7B8980] hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition"
+                  className="p-2 rounded-xl border border-white/80 bg-white/70 backdrop-blur text-[#7B8980] hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>

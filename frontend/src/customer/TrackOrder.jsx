@@ -24,8 +24,7 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
     } else if (currentUser) {
       loadMySales();
     } else {
-      // Load sample order by default so the user sees a rich tracking interface right away!
-      handleSearch('PHN-2026-001');
+      handleSearch('XP2610008753');
     }
   }, [initialSaleCode, currentUser]);
 
@@ -134,37 +133,37 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       
-      {/* Search Header */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm mb-8">
-        <h2 className="text-xl font-extrabold text-slate-900 mb-1">
-          Track Your Phone Sale Status
+      {/* Search Header Glass Panel */}
+      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-sm mb-8">
+        <h2 className="text-xl font-extrabold text-[#17251C] mb-1">
+          Track Your 1103 RECELL Order Status
         </h2>
-        <p className="text-xs text-slate-500 mb-4">
-          Enter your Sale Code (e.g. <span className="font-mono font-bold text-slate-700">PHN-2026-001</span> or <span className="font-mono font-bold text-slate-700">PHN-2026-PAID-01</span>) or 10-digit mobile number:
+        <p className="text-xs text-[#7B8980] mb-4">
+          Enter your Order ID (e.g. <span className="font-mono font-bold text-[#0BAA4B]">XP2610008753</span>) or 10-digit mobile number:
         </p>
 
         <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="flex gap-2 max-w-xl">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
+            <Search className="w-4 h-4 text-[#7B8980] absolute left-3.5 top-3.5" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g. PHN-2026-001 or 9870011223"
-              className="w-full pl-9 pr-3 py-2.5 border border-slate-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
+              placeholder="e.g. XP2610008753 or 9870011223"
+              className="w-full pl-10 pr-3 py-2.5 glass-input rounded-xl text-sm focus:outline-none font-mono"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="bg-slate-900 hover:bg-black text-white font-bold px-6 py-2.5 rounded-xl text-sm transition"
+            className="bg-[#0BAA4B] hover:bg-[#087C38] text-white font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-md shadow-[#0BAA4B]/20"
           >
             {loading ? 'Searching...' : 'Track'}
           </button>
         </form>
 
         {errorMsg && (
-          <div className="mt-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold flex items-center gap-2">
+          <div className="mt-4 p-3 bg-rose-50/90 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
             <span>{errorMsg}</span>
           </div>
@@ -174,7 +173,7 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
       {/* Results View */}
       {salesList.length > 1 && (
         <div className="mb-4">
-          <p className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">
+          <p className="text-[11px] font-extrabold text-[#7B8980] uppercase tracking-wider mb-2">
             Select Order to Track ({salesList.length} found):
           </p>
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -183,18 +182,18 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                 key={s.id}
                 type="button"
                 onClick={() => setSelectedSale(s)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-2 border shrink-0 ${
+                className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-2 shrink-0 ${
                   selectedSale?.id === s.id
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-emerald-500/50'
-                    : 'bg-white text-slate-700 border-slate-200 hover:border-slate-400'
+                    ? 'bg-[#0BAA4B] text-white shadow-md'
+                    : 'glass-card text-[#17251C] hover:bg-white'
                 }`}
               >
                 <span className="font-mono">{s.sale_code}</span>
                 <span className="text-[11px] opacity-80">{s.brand_name} {s.model_name}</span>
                 <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                  s.status === 'PAYMENT_COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
-                  s.status === 'FINAL_OFFER_SENT' ? 'bg-amber-500/20 text-amber-300' :
-                  'bg-slate-700 text-slate-200'
+                  s.status === 'PAYMENT_COMPLETED' ? 'bg-white/20 text-white' :
+                  s.status === 'FINAL_OFFER_SENT' ? 'bg-amber-100 text-amber-800' :
+                  'bg-white/30 text-white'
                 }`}>
                   {s.status === 'PAYMENT_COMPLETED' ? 'PAID' : s.status.replace(/_/g, ' ')}
                 </span>
@@ -207,14 +206,14 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
       {selectedSale ? (
         <div className="space-y-6 animate-fade-in">
           
-          {/* Main Status Card */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+          {/* Main Status Glass Panel */}
+          <div className="glass-panel rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
             
             {/* Top row */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/80 pb-5">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold bg-slate-100 text-slate-800 px-2.5 py-1 rounded-md">
+                  <span className="font-mono text-xs font-bold bg-[#E8F8ED] text-[#087C38] px-2.5 py-1 rounded-md border border-[#0BAA4B]/20">
                     {selectedSale.sale_code}
                   </span>
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
@@ -222,28 +221,28 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                       ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                       : selectedSale.status === 'FINAL_OFFER_SENT'
                       ? 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
-                      : 'bg-sky-100 text-sky-800'
+                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                   }`}>
                     ● {selectedSale.status.replace(/_/g, ' ')}
                   </span>
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 mt-2">
+                <h3 className="text-2xl font-black text-[#17251C] mt-2">
                   {selectedSale.brand_name} {selectedSale.model_name}
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-[#7B8980] mt-0.5">
                   Variant: {selectedSale.variant_details?.ram ? `${selectedSale.variant_details.ram} / ` : ''}{selectedSale.variant_details?.storage}
                 </p>
               </div>
 
-              <div className="text-left sm:text-right bg-slate-50 p-4 rounded-2xl border border-slate-200 sm:border-0 sm:bg-transparent sm:p-0">
-                <span className="text-xs text-slate-400 font-medium block">
+              <div className="text-left sm:text-right glass-card p-4 rounded-2xl border border-white/80 sm:bg-transparent sm:p-0 sm:border-0 sm:shadow-none">
+                <span className="text-xs text-[#7B8980] font-medium block">
                   {selectedSale.final_price ? 'Final Approved Offer:' : 'Estimated Offer:'}
                 </span>
-                <span className="text-3xl font-black text-emerald-600">
+                <span className="text-3xl font-black text-[#0BAA4B]">
                   ₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}
                 </span>
                 {selectedSale.final_price && selectedSale.final_price !== selectedSale.estimated_price && (
-                  <span className="text-xs text-slate-400 line-through block mt-0.5">
+                  <span className="text-xs text-[#7B8980] line-through block mt-0.5">
                     Est: ₹{Number(selectedSale.estimated_price).toLocaleString('en-IN')}
                   </span>
                 )}
@@ -261,19 +260,19 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                   return (
                     <div 
                       key={s.key} 
-                      className={`p-2.5 sm:p-3 rounded-xl border text-center transition ${
+                      className={`p-2.5 sm:p-3 rounded-2xl border text-center transition ${
                         isLastOdd ? 'col-span-2 sm:col-span-1' : ''
                       } ${
                         isCurrent
-                          ? 'bg-emerald-50 border-emerald-500 text-emerald-900 ring-2 ring-emerald-500/20'
+                          ? 'bg-[#E8F8ED] border-[#0BAA4B] text-[#087C38] ring-2 ring-[#0BAA4B]/20 shadow-sm'
                           : isDone
-                          ? 'bg-emerald-50/40 border-emerald-200 text-emerald-800'
-                          : 'bg-slate-50 border-slate-200 text-slate-400'
+                          ? 'bg-emerald-50/70 border-emerald-200 text-[#087C38]'
+                          : 'glass-card border-white/60 text-slate-400'
                       }`}
                     >
                       <div className="flex items-center justify-center mb-1">
                         {isDone ? (
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <CheckCircle2 className="w-4 h-4 text-[#0BAA4B]" />
                         ) : (
                           <div className="w-4 h-4 rounded-full border border-slate-300" />
                         )}
@@ -287,7 +286,7 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
 
             {/* ACTION BANNER: FINAL OFFER ACCEPTANCE */}
             {selectedSale.status === 'FINAL_OFFER_SENT' && (
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 space-y-4">
+              <div className="glass-card bg-amber-50/80 border-2 border-amber-300 rounded-2xl p-6 space-y-4">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
                   <div>
@@ -296,7 +295,7 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                     </h4>
                     <p className="text-xs text-amber-800 mt-1">
                       Our field team inspected your device and calculated a final offer of{' '}
-                      <strong className="text-sm font-black text-slate-900">
+                      <strong className="text-sm font-black text-[#17251C]">
                         ₹{Number(selectedSale.final_price).toLocaleString('en-IN')}
                       </strong>.
                       {selectedSale.inspection?.inspector_notes && (
@@ -311,7 +310,7 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
                   <button
                     onClick={() => handleAcceptOffer(selectedSale.id)}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl text-sm shadow transition flex items-center justify-center gap-2"
+                    className="flex-1 bg-[#0BAA4B] hover:bg-[#087C38] text-white font-extrabold py-3 rounded-xl text-sm shadow transition flex items-center justify-center gap-2"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     Accept ₹{Number(selectedSale.final_price).toLocaleString('en-IN')} & Release Payment
@@ -328,7 +327,7 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
 
             {/* SUCCESS BANNER: PAID */}
             {selectedSale.status === 'PAYMENT_COMPLETED' && (
-              <div className="bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl p-6 shadow-lg space-y-3">
+              <div className="bg-gradient-to-r from-[#0BAA4B] to-[#087C38] text-white rounded-2xl p-6 shadow-lg space-y-3 border border-white/20">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
@@ -363,9 +362,9 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                   <button
                     onClick={() => handleViewReceipt(selectedSale.sale_code)}
                     disabled={loadingReceipt}
-                    className="w-full sm:w-auto bg-white hover:bg-slate-100 text-slate-900 font-extrabold px-6 py-2.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto bg-white hover:bg-slate-100 text-[#17251C] font-extrabold px-6 py-2.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-2"
                   >
-                    <FileText className="w-4 h-4 text-emerald-600" />
+                    <FileText className="w-4 h-4 text-[#0BAA4B]" />
                     {loadingReceipt ? 'Loading Receipt...' : 'View Payment Proof & Official Receipt'}
                   </button>
                 </div>
@@ -376,30 +375,30 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
               
               {/* Pickup & Agent Details */}
-              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
-                <h5 className="font-bold text-slate-900 flex items-center gap-2 text-xs">
-                  <MapPin className="w-4 h-4 text-emerald-600" /> Doorstep Collection Details
+              <div className="glass-card p-5 rounded-2xl space-y-3">
+                <h5 className="font-bold text-[#17251C] flex items-center gap-2 text-xs">
+                  <MapPin className="w-4 h-4 text-[#0BAA4B]" /> Doorstep Collection Details
                 </h5>
-                <div className="space-y-1.5 text-slate-600">
-                  <p><span className="text-slate-400">Address:</span> {selectedSale.pickup_address}, {selectedSale.pickup_city} - {selectedSale.pickup_pincode}</p>
-                  <p><span className="text-slate-400">Time Slot:</span> {selectedSale.pickup_slot}</p>
-                  <p><span className="text-slate-400">Assigned Agent:</span> <strong className="text-slate-800">{selectedSale.assigned_agent_name || 'Assigning field staff...'}</strong></p>
+                <div className="space-y-1.5 text-[#7B8980]">
+                  <p><span className="text-[#7B8980]/80">Address:</span> {selectedSale.pickup_address}, {selectedSale.pickup_city} - {selectedSale.pickup_pincode}</p>
+                  <p><span className="text-[#7B8980]/80">Time Slot:</span> {selectedSale.pickup_slot}</p>
+                  <p><span className="text-[#7B8980]/80">Assigned Agent:</span> <strong className="text-[#17251C]">{selectedSale.assigned_agent_name || 'Assigning field staff...'}</strong></p>
                 </div>
               </div>
 
               {/* Payout Destination */}
-              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
-                <h5 className="font-bold text-slate-900 flex items-center gap-2 text-xs">
-                  <IndianRupee className="w-4 h-4 text-emerald-600" /> Payout Destination
+              <div className="glass-card p-5 rounded-2xl space-y-3">
+                <h5 className="font-bold text-[#17251C] flex items-center gap-2 text-xs">
+                  <IndianRupee className="w-4 h-4 text-[#0BAA4B]" /> Payout Destination
                 </h5>
-                <div className="space-y-1.5 text-slate-600">
-                  <p><span className="text-slate-400">Payee Name:</span> {selectedSale.beneficiary_name}</p>
+                <div className="space-y-1.5 text-[#7B8980]">
+                  <p><span className="text-[#7B8980]/80">Payee Name:</span> {selectedSale.beneficiary_name}</p>
                   {selectedSale.beneficiary_type === 'UPI' ? (
-                    <p><span className="text-slate-400">UPI ID:</span> <strong className="font-mono text-slate-800">{selectedSale.beneficiary_upi_id}</strong></p>
+                    <p><span className="text-[#7B8980]/80">UPI ID:</span> <strong className="font-mono text-[#17251C]">{selectedSale.beneficiary_upi_id}</strong></p>
                   ) : (
-                    <p><span className="text-slate-400">Bank Details:</span> <strong className="font-mono text-slate-800">{selectedSale.beneficiary_account_no} ({selectedSale.beneficiary_ifsc})</strong></p>
+                    <p><span className="text-[#7B8980]/80">Bank Details:</span> <strong className="font-mono text-[#17251C]">{selectedSale.beneficiary_account_no} ({selectedSale.beneficiary_ifsc})</strong></p>
                   )}
-                  <p><span className="text-slate-400">Device IMEI:</span> <strong className="font-mono text-slate-800">{selectedSale.imei_number || 'Verifying during pickup'}</strong></p>
+                  <p><span className="text-[#7B8980]/80">Device IMEI:</span> <strong className="font-mono text-[#17251C]">{selectedSale.imei_number || 'Verifying during pickup'}</strong></p>
                 </div>
               </div>
 

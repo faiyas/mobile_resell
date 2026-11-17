@@ -171,47 +171,47 @@ export default function AdminDashboard({ currentUser }) {
         </div>
       )}
 
-      {/* Metrics Row (Optimized for 2-column mobile screens like iPhone SE) */}
+      {/* Metrics Row (Glassmorphic Green & White) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Sales</span>
-          <p className="text-2xl sm:text-3xl font-black text-slate-900 mt-1">{sales.length}</p>
-          <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-1 truncate">All submissions</span>
+        <div className="glass-card glass-card-hover p-3.5 sm:p-5 rounded-2xl flex flex-col justify-between">
+          <span className="text-[10px] sm:text-xs font-bold text-[#7B8980] uppercase tracking-wider">Today's Sales</span>
+          <p className="text-2xl sm:text-3xl font-black text-[#17251C] mt-1">{sales.length}</p>
+          <span className="text-[10px] sm:text-[11px] text-[#7B8980] font-medium mt-1 truncate">All submissions</span>
         </div>
 
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div className="glass-card glass-card-hover p-3.5 sm:p-5 rounded-2xl flex flex-col justify-between">
           <span className="text-[10px] sm:text-xs font-bold text-amber-600 uppercase tracking-wider">Pending Pickup</span>
           <p className="text-2xl sm:text-3xl font-black text-amber-600 mt-1">{pendingInspectionsCount}</p>
           <span className="text-[10px] sm:text-[11px] text-amber-700 font-medium mt-1 truncate">Awaiting collection</span>
         </div>
 
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-emerald-200 bg-emerald-50/40 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-bold text-emerald-700 uppercase tracking-wider">Awaiting Payout</span>
-          <p className="text-2xl sm:text-3xl font-black text-emerald-600 mt-1">{awaitingPayoutsCount}</p>
-          <span className="text-[10px] sm:text-[11px] text-emerald-700 font-semibold mt-1 truncate">Ready for QR scan</span>
+        <div className="glass-card glass-card-hover p-3.5 sm:p-5 rounded-2xl bg-[#E8F8ED]/70 border-[#0BAA4B]/30 flex flex-col justify-between">
+          <span className="text-[10px] sm:text-xs font-bold text-[#087C38] uppercase tracking-wider">Awaiting Payout</span>
+          <p className="text-2xl sm:text-3xl font-black text-[#0BAA4B] mt-1">{awaitingPayoutsCount}</p>
+          <span className="text-[10px] sm:text-[11px] text-[#087C38] font-semibold mt-1 truncate">Ready for QR scan</span>
         </div>
 
-        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Total Payouts</span>
-          <p className="text-xl sm:text-3xl font-black text-slate-900 mt-1 truncate">
+        <div className="glass-card glass-card-hover p-3.5 sm:p-5 rounded-2xl flex flex-col justify-between">
+          <span className="text-[10px] sm:text-xs font-bold text-[#7B8980] uppercase tracking-wider">Total Payouts</span>
+          <p className="text-xl sm:text-3xl font-black text-[#17251C] mt-1 truncate">
             ₹{Number(paymentsList.total_disbursed).toLocaleString('en-IN')}
           </p>
-          <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium mt-1 truncate">
+          <span className="text-[10px] sm:text-[11px] text-[#7B8980] font-medium mt-1 truncate">
             {paymentsList.total_count} verified sales
           </span>
         </div>
 
       </div>
 
-      {/* Navigation Tabs (Smooth horizontal swipe on mobile) */}
-      <div className="flex border-b border-slate-200 gap-1 overflow-x-auto pb-1 -mx-2 px-2 scrollbar-none">
+      {/* Navigation Tabs (Glassmorphic) */}
+      <div className="glass-panel rounded-2xl p-1.5 flex gap-1 overflow-x-auto scrollbar-none shadow-sm">
         <button
           onClick={() => setActiveTab('payouts')}
-          className={`pb-2.5 px-3.5 text-xs font-extrabold transition border-b-2 shrink-0 flex items-center gap-1.5 ${
+          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
             activeTab === 'payouts'
-              ? 'border-emerald-600 text-emerald-700'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
+              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
           }`}
         >
           <IndianRupee className="w-3.5 h-3.5" />
@@ -220,10 +220,10 @@ export default function AdminDashboard({ currentUser }) {
 
         <button
           onClick={() => setActiveTab('sales')}
-          className={`pb-2.5 px-3.5 text-xs font-extrabold transition border-b-2 shrink-0 flex items-center gap-1.5 ${
+          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
             activeTab === 'sales'
-              ? 'border-emerald-600 text-emerald-700'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
+              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
           }`}
         >
           <Smartphone className="w-3.5 h-3.5" />
@@ -232,25 +232,25 @@ export default function AdminDashboard({ currentUser }) {
 
         <button
           onClick={() => setActiveTab('pricing')}
-          className={`pb-2.5 px-3.5 text-xs font-extrabold transition border-b-2 shrink-0 flex items-center gap-1.5 ${
+          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
             activeTab === 'pricing'
-              ? 'border-indigo-600 text-indigo-700'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
+              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
           }`}
         >
           <Layers className="w-3.5 h-3.5" />
           Phone Catalogue & Pricing
-          <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
+          <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
             New
           </span>
         </button>
 
         <button
           onClick={() => setActiveTab('history')}
-          className={`pb-2.5 px-3.5 text-xs font-extrabold transition border-b-2 shrink-0 flex items-center gap-1.5 ${
+          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
             activeTab === 'history'
-              ? 'border-emerald-600 text-emerald-700'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
+              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
           }`}
         >
           <CheckCircle2 className="w-3.5 h-3.5" />

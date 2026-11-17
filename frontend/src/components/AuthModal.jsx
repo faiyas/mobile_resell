@@ -55,14 +55,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-[#E7EEE9] my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="glass-panel rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-white/80 my-auto max-h-[92vh] flex flex-col">
         
         {/* Header (1103 RECELL Green Gradient) */}
-        <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between shrink-0">
+        <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between shrink-0 border-b border-white/20">
           <div>
             <div className="flex items-center gap-1.5 mb-1">
-              <span className="px-1.5 py-0.5 rounded-lg bg-white/20 backdrop-blur text-white flex items-center justify-center font-black text-xs">1103</span>
+              <span className="px-1.5 py-0.5 rounded-lg bg-white/20 backdrop-blur text-white flex items-center justify-center font-black text-xs border border-white/30">1103</span>
               <span className="text-[11px] font-black uppercase tracking-wider text-emerald-200">1103 RECELL BUYBACK</span>
             </div>
             <h3 className="font-black text-base sm:text-lg">{isRegister ? 'Create Your Account' : 'Welcome to 1103 RECELL'}</h3>
@@ -79,7 +79,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         </div>
 
         {/* Quick Demo 1-Click Logins */}
-        <div className="bg-[#F7FAF8] border-b border-[#E7EEE9] p-3 sm:p-4 shrink-0">
+        <div className="bg-white/60 backdrop-blur border-b border-white/80 p-3 sm:p-4 shrink-0">
           <p className="text-[10px] font-extrabold text-[#7B8980] uppercase tracking-wider mb-2 flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-[#0BAA4B]" />
             <span>1-Click Fast Role Sign-in:</span>

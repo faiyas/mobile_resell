@@ -300,20 +300,20 @@ export default function AgentInspectionView({ currentUser }) {
                 onClick={() => selectOrderForInspection(s)}
                 className={`snap-start shrink-0 w-[240px] p-2.5 rounded-2xl border transition text-left cursor-pointer active:scale-98 ${
                   isSelected
-                    ? 'bg-[#E8F8ED] border-[#0BAA4B] shadow-md ring-2 ring-[#0BAA4B]/20'
-                    : 'bg-white border-slate-200 shadow-sm'
+                    ? 'bg-[#E8F8ED]/90 border-2 border-[#0BAA4B] shadow-md ring-2 ring-[#0BAA4B]/20'
+                    : 'glass-card'
                 }`}
               >
                 <div className="flex justify-between items-center mb-1">
-                  <span className="font-mono text-[10px] font-black bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">
+                  <span className="font-mono text-[10px] font-black bg-white/80 text-[#17251C] px-1.5 py-0.5 rounded border border-white">
                     {s.sale_code}
                   </span>
                   {getStatusBadge(s.status)}
                 </div>
-                <h5 className="font-extrabold text-slate-900 text-xs truncate">
+                <h5 className="font-extrabold text-[#17251C] text-xs truncate">
                   {s.brand_name} {s.model_name}
                 </h5>
-                <div className="flex justify-between items-center text-[11px] mt-1 text-slate-500">
+                <div className="flex justify-between items-center text-[11px] mt-1 text-[#7B8980]">
                   <span className="truncate max-w-[120px]">{s.customer_name}</span>
                   <span className="font-black text-[#0BAA4B]">₹{Number(s.final_price || s.estimated_price).toLocaleString('en-IN')}</span>
                 </div>
@@ -329,9 +329,9 @@ export default function AgentInspectionView({ currentUser }) {
         {/* DESKTOP PICKUP QUEUE (Hidden on mobile, visible on md+) */}
         <div className="hidden md:block space-y-3">
           <div className="flex justify-between items-center">
-            <h4 className="font-black text-slate-900 text-sm flex items-center gap-1.5">
+            <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
               <span>🛵 Assigned Pickups</span>
-              <span className="bg-slate-200 text-slate-800 text-[10px] font-extrabold px-1.5 py-0.5 rounded-full">
+              <span className="bg-[#E8F8ED] text-[#087C38] text-[10px] font-extrabold px-1.5 py-0.5 rounded-full border border-[#0BAA4B]/20">
                 {assignedSales.length}
               </span>
             </h4>
@@ -346,8 +346,8 @@ export default function AgentInspectionView({ currentUser }) {
                   onClick={() => selectOrderForInspection(s)}
                   className={`cursor-pointer p-3 rounded-2xl border transition ${
                     isSelected
-                      ? 'bg-[#E8F8ED] border-[#0BAA4B] shadow-sm ring-2 ring-[#0BAA4B]/20'
-                      : 'bg-white border-slate-200 hover:border-[#0BAA4B]/40 shadow-sm'
+                      ? 'bg-[#E8F8ED]/90 border-2 border-[#0BAA4B] shadow-sm ring-2 ring-[#0BAA4B]/20'
+                      : 'glass-card glass-card-hover'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-1">

@@ -1,7 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import '../../widgets/glass_container.dart';
 import 'questionnaire_screen.dart';
 
 class CategorySelectionScreen extends StatefulWidget {
@@ -182,73 +184,114 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.canvas,
-      appBar: AppBar(
-        title: Text(
-          _wizardStep == 0
-              ? 'Select Category'
-              : _wizardStep == 1
-                  ? 'Select Brand'
-                  : '${_brand?.name ?? ''} Models',
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            if (_wizardStep > 0) {
-              setState(() => _wizardStep--);
-            } else {
-              Navigator.pop(context);
-            }
-          },
+      extendBody: true,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.82),
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              child: AppBar(
+                backgroundColor: Colors.transparent,
+                title: Text(
+                  _wizardStep == 0
+                      ? 'Select Category'
+                      : _wizardStep == 1
+                          ? 'Select Brand'
+                          : '${_brand?.name ?? ''} Models',
+                ),
+                leading: IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () {
+                    if (_wizardStep > 0) {
+                      setState(() => _wizardStep--);
+                    } else {
+                      Navigator.pop(context);
+                    }
+                  },
+                ),
+              ),
+            ),
+          ),
         ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
-          : _wizardStep == 0
-              ? _buildCategoryStep()
-              : _wizardStep == 1
-                  ? _buildBrandStep()
-                  : _buildModelStep(),
+      body: GlassBackgroundMesh(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+            : _wizardStep == 0
+                ? _buildCategoryStep()
+                : _wizardStep == 1
+                    ? _buildBrandStep()
+                    : _buildModelStep(),
+      ),
       bottomNavigationBar: _wizardStep == 2 && _variant != null
           ? Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: AppTheme.border)),
-              ),
-              child: SafeArea(
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              color: Colors.transparent,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(26),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.88),
+                      borderRadius: BorderRadius.circular(26),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 1.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: SafeArea(
+                      child: Row(
                         children: [
-                          const Text(
-                            'Estimated Base Value',
-                            style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Estimated Base Value',
+                                  style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  '₹${_variant!.basePrice.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppTheme.darkGreen,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          Text(
-                            '₹${_variant!.basePrice.toStringAsFixed(0)}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.darkGreen,
+                          ElevatedButton(
+                            onPressed: _proceedToQuestionnaire,
+                            child: const Row(
+                              children: [
+                                Text('Continue to Inspection'),
+                                SizedBox(width: 6),
+                                Icon(Icons.arrow_forward_rounded, size: 16),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                    ElevatedButton(
-                      onPressed: _proceedToQuestionnaire,
-                      child: const Row(
-                        children: [
-                          Text('Continue to Inspection'),
-                          SizedBox(width: 6),
-                          Icon(Icons.arrow_forward_rounded, size: 16),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             )
@@ -264,14 +307,14 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
         children: [
           const Text(
             'Sell Your Device',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
           ),
           const SizedBox(height: 4),
           const Text(
             'Choose a device category to calculate its highest buyback quotation.',
             style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -284,7 +327,9 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
             itemCount: _categories.length,
             itemBuilder: (context, idx) {
               final cat = _categories[idx];
-              return InkWell(
+              return GlassContainer(
+                borderRadius: 22,
+                padding: const EdgeInsets.all(16),
                 onTap: () {
                   setState(() {
                     _category = cat;
@@ -292,37 +337,35 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                   });
                   _loadBrands();
                 },
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.border),
-                  ),
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.lightGreen,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(Icons.phone_android, color: AppTheme.primaryGreen, size: 28),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppTheme.lightGreen.withValues(alpha: 0.85),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        cat.name,
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
-                      ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        'Tap to proceed',
-                        style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                      ),
-                    ],
-                  ),
+                      child: const Icon(Icons.phone_android, color: AppTheme.primaryGreen, size: 30),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      cat.name,
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Tap to proceed',
+                      style: TextStyle(fontSize: 11, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               );
             },
@@ -339,12 +382,20 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       children: [
         Padding(
           padding: const EdgeInsets.all(16),
-          child: TextField(
-            decoration: const InputDecoration(
-              hintText: 'Search brand (e.g. Apple, Samsung, OnePlus)...',
-              prefixIcon: Icon(Icons.search, color: AppTheme.primaryGreen),
+          child: GlassContainer(
+            borderRadius: 18,
+            padding: EdgeInsets.zero,
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search brand (e.g. Apple, Samsung, OnePlus)...',
+                prefixIcon: Icon(Icons.search, color: AppTheme.primaryGreen),
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                filled: false,
+              ),
+              onChanged: (val) => setState(() => _searchQuery = val),
             ),
-            onChanged: (val) => setState(() => _searchQuery = val),
           ),
         ),
         Expanded(
@@ -359,34 +410,34 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
             itemCount: filtered.length,
             itemBuilder: (context, idx) {
               final brand = filtered[idx];
-              return InkWell(
+              return GlassContainer(
+                borderRadius: 20,
+                padding: const EdgeInsets.all(10),
                 onTap: () => _selectBrand(brand),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppTheme.border),
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.phone_android, size: 28, color: AppTheme.primaryGreen),
-                      const SizedBox(height: 8),
-                      Text(
-                        brand.name,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: AppTheme.textPrimary,
-                        ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.lightGreen.withValues(alpha: 0.8),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    ],
-                  ),
+                      child: const Icon(Icons.phone_android, size: 24, color: AppTheme.primaryGreen),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      brand.name,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                  ],
                 ),
               );
             },
@@ -431,45 +482,41 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                     final item = _models[idx];
                     final isSelected = _model?.id == item.id;
 
-                    return InkWell(
+                    return GlassContainer(
+                      borderRadius: 20,
+                      padding: const EdgeInsets.all(12),
+                      border: Border.all(
+                        color: isSelected ? AppTheme.primaryGreen : Colors.white.withValues(alpha: 0.85),
+                        width: isSelected ? 2.5 : 1.5,
+                      ),
                       onTap: () => _selectModel(item),
-                      borderRadius: BorderRadius.circular(20),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: isSelected ? AppTheme.primaryGreen : AppTheme.border,
-                            width: isSelected ? 2 : 1,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppTheme.primaryGreen.withValues(alpha: 0.2)
+                                  : AppTheme.lightGreen.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Icon(Icons.smartphone, size: 28, color: AppTheme.primaryGreen),
                           ),
-                        ),
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: isSelected ? AppTheme.lightGreen : AppTheme.canvas,
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: const Icon(Icons.smartphone, size: 28, color: AppTheme.primaryGreen),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              item.name,
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Year: ${item.releaseYear}',
-                              style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
-                            ),
-                          ],
-                        ),
+                          const SizedBox(height: 8),
+                          Text(
+                            item.name,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Year: ${item.releaseYear}',
+                            style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -478,41 +525,41 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
 
         // Storage Variants Selector
         if (_model != null && _variants.isNotEmpty)
-          Container(
+          Padding(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(top: BorderSide(color: AppTheme.border)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Select Storage Variant for ${_model!.name}:',
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: _variants.map((v) {
-                    final isSelected = _variant?.id == v.id;
-                    return ChoiceChip(
-                      label: Text('${v.storage} (₹${v.basePrice.toStringAsFixed(0)})'),
-                      selected: isSelected,
-                      selectedColor: AppTheme.lightGreen,
-                      labelStyle: TextStyle(
-                        color: isSelected ? AppTheme.darkGreen : AppTheme.textPrimary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 11,
-                      ),
-                      onSelected: (val) {
-                        if (val) setState(() => _variant = v);
-                      },
-                    );
-                  }).toList(),
-                ),
-              ],
+            child: GlassContainer(
+              borderRadius: 22,
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Select Storage Variant for ${_model!.name}:',
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: _variants.map((v) {
+                      final isSelected = _variant?.id == v.id;
+                      return ChoiceChip(
+                        label: Text('${v.storage} (₹${v.basePrice.toStringAsFixed(0)})'),
+                        selected: isSelected,
+                        selectedColor: AppTheme.lightGreen,
+                        labelStyle: TextStyle(
+                          color: isSelected ? AppTheme.darkGreen : AppTheme.textPrimary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                        ),
+                        onSelected: (val) {
+                          if (val) setState(() => _variant = v);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
             ),
           ),
       ],

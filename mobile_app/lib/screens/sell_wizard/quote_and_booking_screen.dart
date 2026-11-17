@@ -1,7 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import '../../widgets/glass_container.dart';
 import '../orders/track_order_screen.dart';
 
 class QuoteAndBookingScreen extends StatefulWidget {
@@ -53,6 +55,16 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
       _phoneController.text = user.phone;
     }
     _fetchCalculation();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _pincodeController.dispose();
+    _upiController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCalculation() async {
@@ -113,8 +125,10 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✓ Pickup Booked! Order ID: ${order.saleCode}'),
+            content: Text('✓ Free Doorstep Pickup Confirmed! ID: ${order.saleCode}'),
             backgroundColor: AppTheme.primaryGreen,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
         );
 
@@ -129,7 +143,11 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
     } catch (err) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(err.toString()), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(err.toString()),
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } finally {
@@ -140,16 +158,29 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
   @override
   Widget build(BuildContext context) {
     if (_calculating) {
-      return const Scaffold(
-        backgroundColor: AppTheme.canvas,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(color: AppTheme.primaryGreen),
-              SizedBox(height: 12),
-              Text('Calculating optimal buyback quotation...', style: TextStyle(fontWeight: FontWeight.bold)),
-            ],
+      return Scaffold(
+        body: GlassBackgroundMesh(
+          child: Center(
+            child: GlassContainer(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
+              borderRadius: BorderRadius.circular(24),
+              child: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: AppTheme.primaryGreen, strokeWidth: 3),
+                  SizedBox(height: 16),
+                  Text(
+                    'Calculating Fair Market Offer...',
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    '1103 RECELL Dynamic Valuation Engine',
+                    style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       );
@@ -157,262 +188,444 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
 
     if (_isRejection) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Evaluation Result')),
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.cancel_outlined, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              const Text(
-                'Device Not Eligible for Doorstep Buyback',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          backgroundColor: Colors.white.withOpacity(0.65),
+          elevation: 0,
+          title: const Text('Evaluation Result'),
+        ),
+        body: GlassBackgroundMesh(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: GlassContainer(
+                padding: const EdgeInsets.all(28),
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.cancel_outlined, size: 48, color: Colors.red),
+                    ),
+                    const SizedBox(height: 18),
+                    const Text(
+                      'Device Ineligible for Doorstep Buyback',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _rejectionReason,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryGreen,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                      child: const Text('Back to Questionnaire', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                _rejectionReason,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Back to Questionnaire'),
-              ),
-            ],
+            ),
           ),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.canvas,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Your Estimated Quote'),
+        backgroundColor: Colors.white.withOpacity(0.70),
+        elevation: 0,
+        flexibleSpace: ClipRRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: AppTheme.glassBorder.withOpacity(0.5))),
+              ),
+            ),
+          ),
+        ),
+        title: const Text('Your Estimated Quote', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Device Info Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppTheme.border),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.lightGreen,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: const Icon(Icons.phone_iphone, size: 32, color: AppTheme.primaryGreen),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${widget.brand.name} - ${widget.model.name}',
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+      body: GlassBackgroundMesh(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Device Info Frosted Glass Card
+                  GlassContainer(
+                    padding: const EdgeInsets.all(16),
+                    borderRadius: BorderRadius.circular(22),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFE8F8ED), Color(0xFFD1FAE5)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${widget.variant.storage} Variant · Year ${widget.model.releaseYear}',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                          child: const Icon(Icons.phone_iphone_rounded, size: 28, color: AppTheme.primaryGreen),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${widget.brand.name} ${widget.model.name}',
+                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '${widget.variant.storage} Storage Variant · Year ${widget.model.releaseYear}',
+                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // 2. High-Impact Emerald Frosted Buyback Value Card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0BAA4B), Color(0xFF06612A)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
+                      borderRadius: BorderRadius.circular(26),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryGreen.withOpacity(0.35),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                      border: Border.all(color: Colors.white.withOpacity(0.35), width: 1.5),
                     ),
-                  ],
-                ),
-              ),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          ),
+                          child: const Text(
+                            'ESTIMATED BUYBACK OFFER',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          '₹${_estimatedPrice.toStringAsFixed(0)}',
+                          style: const TextStyle(
+                            fontSize: 42,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: -1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.verified_rounded, size: 16, color: Colors.green.shade200),
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Instant UPI Payout · Free Doorstep Pickup',
+                              style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
 
-              const SizedBox(height: 16),
+                  const SizedBox(height: 18),
 
-              // 2. Large Green Estimated Buyback Value Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.lightGreen,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      'Estimated Buyback Value',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.darkGreen,
-                        letterSpacing: 0.5,
+                  // 3. Itemized Price Summary Frosted Card
+                  GlassContainer(
+                    padding: const EdgeInsets.all(18),
+                    borderRadius: BorderRadius.circular(22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryGreen.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Icon(Icons.receipt_long_rounded, size: 18, color: AppTheme.primaryGreen),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              'Price Summary Breakdown',
+                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        _buildPriceRow('Base Catalog Value', '₹${widget.variant.basePrice.toStringAsFixed(0)}', isPositive: true),
+                        Divider(height: 18, color: AppTheme.border.withOpacity(0.6)),
+                        if (_breakdown.isNotEmpty)
+                          ..._breakdown.map((b) => _buildPriceRow(
+                                b['title'] ?? 'Condition Factor',
+                                '-₹${(double.tryParse(b['deduction'].toString()) ?? 0.0).toStringAsFixed(0)}',
+                                isNegative: true,
+                              ))
+                        else
+                          _buildPriceRow('Condition Deductions', '₹0', isNegative: false),
+                        Divider(height: 18, color: AppTheme.border.withOpacity(0.6)),
+                        _buildPriceRow(
+                          'Net Doorstep Payout',
+                          '₹${_estimatedPrice.toStringAsFixed(0)}',
+                          isBold: true,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 4. Doorstep Pickup & Instant Payout Form
+                  const Text(
+                    'Schedule Free Doorstep Pickup',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Our verified agent arrives at your door, checks device, and transfers cash/UPI instantly.',
+                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  ),
+                  const SizedBox(height: 14),
+
+                  GlassContainer(
+                    padding: const EdgeInsets.all(18),
+                    borderRadius: BorderRadius.circular(24),
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          controller: _nameController,
+                          decoration: InputDecoration(
+                            labelText: 'Your Full Name *',
+                            prefixIcon: const Icon(Icons.person_outline_rounded, color: AppTheme.primaryGreen),
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.85),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter your full name' : null,
+                        ),
+                        const SizedBox(height: 12),
+
+                        TextFormField(
+                          controller: _phoneController,
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            labelText: '10-Digit Mobile Number *',
+                            prefixIcon: const Icon(Icons.phone_outlined, color: AppTheme.primaryGreen),
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.85),
+                          ),
+                          validator: (val) => val == null || val.trim().length < 10 ? 'Enter valid 10-digit number' : null,
+                        ),
+                        const SizedBox(height: 12),
+
+                        TextFormField(
+                          controller: _addressController,
+                          maxLines: 2,
+                          decoration: InputDecoration(
+                            labelText: 'Doorstep Pickup Address *',
+                            prefixIcon: const Icon(Icons.location_on_outlined, color: AppTheme.primaryGreen),
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.85),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter complete address' : null,
+                        ),
+                        const SizedBox(height: 12),
+
+                        TextFormField(
+                          controller: _upiController,
+                          decoration: InputDecoration(
+                            labelText: 'UPI ID for Instant Transfer (e.g. name@okhdfcbank)',
+                            prefixIcon: const Icon(Icons.account_balance_wallet_outlined, color: AppTheme.primaryGreen),
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.85),
+                          ),
+                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter UPI ID' : null,
+                        ),
+                        const SizedBox(height: 12),
+
+                        DropdownButtonFormField<String>(
+                          value: _pickupSlot,
+                          decoration: InputDecoration(
+                            labelText: 'Preferred Time Slot',
+                            prefixIcon: const Icon(Icons.access_time_rounded, color: AppTheme.primaryGreen),
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.85),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'Morning (10:00 AM - 1:00 PM)', child: Text('Morning (10 AM - 1 PM)')),
+                            DropdownMenuItem(value: 'Afternoon (1:00 PM - 5:00 PM)', child: Text('Afternoon (1 PM - 5 PM)')),
+                            DropdownMenuItem(value: 'Evening (5:00 PM - 8:00 PM)', child: Text('Evening (5 PM - 8 PM)')),
+                          ],
+                          onChanged: (val) => setState(() => _pickupSlot = val!),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Payout Mode Toggle
+                        Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _payoutType = 'UPI'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: _payoutType == 'UPI' ? AppTheme.primaryGreen.withOpacity(0.15) : Colors.white.withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _payoutType == 'UPI' ? AppTheme.primaryGreen : AppTheme.glassBorder,
+                                      width: _payoutType == 'UPI' ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.bolt_rounded, size: 18, color: _payoutType == 'UPI' ? AppTheme.primaryGreen : AppTheme.textSecondary),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Instant UPI',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          color: _payoutType == 'UPI' ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => setState(() => _payoutType = 'BANK'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: _payoutType == 'BANK' ? AppTheme.primaryGreen.withOpacity(0.15) : Colors.white.withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: _payoutType == 'BANK' ? AppTheme.primaryGreen : AppTheme.glassBorder,
+                                      width: _payoutType == 'BANK' ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.account_balance_rounded, size: 18, color: _payoutType == 'BANK' ? AppTheme.primaryGreen : AppTheme.textSecondary),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Bank IMPS',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                          color: _payoutType == 'BANK' ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Primary Glass Glow CTA Button
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryGreen.withOpacity(0.35),
+                          blurRadius: 16,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _submitting ? null : _submitBooking,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(56),
+                        backgroundColor: AppTheme.primaryGreen,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                       ),
+                      child: _submitting
+                          ? const SizedBox(
+                              height: 22,
+                              width: 22,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                            )
+                          : const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'Confirm Free Doorstep Pickup',
+                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
+                                ),
+                                SizedBox(width: 8),
+                                Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
+                              ],
+                            ),
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '₹${_estimatedPrice.toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.primaryGreen,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '✓ Subject to physical doorstep verification',
-                      style: TextStyle(fontSize: 11, color: AppTheme.darkGreen, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // 3. Price Summary Breakdown
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppTheme.border),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Price Summary Breakdown',
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildPriceRow('Base Catalog Price', '₹${widget.variant.basePrice.toStringAsFixed(0)}', isPositive: true),
-                    const Divider(height: 16, color: AppTheme.border),
-                    if (_breakdown.isNotEmpty)
-                      ..._breakdown.map((b) => _buildPriceRow(
-                            b['title'] ?? 'Condition Factor',
-                            '-₹${(double.tryParse(b['deduction'].toString()) ?? 0.0).toStringAsFixed(0)}',
-                            isNegative: true,
-                          ))
-                    else
-                      _buildPriceRow('Condition Deductions', '₹0', isNegative: false),
-                    const Divider(height: 16, color: AppTheme.border),
-                    _buildPriceRow(
-                      'Net Estimated Offer',
-                      '₹${_estimatedPrice.toStringAsFixed(0)}',
-                      isBold: true,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // 4. Free Doorstep Pickup Form
-              const Text(
-                'Schedule Free Doorstep Pickup',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Our verified agent arrives at your address with instant UPI payout.',
-                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-              ),
-              const SizedBox(height: 14),
-
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Your Full Name *',
-                  prefixIcon: Icon(Icons.person_outline),
-                ),
-                validator: (val) => val == null || val.trim().isEmpty ? 'Please enter name' : null,
-              ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: '10-Digit Mobile Number *',
-                  prefixIcon: Icon(Icons.phone_outlined),
-                ),
-                validator: (val) => val == null || val.trim().length < 10 ? 'Enter valid 10-digit number' : null,
-              ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _addressController,
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Doorstep Pickup Address *',
-                  prefixIcon: Icon(Icons.location_on_outlined),
-                ),
-                validator: (val) => val == null || val.trim().isEmpty ? 'Please enter address' : null,
-              ),
-              const SizedBox(height: 12),
-
-              TextFormField(
-                controller: _upiController,
-                decoration: const InputDecoration(
-                  labelText: 'UPI ID for Instant Transfer (e.g. name@okhdfcbank)',
-                  prefixIcon: Icon(Icons.account_balance_wallet_outlined),
-                ),
-                validator: (val) => val == null || val.trim().isEmpty ? 'Please enter UPI ID' : null,
-              ),
-              const SizedBox(height: 12),
-
-              DropdownButtonFormField<String>(
-                initialValue: _pickupSlot,
-                decoration: const InputDecoration(
-                  labelText: 'Preferred Time Slot',
-                  prefixIcon: Icon(Icons.access_time),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'Morning (10:00 AM - 1:00 PM)', child: Text('Morning (10 AM - 1 PM)')),
-                  DropdownMenuItem(value: 'Afternoon (1:00 PM - 5:00 PM)', child: Text('Afternoon (1 PM - 5 PM)')),
-                  DropdownMenuItem(value: 'Evening (5:00 PM - 8:00 PM)', child: Text('Evening (5 PM - 8 PM)')),
+                  ),
                 ],
-                onChanged: (val) => setState(() => _pickupSlot = val!),
               ),
-
-              const SizedBox(height: 24),
-
-              ElevatedButton(
-                onPressed: _submitting ? null : _submitBooking,
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(54),
-                  backgroundColor: AppTheme.primaryGreen,
-                ),
-                child: _submitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                    : const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('Proceed to Doorstep Pickup', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900)),
-                          SizedBox(width: 8),
-                          Icon(Icons.arrow_forward_rounded, size: 18),
-                        ],
-                      ),
-              ),
-
-              const SizedBox(height: 30),
-            ],
+            ),
           ),
         ),
       ),
@@ -421,14 +634,14 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
 
   Widget _buildPriceRow(String label, String value, {bool isPositive = false, bool isNegative = false, bool isBold = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
             style: TextStyle(
-              fontSize: isBold ? 13 : 11,
+              fontSize: isBold ? 14 : 12,
               fontWeight: isBold ? FontWeight.w900 : FontWeight.w600,
               color: isBold ? AppTheme.textPrimary : AppTheme.textSecondary,
             ),
@@ -436,7 +649,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
           Text(
             value,
             style: TextStyle(
-              fontSize: isBold ? 15 : 12,
+              fontSize: isBold ? 16 : 13,
               fontWeight: FontWeight.w900,
               color: isNegative
                   ? Colors.red.shade700
