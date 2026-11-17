@@ -67,13 +67,17 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
   Future<void> _loadBrands() async {
     setState(() => _loading = true);
     try {
-      final brands = await _api.getBrands(categoryId: _category?.id);
+      var brands = await _api.getBrands(categoryId: _category?.id);
+      if (brands.isEmpty) {
+        // Fallback to all brands so category is never empty
+        brands = await _api.getBrands();
+      }
       setState(() {
         _brands = brands;
         _loading = false;
       });
 
-      if (widget.initialBrandId != null) {
+      if (widget.initialBrandId != null && brands.isNotEmpty) {
         final found = brands.firstWhere(
           (b) => b.id == widget.initialBrandId,
           orElse: () => brands.first,
@@ -101,7 +105,11 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       setState(() {
         _seriesList = s;
         _models = m;
-        _loading = false;
+        if (m.isNotEmpty) {
+          _selectModel(m.first);
+        } else {
+          _loading = false;
+        }
       });
     } catch (_) {
       setState(() => _loading = false);
@@ -120,7 +128,14 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       );
       setState(() {
         _models = m;
-        _loading = false;
+        if (m.isNotEmpty) {
+          _selectModel(m.first);
+        } else {
+          _model = null;
+          _variants = [];
+          _variant = null;
+          _loading = false;
+        }
       });
     } catch (_) {
       setState(() => _loading = false);
@@ -134,7 +149,10 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     });
 
     try {
-      final v = await _api.getVariants(model.id);
+      var v = model.variants;
+      if (v.isEmpty) {
+        v = await _api.getVariants(model.id);
+      }
       setState(() {
         _variants = v;
         if (v.isNotEmpty) _variant = v.first;

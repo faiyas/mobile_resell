@@ -70,7 +70,9 @@ def brands_list_view(request):
             brands = Brand.objects.filter(is_active=True)
 
         if category_id:
-            brands = brands.filter(category_id=category_id)
+            cat_brands = brands.filter(category_id=category_id)
+            if cat_brands.exists():
+                brands = cat_brands
 
         if include_models:
             serializer = BrandSerializer(brands, many=True)

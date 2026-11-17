@@ -44,22 +44,76 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
         _steps = data;
         _loading = false;
       });
+
+      // Auto-select initial flawless/default options for single-selection steps
+      if (data.isNotEmpty) {
+        _ensureSingleSelectionDefaults(data);
+      }
     } catch (_) {
       setState(() => _loading = false);
     }
   }
 
+  void _ensureSingleSelectionDefaults(List<ConditionCategoryModel> steps) {
+    for (var step in steps) {
+      final isSingle = step.selectionType == 'SINGLE';
+      if (isSingle && step.options.isNotEmpty) {
+        final hasSelection = step.options.any((o) => _selectedOptionCodes.contains(o.code));
+        if (!hasSelection) {
+          // Prefer option with 0 deduction (Flawless / No defect)
+          final defaultOpt = step.options.firstWhere(
+            (o) => o.defaultDeductionValue == 0,
+            orElse: () => step.options.first,
+          );
+          _selectedOptionCodes.add(defaultOpt.code);
+        }
+      }
+    }
+  }
+
   void _toggleOption(ConditionOptionModel opt, bool isMultiple) {
     setState(() {
+      final currentStep = _steps[_currentStepIndex];
+      final isZeroDeduction = opt.defaultDeductionValue == 0 ||
+          opt.code.toUpperCase().contains('NO_DEFECT') ||
+          opt.code.toUpperCase().contains('FLAWLESS') ||
+          opt.code.toUpperCase().contains('NO_FAULT');
+
       if (isMultiple) {
         if (_selectedOptionCodes.contains(opt.code)) {
           _selectedOptionCodes.remove(opt.code);
         } else {
+          // If this option has an exclusive group, replace other options in the same group
+          if (opt.exclusiveGroup.isNotEmpty) {
+            for (var other in currentStep.options) {
+              if (other.exclusiveGroup == opt.exclusiveGroup) {
+                _selectedOptionCodes.remove(other.code);
+              }
+            }
+          }
+
+          // If user taps "No Defect / Flawless", deselect all defect options in this step
+          if (isZeroDeduction) {
+            for (var other in currentStep.options) {
+              _selectedOptionCodes.remove(other.code);
+            }
+          } else {
+            // If user taps a defect, deselect any "No Defect / Flawless" option in this step
+            for (var other in currentStep.options) {
+              final otherZero = other.defaultDeductionValue == 0 ||
+                  other.code.toUpperCase().contains('NO_DEFECT') ||
+                  other.code.toUpperCase().contains('FLAWLESS') ||
+                  other.code.toUpperCase().contains('NO_FAULT');
+              if (otherZero) {
+                _selectedOptionCodes.remove(other.code);
+              }
+            }
+          }
+
           _selectedOptionCodes.add(opt.code);
         }
       } else {
-        // Single selection within this step: unselect others in the same step
-        final currentStep = _steps[_currentStepIndex];
+        // Single selection: replace previous selection in this step
         for (var o in currentStep.options) {
           _selectedOptionCodes.remove(o.code);
         }
@@ -69,6 +123,19 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   }
 
   void _nextStep() {
+    final currentStep = _steps[_currentStepIndex];
+    final isSingle = currentStep.selectionType == 'SINGLE';
+
+    if (isSingle) {
+      final hasSelected = currentStep.options.any((o) => _selectedOptionCodes.contains(o.code));
+      if (!hasSelected && currentStep.options.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please select an option before continuing')),
+        );
+        return;
+      }
+    }
+
     if (_currentStepIndex < _steps.length - 1) {
       setState(() => _currentStepIndex++);
     } else {
@@ -173,7 +240,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                   ),
                 ),
                 Text(
-                  isMultiple ? 'Select all that apply' : 'Select one option',
+                  isMultiple ? 'Multiple selections allowed' : 'Select one option',
                   style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -206,7 +273,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                 crossAxisCount: currentStep.options.length <= 4 ? 2 : 2,
                 crossAxisSpacing: 10,
                 mainAxisSpacing: 10,
-                childAspectRatio: 1.15,
+                childAspectRatio: 1.12,
               ),
               itemCount: currentStep.options.length,
               itemBuilder: (context, idx) {
@@ -221,20 +288,22 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isSelected ? AppTheme.primaryGreen : AppTheme.border,
+                        color: isSelected
+                            ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen)
+                            : AppTheme.border,
                         width: isSelected ? 2 : 1,
                       ),
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: AppTheme.primaryGreen.withOpacity(0.12),
+                                color: (opt.isRejection ? Colors.red : AppTheme.primaryGreen).withValues(alpha: 0.15),
                                 blurRadius: 8,
                                 offset: const Offset(0, 4),
                               ),
                             ]
                           : [],
                     ),
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -244,17 +313,21 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                             const SizedBox(width: 18),
                             Icon(
                               _getOptionIcon(opt.code),
-                              size: 28,
-                              color: isSelected ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                              size: 26,
+                              color: isSelected
+                                  ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen)
+                                  : AppTheme.textSecondary,
                             ),
                             Icon(
                               isSelected ? Icons.check_circle : Icons.circle_outlined,
                               size: 18,
-                              color: isSelected ? AppTheme.primaryGreen : AppTheme.border,
+                              color: isSelected
+                                  ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen)
+                                  : AppTheme.border,
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           opt.title,
                           textAlign: TextAlign.center,
@@ -263,19 +336,39 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w900,
-                            color: isSelected ? AppTheme.darkGreen : AppTheme.textPrimary,
+                            color: isSelected
+                                ? (opt.isRejection ? Colors.red.shade900 : AppTheme.darkGreen)
+                                : AppTheme.textPrimary,
                           ),
                         ),
-                        if (opt.description.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            opt.description,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: opt.defaultDeductionValue == 0
+                                ? AppTheme.lightGreen
+                                : opt.isRejection
+                                    ? Colors.red.shade50
+                                    : AppTheme.canvas,
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                        ],
+                          child: Text(
+                            opt.defaultDeductionValue == 0
+                                ? 'No Defect (₹0)'
+                                : opt.deductionType == 'PERCENTAGE'
+                                    ? '-${opt.defaultDeductionValue.toStringAsFixed(0)}%'
+                                    : '-₹${opt.defaultDeductionValue.toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                              color: opt.defaultDeductionValue == 0
+                                  ? AppTheme.darkGreen
+                                  : opt.isRejection
+                                      ? Colors.red.shade900
+                                      : AppTheme.textSecondary,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -292,7 +385,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                 decoration: BoxDecoration(
                   color: AppTheme.lightGreen,
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
+                  border: Border.all(color: AppTheme.primaryGreen.withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -332,7 +425,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
           border: Border(top: BorderSide(color: AppTheme.border)),
         ),
@@ -376,15 +469,21 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
 
   IconData _getOptionIcon(String code) {
     final c = code.toLowerCase();
-    if (c.contains('cam')) return Icons.camera_alt_outlined;
-    if (c.contains('screen') || c.contains('glass')) return Icons.smartphone;
-    if (c.contains('body') || c.contains('dent')) return Icons.broken_image_outlined;
+    if (c.contains('cam') || c.contains('lens')) return Icons.camera_alt_outlined;
+    if (c.contains('glass') || c.contains('crack')) return Icons.broken_image_outlined;
+    if (c.contains('spot') || c.contains('line') || c.contains('display')) return Icons.phonelink_erase;
+    if (c.contains('body') || c.contains('dent') || c.contains('bend')) return Icons.phone_android;
     if (c.contains('touch')) return Icons.touch_app_outlined;
     if (c.contains('mic')) return Icons.mic_outlined;
-    if (c.contains('speaker')) return Icons.volume_up_outlined;
+    if (c.contains('speaker') || c.contains('sound')) return Icons.volume_up_outlined;
+    if (c.contains('sim') || c.contains('network') || c.contains('5g')) return Icons.sim_card_outlined;
+    if (c.contains('wifi')) return Icons.wifi;
+    if (c.contains('bluetooth')) return Icons.bluetooth;
+    if (c.contains('battery') || c.contains('charge')) return Icons.battery_charging_full_outlined;
     if (c.contains('box')) return Icons.inventory_2_outlined;
     if (c.contains('charger') || c.contains('cable')) return Icons.cable_outlined;
-    if (c.contains('bill') || c.contains('warranty')) return Icons.receipt_long_outlined;
+    if (c.contains('bill') || c.contains('invoice') || c.contains('warranty')) return Icons.receipt_long_outlined;
+    if (c.contains('flawless') || c.contains('no_defect') || c.contains('perfect')) return Icons.verified_outlined;
     return Icons.check_circle_outline;
   }
 }
