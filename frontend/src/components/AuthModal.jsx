@@ -58,14 +58,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-[#E7EEE9] my-auto max-h-[92vh] flex flex-col">
         
-        {/* Header (X-PHONES Green Gradient) */}
+        {/* Header (1103 RECELL Green Gradient) */}
         <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between shrink-0">
           <div>
             <div className="flex items-center gap-1.5 mb-1">
-              <span className="w-5 h-5 rounded-lg bg-white/20 backdrop-blur text-white flex items-center justify-center font-black text-xs">X</span>
-              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-200">X-PHONES BUYBACK</span>
+              <span className="px-1.5 py-0.5 rounded-lg bg-white/20 backdrop-blur text-white flex items-center justify-center font-black text-xs">1103</span>
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-200">1103 RECELL BUYBACK</span>
             </div>
-            <h3 className="font-black text-base sm:text-lg">{isRegister ? 'Create Your Account' : 'Welcome to X-PHONES'}</h3>
+            <h3 className="font-black text-base sm:text-lg">{isRegister ? 'Create Your Account' : 'Welcome to 1103 RECELL'}</h3>
             <p className="text-[11px] sm:text-xs text-[#E8F8ED] mt-0.5">
               {isRegister ? 'Register to evaluate, sell devices & receive instant payouts' : 'Sign in to Customer, Admin or Field Agent workspace'}
             </p>
@@ -213,7 +213,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               <span>Authenticating...</span>
             ) : isRegister ? (
               <>
-                <span>Create X-PHONES Account</span>
+                <span>Create 1103 RECELL Account</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (

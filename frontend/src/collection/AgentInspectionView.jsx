@@ -204,7 +204,7 @@ export default function AgentInspectionView({ currentUser }) {
         type: 'success',
         status: newStatus,
         message: newStatus === 'OWNERSHIP_TRANSFERRED'
-          ? `✓ Inspection Recorded! Price matches estimate (₹${Number(suggestedFinalPrice).toLocaleString('en-IN')}). Device handover complete · Ownership transferred to X-PHONES. Ready for Admin Payout Disbursal.`
+          ? `✓ Inspection Recorded! Price matches estimate (₹${Number(suggestedFinalPrice).toLocaleString('en-IN')}). Device handover complete · Ownership transferred to 1103 RECELL. Ready for Admin Payout Disbursal.`
           : `✓ Inspection Submitted! Revised offer of ₹${Number(suggestedFinalPrice).toLocaleString('en-IN')} sent to customer. Status updated to FINAL OFFER SENT.`
       });
 
@@ -255,7 +255,7 @@ export default function AgentInspectionView({ currentUser }) {
         <div className="min-w-0 pr-2">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-200 bg-white/10 border border-white/20 px-2 py-0.5 rounded-lg">
-              X-PHONES Field Agent
+              1103 RECELL Field Agent
             </span>
             <span className="text-[9px] sm:text-[10px] text-emerald-100">
               {assignedSales.length} {assignedSales.length === 1 ? 'Pickup' : 'Pickups'} In Queue
@@ -748,7 +748,7 @@ export default function AgentInspectionView({ currentUser }) {
                     <CheckCircle2 className="w-4 h-4 text-[#0BAA4B] shrink-0" />
                     <span className="font-bold">
                       {selectedSale.status === 'OWNERSHIP_TRANSFERRED' 
-                        ? 'Handover Completed · Ownership Transferred to X-PHONES'
+                        ? 'Handover Completed · Ownership Transferred to 1103 RECELL'
                         : selectedSale.status === 'FINAL_OFFER_SENT'
                         ? 'Revised Final Offer Sent to Customer'
                         : 'Inspection Recorded'}

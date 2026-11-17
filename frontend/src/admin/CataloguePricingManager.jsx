@@ -616,7 +616,7 @@ export default function CataloguePricingManager() {
           <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] text-white p-6 sm:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-400/30">
             <div className="space-y-2 max-w-xl">
               <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 text-white px-3 py-1 rounded-full">
-                {cmsForm.badge || 'X-PHONES · Buyback Company'}
+                {cmsForm.badge || '1103 RECELL · Buyback Company'}
               </span>
               <h2 className="text-2xl sm:text-4xl font-black mt-2 leading-tight">
                 {cmsForm.title || 'Sell Your Old Device'}

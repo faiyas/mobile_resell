@@ -51,13 +51,13 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             onClick={() => setActiveTab(currentUser?.role === 'ADMIN' ? 'admin' : currentUser?.role === 'COLLECTION_AGENT' ? 'inspection' : 'sell')}
             className="flex items-center gap-2.5 cursor-pointer group shrink-0 select-none"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] flex items-center justify-center text-white shadow-lg shadow-[#0BAA4B]/20 group-hover:scale-105 transition-transform font-black text-xl">
-              X
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] flex items-center justify-center text-white shadow-lg shadow-[#0BAA4B]/20 group-hover:scale-105 transition-transform font-black text-sm">
+              1103
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xl sm:text-2xl font-black tracking-tight text-[#17251C]">
-                  X-PHONES
+                  1103 RECELL
                 </span>
                 <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider bg-[#E8F8ED] text-[#087C38] px-1.5 py-0.5 rounded-full border border-[#0BAA4B]/20">
                   Buyback

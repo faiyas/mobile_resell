@@ -13,7 +13,7 @@ from apps.inspections.models import DeviceInspection, InspectionPhoto
 from apps.payments.models import Payment
 
 def seed_database():
-    print("🚀 Starting X-PHONES Full-Stack Buyback Platform database seed...")
+    print("🚀 Starting 1103 RECELL Full-Stack Buyback Platform database seed...")
 
     # ================= 1. USERS & ROLES =================
     admin_user, _ = User.objects.get_or_create(
@@ -409,7 +409,7 @@ def seed_database():
     )
 
     print(f"✅ Sample Order {sample_sale.sale_code} seeded (XP2610008753)")
-    print("🎉 MASTER X-PHONES SEED COMPLETED 100% SUCCESSFULLY!")
+    print("🎉 MASTER 1103 RECELL SEED COMPLETED 100% SUCCESSFULLY!")
 
 if __name__ == '__main__':
     seed_database()

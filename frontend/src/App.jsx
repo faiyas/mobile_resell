@@ -87,7 +87,7 @@ export default function App() {
           const heroSection = cmsSections.find(s => s.section_type === 'hero_carousel');
           const heroTitle = heroSection?.title || 'Sell Your Old Device for Instant Cash';
           const heroSubtitle = heroSection?.subtitle || 'Get a fair, rule-based price estimate in 60 seconds. Our verified agent inspects your device at home and transfers money directly before leaving.';
-          const heroBadge = heroSection?.data_json?.badge || 'X-PHONES · Certified One-Way Buyback';
+          const heroBadge = heroSection?.data_json?.badge || '1103 RECELL · Certified One-Way Buyback';
           const heroHighlights = heroSection?.data_json?.highlights || ['Free Doorstep Pickup', 'Instant UPI Payout', '100% Certified Data Wipe'];
 
           return (
