@@ -41,6 +41,12 @@ async function request(endpoint, options = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (response.status === 401 && token) {
+      // Stale or invalid token - auto-purge to avoid stuck authentication
+      removeAuthToken();
+      removeCurrentUser();
+      window.dispatchEvent(new CustomEvent('recell-auth-expired'));
+    }
     const errorMsg = data.detail || data.message || Object.values(data)[0] || 'API Request Failed';
     throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
   }

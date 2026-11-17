@@ -388,3 +388,46 @@ class SaleOrderModel {
     );
   }
 }
+
+class AgentUserModel {
+  final int id;
+  final String email;
+  final String fullName;
+  final String phone;
+
+  AgentUserModel({
+    required this.id,
+    required this.email,
+    required this.fullName,
+    required this.phone,
+  });
+
+  factory AgentUserModel.fromJson(Map<String, dynamic> json) {
+    return AgentUserModel(
+      id: json['id'] ?? 0,
+      email: json['email'] ?? '',
+      fullName: json['full_name'] ?? json['email'] ?? '',
+      phone: json['phone'] ?? '',
+    );
+  }
+}
+
+class PaymentSummaryModel {
+  final int totalCount;
+  final double totalDisbursed;
+  final List<dynamic> payments;
+
+  PaymentSummaryModel({
+    required this.totalCount,
+    required this.totalDisbursed,
+    required this.payments,
+  });
+
+  factory PaymentSummaryModel.fromJson(Map<String, dynamic> json) {
+    return PaymentSummaryModel(
+      totalCount: json['total_count'] ?? 0,
+      totalDisbursed: double.tryParse(json['total_disbursed'].toString()) ?? 0.0,
+      payments: json['payments'] is List ? json['payments'] : [],
+    );
+  }
+}

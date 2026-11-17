@@ -20,6 +20,12 @@ export default function App() {
   const [cmsSections, setCmsSections] = useState([]);
 
   useEffect(() => {
+    const handleAuthExpired = () => {
+      setCurrentUser(null);
+      setAuthModalOpen(true);
+    };
+    window.addEventListener('recell-auth-expired', handleAuthExpired);
+
     const user = getCurrentUser();
     if (user) {
       setCurrentUser(user);
@@ -37,6 +43,8 @@ export default function App() {
         setCmsSections(data);
       }
     }).catch(console.error);
+
+    return () => window.removeEventListener('recell-auth-expired', handleAuthExpired);
   }, []);
 
   const handleLogout = () => {

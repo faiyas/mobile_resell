@@ -253,7 +253,26 @@ class ApiService {
     }
   }
 
-  // ================= 7. ADMIN ASSIGNMENT =================
+  // ================= 7. ADMIN ASSIGNMENT & PAYOUTS =================
+  Future<List<AgentUserModel>> getAgents() async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/agents/');
+    final res = await http.get(url, headers: _headers);
+    if (res.statusCode == 200) {
+      final List list = jsonDecode(res.body);
+      return list.map((item) => AgentUserModel.fromJson(item)).toList();
+    }
+    return [];
+  }
+
+  Future<PaymentSummaryModel> getPaymentsSummary() async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/payments/');
+    final res = await http.get(url, headers: _headers);
+    if (res.statusCode == 200) {
+      return PaymentSummaryModel.fromJson(jsonDecode(res.body));
+    }
+    return PaymentSummaryModel(totalCount: 0, totalDisbursed: 0.0, payments: []);
+  }
+
   Future<Map<String, dynamic>> assignPickup(int saleId, Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/assign-pickup/');
     final res = await http.post(
@@ -267,6 +286,38 @@ class ApiService {
     } else {
       final err = jsonDecode(res.body);
       throw Exception(err['detail'] ?? 'Failed to assign pickup');
+    }
+  }
+
+  Future<Map<String, dynamic>> recordPayout(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/payments/record-payout/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 201) {
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to record payout');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateConditionOption(int optionId, Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/options/$optionId/');
+    final res = await http.put(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to update deduction');
     }
   }
 }

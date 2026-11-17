@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import 'sell_wizard/category_selection_screen.dart';
 import 'orders/track_order_screen.dart';
 import 'agent/agent_inspection_screen.dart';
+import 'admin/admin_dashboard_screen.dart';
 import 'auth/auth_modal_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -61,21 +62,43 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = _api.currentUser;
+    final isAdmin = user?.role == 'ADMIN';
+    final isAgent = user?.role == 'COLLECTION_AGENT';
 
-    // Body based on bottom nav
+    // Body based on dynamic role navigation
     Widget body;
-    if (_currentIndex == 0) {
-      body = _buildHomeContent(user);
-    } else if (_currentIndex == 1) {
-      body = const TrackOrderScreen();
-    } else if (_currentIndex == 2) {
-      if (user?.role == 'COLLECTION_AGENT' || user?.role == 'ADMIN') {
+    if (isAdmin) {
+      if (_currentIndex == 0) {
+        body = _buildHomeContent(user);
+      } else if (_currentIndex == 1) {
+        body = const TrackOrderScreen();
+      } else if (_currentIndex == 2) {
+        body = const AgentInspectionScreen();
+      } else if (_currentIndex == 3) {
+        body = const AdminDashboardScreen();
+      } else {
+        body = _buildProfileContent(user);
+      }
+    } else if (isAgent) {
+      if (_currentIndex == 0) {
+        body = _buildHomeContent(user);
+      } else if (_currentIndex == 1) {
+        body = const TrackOrderScreen();
+      } else if (_currentIndex == 2) {
         body = const AgentInspectionScreen();
       } else {
-        body = const TrackOrderScreen();
+        body = _buildProfileContent(user);
       }
     } else {
-      body = _buildProfileContent(user);
+      if (_currentIndex == 0) {
+        body = _buildHomeContent(user);
+      } else if (_currentIndex == 1) {
+        body = const TrackOrderScreen();
+      } else if (_currentIndex == 2) {
+        body = const CategorySelectionScreen();
+      } else {
+        body = _buildProfileContent(user);
+      }
     }
 
     return Scaffold(
@@ -180,12 +203,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: body,
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           color: Colors.white,
           border: Border(top: BorderSide(color: AppTheme.border, width: 1)),
         ),
         child: BottomNavigationBar(
-          currentIndex: _currentIndex,
+          currentIndex: _currentIndex.clamp(0, (isAdmin ? 4 : 3)),
           onTap: (index) => setState(() => _currentIndex = index),
           backgroundColor: Colors.white,
           selectedItemColor: AppTheme.primaryGreen,
@@ -203,16 +226,26 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.receipt_long),
               label: 'Track',
             ),
-            if (user?.role == 'COLLECTION_AGENT' || user?.role == 'ADMIN')
+            if (isAdmin) ...[
               const BottomNavigationBarItem(
                 icon: Icon(Icons.verified_outlined),
-                label: 'Agent Desk',
-              )
-            else
+                label: 'Agent QC',
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.admin_panel_settings),
+                label: 'Admin Desk',
+              ),
+            ] else if (isAgent) ...[
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.verified_outlined),
+                label: 'Agent QC',
+              ),
+            ] else ...[
               const BottomNavigationBarItem(
                 icon: Icon(Icons.sell_outlined),
                 label: 'Sell Device',
               ),
+            ],
             const BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),
               label: 'Profile',
