@@ -1,19 +1,28 @@
 from django.db import models
 from django.conf import settings
-from apps.catalog.models import PhoneModel, StorageVariant
+from apps.catalog.models import PhoneModel, StorageVariant, DeviceCategory
 
 class ConditionCategory(models.Model):
-    name = models.CharField(max_length=100) # e.g. Display & Screen, Battery Health, Camera & FaceID, Body Condition
-    description = models.CharField(max_length=255, blank=True, default='')
+    SELECTION_CHOICES = (
+        ('SINGLE', 'Single Selection (Card)'),
+        ('MULTIPLE', 'Multiple Selection'),
+        ('RADIO', 'Radio List'),
+    )
+    device_category = models.ForeignKey(DeviceCategory, on_delete=models.CASCADE, related_name='question_steps', null=True, blank=True)
+    step_number = models.PositiveIntegerField(default=1, help_text="Step number in the questionnaire (e.g. 1 to 11)")
+    name = models.CharField(max_length=100) # e.g. Display Glass Condition, Functional Faults
+    subtitle = models.CharField(max_length=255, blank=True, default='') # e.g. "Choose the display glass condition of your device"
+    selection_type = models.CharField(max_length=20, choices=SELECTION_CHOICES, default='SINGLE')
+    pro_tip = models.CharField(max_length=255, blank=True, default='') # e.g. "Check your screen under bright light and from different angles"
     icon_name = models.CharField(max_length=50, default='Smartphone', help_text="Lucide icon name")
     display_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ['display_order']
+        ordering = ['step_number', 'display_order']
 
     def __str__(self):
-        return self.name
+        return f"Step {self.step_number}: {self.name}"
 
 class ConditionOption(models.Model):
     DEDUCTION_TYPE_CHOICES = (
@@ -27,6 +36,8 @@ class ConditionOption(models.Model):
     description = models.CharField(max_length=255, blank=True, default='')
     image_base64 = models.TextField(blank=True, default='', help_text="Base64 photo of the defect or clean condition")
     is_defect = models.BooleanField(default=True, help_text="True if this condition deducts money")
+    is_accessory_bonus = models.BooleanField(default=False, help_text="True if this is an accessory item (Box, Charger, Cable, Bill)")
+    is_warranty = models.BooleanField(default=False, help_text="True if this is a warranty tier option")
     
     deduction_type = models.CharField(max_length=20, choices=DEDUCTION_TYPE_CHOICES, default='FLAT')
     default_deduction_value = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -59,21 +70,17 @@ class ModelPricingOverride(models.Model):
     class Meta:
         unique_together = ('phone_model', 'option')
 
-    def __str__(self):
-        return f"{self.phone_model} - {self.option.code}: ₹{self.override_deduction_value}"
-
 class PriceHistory(models.Model):
-    """Audit log of historical price changes for variant base prices"""
+    """Audit trail tracking every single price modification made by Admin"""
     variant = models.ForeignKey(StorageVariant, on_delete=models.CASCADE, related_name='price_history')
     old_base_price = models.DecimalField(max_digits=10, decimal_places=2)
     new_base_price = models.DecimalField(max_digits=10, decimal_places=2)
     changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
-    reason = models.CharField(max_length=255, default='Market price adjustment')
+    reason = models.CharField(max_length=255, blank=True, default='Admin manual update')
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.variant}: ₹{self.old_base_price} ➔ ₹{self.new_base_price} on {self.created_at.strftime('%Y-%m-%d')}"
-
+        return f"{self.variant} changed: ₹{self.old_base_price} -> ₹{self.new_base_price}"

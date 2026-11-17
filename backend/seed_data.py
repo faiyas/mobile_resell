@@ -1,27 +1,25 @@
 import os
-import sys
 import django
 from decimal import Decimal
 
-# Setup django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 django.setup()
 
 from apps.accounts.models import User
-from apps.catalog.models import Brand, PhoneModel, StorageVariant
-from apps.valuation.models import ConditionCategory, ConditionOption, ModelPricingOverride, PriceHistory
+from apps.catalog.models import DeviceCategory, Brand, DeviceSeries, PhoneModel, StorageVariant, CMSHomeSection
+from apps.valuation.models import ConditionCategory, ConditionOption, PriceHistory
 from apps.sales.models import PhoneSale, PhoneSaleConditionAnswer
 from apps.inspections.models import DeviceInspection, InspectionPhoto
 from apps.payments.models import Payment
 
-def run():
-    print("🚀 Starting Mobile Buyback Platform database seed...")
+def seed_database():
+    print("🚀 Starting X-PHONES Full-Stack Buyback Platform database seed...")
 
-    # 1. Create Users
+    # ================= 1. USERS & ROLES =================
     admin_user, _ = User.objects.get_or_create(
         email='admin@buyback.in',
         defaults={
+            'username': 'admin',
             'full_name': 'Super Admin',
             'phone': '9876543210',
             'role': 'ADMIN',
@@ -30,352 +28,388 @@ def run():
         }
     )
     admin_user.set_password('admin123')
+    admin_user.role = 'ADMIN'
     admin_user.save()
 
     agent_user, _ = User.objects.get_or_create(
         email='agent@buyback.in',
         defaults={
+            'username': 'agent',
             'full_name': 'Ramesh Kumar (Pickup Specialist)',
             'phone': '9876543211',
             'role': 'COLLECTION_AGENT',
         }
     )
     agent_user.set_password('agent123')
+    agent_user.role = 'COLLECTION_AGENT'
     agent_user.save()
 
     customer_user, _ = User.objects.get_or_create(
         email='customer@example.com',
         defaults={
-            'full_name': 'Pooja Verma',
+            'username': 'customer',
+            'full_name': 'Mohamed K.',
             'phone': '9876543212',
             'role': 'CUSTOMER',
         }
     )
     customer_user.set_password('customer123')
+    customer_user.role = 'CUSTOMER'
     customer_user.save()
 
-    print("✅ Users seeded (Admin, Agent, Customer)")
+    print("✅ Users seeded (Super Admin, Pickup Agent, Customer)")
 
-    # 2. Condition Categories & Valuation Rules
-    cat_display, _ = ConditionCategory.objects.get_or_create(
-        name='Screen & Touchscreen',
-        defaults={'description': 'Physical glass, display lines and touch responsiveness', 'icon_name': 'Smartphone', 'display_order': 1}
+    # ================= 2. DEVICE CATEGORIES =================
+    cat_mobile, _ = DeviceCategory.objects.get_or_create(
+        slug='mobile',
+        defaults={
+            'name': 'Mobile',
+            'subtitle': 'Sell smartphones',
+            'icon_name': 'Smartphone',
+            'display_order': 1,
+            'is_active': True
+        }
     )
-    cat_body, _ = ConditionCategory.objects.get_or_create(
-        name='Body & Physical Glass',
-        defaults={'description': 'Back glass, aluminum frame scuffs and dents', 'icon_name': 'Shield', 'display_order': 2}
+    cat_tablet, _ = DeviceCategory.objects.get_or_create(
+        slug='tablet',
+        defaults={
+            'name': 'Tablet',
+            'subtitle': 'Sell tablets',
+            'icon_name': 'Tablet',
+            'display_order': 2,
+            'is_active': True
+        }
     )
-    cat_camera, _ = ConditionCategory.objects.get_or_create(
-        name='Camera & Sensors',
-        defaults={'description': 'Front/Rear camera, Face ID / In-display Fingerprint', 'icon_name': 'Camera', 'display_order': 3}
+    cat_laptop, _ = DeviceCategory.objects.get_or_create(
+        slug='laptop',
+        defaults={
+            'name': 'Laptop',
+            'subtitle': 'Sell laptops',
+            'icon_name': 'Laptop',
+            'display_order': 3,
+            'is_active': True
+        }
     )
-    cat_battery, _ = ConditionCategory.objects.get_or_create(
-        name='Battery & Charging',
-        defaults={'description': 'Battery health percentage and charging port', 'icon_name': 'BatteryCharging', 'display_order': 4}
+    cat_smartwatch, _ = DeviceCategory.objects.get_or_create(
+        slug='smartwatch',
+        defaults={
+            'name': 'Smartwatch',
+            'subtitle': 'Sell smartwatches',
+            'icon_name': 'Watch',
+            'display_order': 4,
+            'is_active': True
+        }
     )
-    cat_hardware, _ = ConditionCategory.objects.get_or_create(
-        name='Functional & Wireless',
-        defaults={'description': 'Speakers, Mic, Wi-Fi, Bluetooth, Cellular call quality', 'icon_name': 'Wifi', 'display_order': 5}
+    cat_dead_phone, _ = DeviceCategory.objects.get_or_create(
+        slug='dead-phone',
+        defaults={
+            'name': 'Dead Phone',
+            'subtitle': 'Not working device',
+            'icon_name': 'AlertOctagon',
+            'display_order': 5,
+            'is_active': True
+        }
+    )
+    cat_other, _ = DeviceCategory.objects.get_or_create(
+        slug='other',
+        defaults={
+            'name': 'Other',
+            'subtitle': 'More devices',
+            'icon_name': 'Layers',
+            'display_order': 6,
+            'is_active': True
+        }
     )
 
-    # High-contrast Visual SVGs for Condition Options
-    img_screen_scratch = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23F8FAFC'/><rect x='45' y='20' width='110' height='160' rx='16' fill='%231E293B' stroke='%23475569' stroke-width='3'/><rect x='52' y='32' width='96' height='136' rx='8' fill='%230F172A'/><path d='M65 50 L115 75 M75 110 L130 135 M60 140 L100 155' stroke='%23F59E0B' stroke-width='2' stroke-linecap='round' stroke-dasharray='4,4'/><circle cx='100' cy='178' r='4' fill='%2364748B'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='11' fill='%23D97706'>HAIRLINE SCRATCHES</text></svg>"
-    img_screen_crack = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FEF2F2'/><rect x='45' y='20' width='110' height='160' rx='16' fill='%231E293B' stroke='%23DC2626' stroke-width='3'/><rect x='52' y='32' width='96' height='136' rx='8' fill='%230F172A'/><path d='M100 80 L65 40 M100 80 L140 50 M100 80 L80 120 M80 120 L55 145 M80 120 L125 155 M100 80 L135 115 M135 115 L145 140' stroke='%23EF4444' stroke-width='3' stroke-linecap='round'/><path d='M85 70 L95 55 M115 90 L130 85 M70 130 L60 125' stroke='%23FCA5A5' stroke-width='1.5'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='black' font-size='11' fill='%23DC2626'>CRACKED SCREEN</text></svg>"
-    img_display_lines = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FDF2F8'/><rect x='45' y='20' width='110' height='160' rx='16' fill='%231E293B' stroke='%23DB2777' stroke-width='3'/><rect x='52' y='32' width='96' height='136' rx='8' fill='%230F172A'/><line x1='75' y1='32' x2='75' y2='168' stroke='%2322C55E' stroke-width='4'/><line x1='110' y1='32' x2='110' y2='168' stroke='%23EC4899' stroke-width='3'/><circle cx='125' cy='70' r='14' fill='%23000000' stroke='%23475569' stroke-width='2'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='11' fill='%23BE185D'>LINES / BLACK SPOT</text></svg>"
-    img_touch_fail = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FFFBEB'/><rect x='45' y='20' width='110' height='160' rx='16' fill='%231E293B' stroke='%23D97706' stroke-width='3'/><rect x='52' y='32' width='96' height='136' rx='8' fill='%230F172A'/><circle cx='100' cy='95' r='24' fill='%23F59E0B' fill-opacity='0.2' stroke='%23F59E0B' stroke-width='2'/><path d='M90 85 L110 105 M110 85 L90 105' stroke='%23DC2626' stroke-width='4' stroke-linecap='round'/><path d='M95 140 L105 115 L120 125 Z' fill='%23FFFFFF'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='11' fill='%23B45309'>UNRESPONSIVE TOUCH</text></svg>"
-    img_body_scratches = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23F8FAFC'/><rect x='45' y='20' width='110' height='160' rx='16' fill='%23334155' stroke='%2364748B' stroke-width='3'/><rect x='52' y='30' width='35' height='40' rx='6' fill='%231E293B'/><circle cx='62' cy='42' r='6' fill='%230F172A'/><circle cx='62' cy='58' r='6' fill='%230F172A'/><path d='M100 80 L135 110 M110 130 L145 155 M60 110 L85 130' stroke='%23F59E0B' stroke-width='2.5' stroke-linecap='round'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='11' fill='%2364748B'>BODY SCUFFS</text></svg>"
-    img_body_dents = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FEF2F2'/><path d='M45 40 Q45 20 65 20 L135 20 Q155 20 155 40 L155 140 L145 150 L155 160 Q155 180 135 180 L65 180 Q45 180 45 160 Z' fill='%23334155' stroke='%23DC2626' stroke-width='3'/><circle cx='150' cy='150' r='12' fill='%23EF4444' fill-opacity='0.3'/><polygon points='145,145 155,150 145,155' fill='%23DC2626'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='11' fill='%23DC2626'>DENTED CORNER</text></svg>"
-    img_back_glass_broken = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FEF2F2'/><rect x='45' y='20' width='110' height='160' rx='16' fill='%23475569' stroke='%23DC2626' stroke-width='3'/><rect x='52' y='28' width='38' height='42' rx='8' fill='%231E293B'/><path d='M100 60 L75 90 M100 60 L135 75 M100 60 L115 110 M115 110 L80 145 M115 110 L140 150' stroke='%23EF4444' stroke-width='3' stroke-linecap='round'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='black' font-size='11' fill='%23DC2626'>CRACKED BACK GLASS</text></svg>"
-    img_camera_fail = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FEF2F2'/><circle cx='100' cy='95' r='45' fill='%231E293B' stroke='%23DC2626' stroke-width='4'/><circle cx='100' cy='95' r='30' fill='%230F172A'/><circle cx='92' cy='88' r='8' fill='%2338BDF8'/><path d='M80 75 L120 115 M100 95 L115 80 M100 95 L85 110' stroke='%23EF4444' stroke-width='3' stroke-linecap='round'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='11' fill='%23DC2626'>CAMERA DAMAGED</text></svg>"
-    img_faceid_fail = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FEF2F2'/><path d='M70 70 L60 70 L60 80 M130 70 L140 70 L140 80 M60 120 L60 130 L70 130 M140 120 L140 130 L130 130' stroke='%23DC2626' stroke-width='4' fill='none'/><circle cx='85' cy='90' r='4' fill='%23DC2626'/><circle cx='115' cy='90' r='4' fill='%23DC2626'/><path d='M85 115 Q100 105 115 115' stroke='%23DC2626' stroke-width='3' fill='none'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='11' fill='%23DC2626'>FACE ID / SENSOR FAIL</text></svg>"
-    img_battery_degraded = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FFFBEB'/><rect x='50' y='70' width='90' height='55' rx='10' fill='none' stroke='%23D97706' stroke-width='5'/><rect x='142' y='87' width='8' height='20' rx='4' fill='%23D97706'/><rect x='58' y='78' width='35' height='39' rx='4' fill='%23F59E0B'/><text x='100' y='103' text-anchor='middle' font-family='Arial' font-weight='black' font-size='16' fill='%2392400E'>&lt;80%</text><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='11' fill='%23B45309'>BATTERY HEALTH LOW</text></svg>"
-    img_battery_swollen = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FEF2F2'/><path d='M60 40 Q40 100 60 160 L140 160 Q160 100 140 40 Z' fill='%23B91C1C' stroke='%23EF4444' stroke-width='4'/><path d='M100 70 L100 110 M100 125 L100 130' stroke='white' stroke-width='6' stroke-linecap='round'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='black' font-size='11' fill='%23DC2626'>SWOLLEN BATTERY (DANGER)</text></svg>"
-    img_speaker_fail = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FEF2F2'/><path d='M65 85 L85 85 L110 65 L110 135 L85 115 L65 115 Z' fill='%2364748B'/><line x1='125' y1='75' x2='155' y2='125' stroke='%23DC2626' stroke-width='5' stroke-linecap='round'/><line x1='155' y1='75' x2='125' y2='125' stroke='%23DC2626' stroke-width='5' stroke-linecap='round'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='11' fill='%23DC2626'>SPEAKER / MIC FAULTY</text></svg>"
-    img_icloud_locked = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FEF2F2'/><rect x='55' y='30' width='90' height='140' rx='14' fill='%231E293B' stroke='%23DC2626' stroke-width='3'/><rect x='70' y='90' width='60' height='45' rx='8' fill='%23EF4444'/><path d='M80 90 L80 75 Q80 60 100 60 Q120 60 120 75 L120 90' fill='none' stroke='%23FCA5A5' stroke-width='5'/><circle cx='100' cy='110' r='4' fill='white'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='black' font-size='11' fill='%23DC2626'>ACTIVATION / FRP LOCKED</text></svg>"
+    print("✅ Device Categories seeded (Mobile, Tablet, Laptop, Smartwatch, Dead Phone, Other)")
 
-    # Question Options & Deductions (With Exclusive Groups, Rejections, and Visual Images)
-    options_data = [
-        # Screen
-        (cat_display, 'SCREEN_MINOR_SCRATCH', 'Minor hairline screen scratches', 'Light surface micro-scratches', img_screen_scratch, True, 'FLAT', Decimal('500.00'), 'screen_glass', False, 1),
-        (cat_display, 'SCREEN_CRACKED', 'Screen glass is cracked or broken', 'Visible cracks, spiderweb cracks on glass', img_screen_crack, True, 'FLAT', Decimal('3500.00'), 'screen_glass', False, 2),
-        (cat_display, 'DISPLAY_LINES', 'Display has colored lines, bleeding or black spots', 'OLED/LCD damage or green lines', img_display_lines, True, 'PERCENTAGE', Decimal('15.00'), '', False, 3),
-        (cat_display, 'TOUCH_ISSUE', 'Touch is erratic or not responding in some areas', 'Dead touch zones', img_touch_fail, True, 'FLAT', Decimal('2500.00'), '', False, 4),
-        
-        # Body
-        (cat_body, 'BODY_MINOR_SCRATCHES', 'Minor scratches on body / frame', 'Light signs of normal daily use', img_body_scratches, True, 'FLAT', Decimal('500.00'), 'body_damage', False, 1),
-        (cat_body, 'BODY_DENTS', 'Dents or chipped corners on frame', 'Impact drops or bent frame', img_body_dents, True, 'FLAT', Decimal('1500.00'), 'body_damage', False, 2),
-        (cat_body, 'BACK_GLASS_BROKEN', 'Back glass is cracked or broken', 'Cracks on rear glass panel', img_back_glass_broken, True, 'FLAT', Decimal('2500.00'), '', False, 3),
-
-        # Camera
-        (cat_camera, 'REAR_CAMERA_FAIL', 'Rear camera blurry, jittery or not working', 'Camera lens cracked or sensor dead', img_camera_fail, True, 'FLAT', Decimal('2000.00'), '', False, 1),
-        (cat_camera, 'FACEID_FAIL', 'Face ID or Fingerprint scanner not working', 'Biometric sensor failure', img_faceid_fail, True, 'FLAT', Decimal('1500.00'), '', False, 2),
-
-        # Battery
-        (cat_battery, 'BATTERY_DEGRADED', 'Battery health below 80% / Service Recommended', 'Frequent charging required', img_battery_degraded, True, 'PERCENTAGE', Decimal('8.00'), '', False, 1),
-        (cat_battery, 'BATTERY_SWOLLEN', 'Battery is swollen / back cover bulging', 'Safety hazard: fire/explosion risk', img_battery_swollen, True, 'FLAT', Decimal('0.00'), '', True, 2),
-
-        # Hardware & Security Rejection
-        (cat_hardware, 'SPEAKER_MIC_FAIL', 'Earpiece speaker or microphone issue', 'Call audio is distorted or silent', img_speaker_fail, True, 'FLAT', Decimal('800.00'), '', False, 1),
-        (cat_hardware, 'ICLOUD_LOCKED', 'Apple iCloud / Google FRP Account Lock Active', 'Ownership lock active on device', img_icloud_locked, True, 'FLAT', Decimal('0.00'), '', True, 2),
-    ]
-
-    for cat, code, title, desc, img, is_defect, d_type, val, grp, is_rej, order in options_data:
-        ConditionOption.objects.update_or_create(
-            code=code,
-            defaults={
-                'category': cat,
-                'title': title,
-                'description': desc,
-                'image_base64': img,
-                'is_defect': is_defect,
-                'deduction_type': d_type,
-                'default_deduction_value': val,
-                'exclusive_group': grp,
-                'is_rejection': is_rej,
-                'display_order': order
-            }
-        )
-
-    print("✅ Valuation rules & condition deductions seeded")
-
-    # 3. Brands, Models, and Storage Variants
-    # Sample clean SVG icons encoded in Base64
+    # ================= 3. BRANDS & LOGOS =================
     apple_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 170 170' width='100' height='100'><path fill='%23111827' d='M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.74 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.35.13-9.16-1.9-14.42-6.08-3.7-3.08-7.71-7.96-12.04-14.64-5.41-8.38-9.74-17.65-13.01-27.81-3.26-10.16-4.9-20.08-4.9-29.77 0-13.62 3.65-25.04 10.95-34.25 7.3-9.21 16.48-13.92 27.54-14.13 4.88 0 10.45 1.34 16.7 4.02 6.25 2.68 10.15 4.08 11.71 4.2 1.62-.12 5.76-1.58 12.42-4.39 6.66-2.81 12.47-4.14 17.43-3.99 12.75.75 22.86 5.43 30.34 14.04-11.07 6.69-16.51 16-16.32 27.93.19 9.87 3.96 17.97 11.31 24.31 7.35 6.34 16.14 9.9 26.37 10.68-2.3 6.96-5.08 14.14-8.33 21.55zM119.22 31.9c0-6.73 2.45-13.02 7.35-18.87 4.9-5.85 11.04-9.7 18.42-11.55.19 1.05.28 1.95.28 2.7 0 6.61-2.6 12.91-7.8 18.91-5.2 6-11.23 9.77-18.09 11.31-.06-.83-.16-1.66-.16-2.5z'/></svg>"
     samsung_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 60' width='140' height='42'><text x='10' y='42' font-family='Arial, sans-serif' font-weight='bold' font-size='32' fill='%231428A0' letter-spacing='2'>SAMSUNG</text></svg>"
-    oneplus_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 60' width='130' height='42'><rect x='5' y='10' width='40' height='40' fill='%23F50514' rx='4'/><text x='18' y='38' font-family='Arial, sans-serif' font-weight='bold' font-size='26' fill='white'>1</text><text x='55' y='40' font-family='Arial, sans-serif' font-weight='bold' font-size='26' fill='%23111827'>ONEPLUS</text></svg>"
     xiaomi_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 60' width='120' height='42'><rect x='5' y='10' width='40' height='40' fill='%23FF6900' rx='8'/><text x='12' y='38' font-family='Arial, sans-serif' font-weight='bold' font-size='22' fill='white'>mi</text><text x='55' y='38' font-family='Arial, sans-serif' font-weight='bold' font-size='24' fill='%23111827'>Xiaomi</text></svg>"
     google_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 60' width='120' height='42'><text x='10' y='40' font-family='Arial, sans-serif' font-weight='bold' font-size='26' fill='%234285F4'>G<tspan fill='%23EA4335'>o</tspan><tspan fill='%23FBBC05'>o</tspan><tspan fill='%234285F4'>g</tspan><tspan fill='%2334A853'>l</tspan><tspan fill='%23EA4335'>e</tspan></text></svg>"
+    oneplus_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 60' width='130' height='42'><rect x='5' y='10' width='40' height='40' fill='%23F50514' rx='4'/><text x='18' y='38' font-family='Arial, sans-serif' font-weight='bold' font-size='26' fill='white'>1</text><text x='55' y='40' font-family='Arial, sans-serif' font-weight='bold' font-size='26' fill='%23111827'>ONEPLUS</text></svg>"
+    vivo_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 60' width='120' height='42'><text x='10' y='40' font-family='Arial, sans-serif' font-weight='bold' font-size='30' fill='%230066FF'>vivo</text></svg>"
+    oppo_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 60' width='120' height='42'><text x='10' y='40' font-family='Arial, sans-serif' font-weight='bold' font-size='28' fill='%23008040'>oppo</text></svg>"
+    realme_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 60' width='120' height='42'><text x='10' y='40' font-family='Arial, sans-serif' font-weight='bold' font-size='28' fill='%23FFC400'>realme</text></svg>"
+    nothing_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 60' width='130' height='42'><text x='10' y='40' font-family='monospace' font-weight='bold' font-size='26' fill='%23111827'>NOTHING</text></svg>"
+    nokia_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 60' width='120' height='42'><text x='10' y='40' font-family='Arial, sans-serif' font-weight='bold' font-size='28' fill='%23124191'>NOKIA</text></svg>"
+    motorola_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 60' width='130' height='42'><circle cx='30' cy='30' r='20' fill='%2300142E'/><text x='20' y='38' font-family='Arial' font-weight='bold' font-size='22' fill='white'>M</text><text x='60' y='38' font-family='Arial' font-weight='bold' font-size='20' fill='%2300142E'>motorola</text></svg>"
+    honor_logo = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 60' width='120' height='42'><text x='10' y='40' font-family='Arial, sans-serif' font-weight='bold' font-size='28' fill='%2300A5DF'>HONOR</text></svg>"
 
-    b_apple, _ = Brand.objects.get_or_create(name='Apple', defaults={'logo_base64': apple_logo, 'display_order': 1})
-    b_samsung, _ = Brand.objects.get_or_create(name='Samsung', defaults={'logo_base64': samsung_logo, 'display_order': 2})
-    b_oneplus, _ = Brand.objects.get_or_create(name='OnePlus', defaults={'logo_base64': oneplus_logo, 'display_order': 3})
-    b_xiaomi, _ = Brand.objects.get_or_create(name='Xiaomi', defaults={'logo_base64': xiaomi_logo, 'display_order': 4})
-    b_google, _ = Brand.objects.get_or_create(name='Google', defaults={'logo_base64': google_logo, 'display_order': 5})
-
-    # Device mock graphic SVG in Base64
-    phone_graphic_svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 200' width='120' height='200'><rect x='5' y='5' width='110' height='190' rx='20' fill='%231e293b' stroke='%23475569' stroke-width='3'/><rect x='10' y='18' width='100' height='164' rx='12' fill='%230f172a'/><circle cx='60' cy='12' r='3' fill='%2364748b'/><rect x='42' y='28' width='36' height='12' rx='6' fill='%23020617'/></svg>"
-
-    models_data = [
-        # Apple
-        (b_apple, 'iPhone 15 Pro Max', 2023, [('8GB', '256GB', Decimal('72000.00')), ('8GB', '512GB', Decimal('82000.00'))]),
-        (b_apple, 'iPhone 15', 2023, [('6GB', '128GB', Decimal('44000.00')), ('6GB', '256GB', Decimal('51000.00'))]),
-        (b_apple, 'iPhone 14', 2022, [('6GB', '128GB', Decimal('34000.00')), ('6GB', '256GB', Decimal('39000.00'))]),
-        (b_apple, 'iPhone 13', 2021, [('4GB', '128GB', Decimal('26000.00')), ('4GB', '256GB', Decimal('30000.00'))]),
-        (b_apple, 'iPhone 12', 2020, [('4GB', '64GB', Decimal('18000.00')), ('4GB', '128GB', Decimal('21000.00'))]),
-
-        # Samsung
-        (b_samsung, 'Galaxy S24 Ultra', 2024, [('12GB', '256GB', Decimal('68000.00')), ('12GB', '512GB', Decimal('76000.00'))]),
-        (b_samsung, 'Galaxy S23', 2023, [('8GB', '128GB', Decimal('31000.00')), ('8GB', '256GB', Decimal('35000.00'))]),
-        (b_samsung, 'Galaxy A54 5G', 2023, [('8GB', '128GB', Decimal('14500.00')), ('8GB', '256GB', Decimal('16500.00'))]),
-
-        # OnePlus
-        (b_oneplus, 'OnePlus 12', 2024, [('12GB', '256GB', Decimal('39000.00')), ('16GB', '512GB', Decimal('45000.00'))]),
-        (b_oneplus, 'OnePlus 11R', 2023, [('8GB', '128GB', Decimal('22000.00')), ('16GB', '256GB', Decimal('25000.00'))]),
-
-        # Xiaomi
-        (b_xiaomi, 'Redmi Note 13 Pro+ 5G', 2024, [('8GB', '256GB', Decimal('16000.00')), ('12GB', '512GB', Decimal('18500.00'))]),
-
-        # Google
-        (b_google, 'Pixel 8 Pro', 2023, [('12GB', '128GB', Decimal('42000.00')), ('12GB', '256GB', Decimal('48000.00'))]),
-        (b_google, 'Pixel 7a', 2023, [('8GB', '128GB', Decimal('21000.00'))]),
+    brands_data = [
+        ('Apple', apple_logo, 1),
+        ('Samsung', samsung_logo, 2),
+        ('Xiaomi', xiaomi_logo, 3),
+        ('Google', google_logo, 4),
+        ('OnePlus', oneplus_logo, 5),
+        ('Vivo', vivo_logo, 6),
+        ('Oppo', oppo_logo, 7),
+        ('Realme', realme_logo, 8),
+        ('NOTHING', nothing_logo, 9),
+        ('Nokia', nokia_logo, 10),
+        ('Motorola', motorola_logo, 11),
+        ('HONOR', honor_logo, 12),
     ]
 
-    for brand_obj, m_name, yr, variants in models_data:
-        m_obj, _ = PhoneModel.objects.get_or_create(
-            brand=brand_obj,
-            name=m_name,
-            defaults={'release_year': yr, 'image_base64': phone_graphic_svg}
+    brand_objs = {}
+    for name, logo, order in brands_data:
+        b, _ = Brand.objects.update_or_create(
+            name=name,
+            defaults={
+                'category': cat_mobile,
+                'logo_base64': logo,
+                'display_order': order,
+                'is_active': True
+            }
         )
-        for ram_val, storage_val, price in variants:
-            StorageVariant.objects.get_or_create(
-                model=m_obj,
-                ram=ram_val,
-                storage=storage_val,
-                defaults={'base_price': price, 'min_price': Decimal('1500.00')}
+        brand_objs[name] = b
+
+    print(f"✅ Brands seeded ({len(brand_objs)} Brands: Apple, Samsung, Xiaomi, Google, OnePlus...)")
+
+    # ================= 4. SERIES & MODELS =================
+    b_apple = brand_objs['Apple']
+    s_ip11, _ = DeviceSeries.objects.get_or_create(brand=b_apple, name='iPhone 11 Series', defaults={'display_order': 1})
+    s_ip12, _ = DeviceSeries.objects.get_or_create(brand=b_apple, name='iPhone 12 Series', defaults={'display_order': 2})
+    s_ip13, _ = DeviceSeries.objects.get_or_create(brand=b_apple, name='iPhone 13 Series', defaults={'display_order': 3})
+
+    b_samsung = brand_objs['Samsung']
+    s_galaxy_s, _ = DeviceSeries.objects.get_or_create(brand=b_samsung, name='Galaxy S Series', defaults={'display_order': 1})
+
+    phone_graphic_svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 200' width='120' height='200'><rect x='5' y='5' width='110' height='190' rx='20' fill='%231e293b' stroke='%23475569' stroke-width='3'/><rect x='10' y='18' width='100' height='164' rx='12' fill='%230f172a'/><circle cx='60' cy='12' r='3' fill='%2364748b'/><rect x='42' y='28' width='36' height='12' rx='6' fill='%23020617'/></svg>"
+
+    models_list = [
+        # Apple iPhone 11 Series
+        (b_apple, s_ip11, 'iPhone 11', 2019, [('4GB', '64GB', Decimal('12500.00')), ('4GB', '128GB', Decimal('16000.00')), ('4GB', '256GB', Decimal('19000.00'))]),
+        (b_apple, s_ip11, 'iPhone 11 Pro', 2019, [('4GB', '64GB', Decimal('16500.00')), ('4GB', '256GB', Decimal('21000.00')), ('4GB', '512GB', Decimal('24500.00'))]),
+        (b_apple, s_ip11, 'iPhone 11 Pro Max', 2019, [('4GB', '64GB', Decimal('19500.00')), ('4GB', '256GB', Decimal('24000.00')), ('4GB', '512GB', Decimal('28000.00'))]),
+
+        # Apple iPhone 12 Series
+        (b_apple, s_ip12, 'iPhone 12 Mini', 2020, [('4GB', '64GB', Decimal('15000.00')), ('4GB', '128GB', Decimal('18000.00'))]),
+        (b_apple, s_ip12, 'iPhone 12', 2020, [('4GB', '64GB', Decimal('18000.00')), ('4GB', '128GB', Decimal('21000.00')), ('4GB', '256GB', Decimal('24000.00'))]),
+        (b_apple, s_ip12, 'iPhone 12 Pro', 2020, [('6GB', '128GB', Decimal('26000.00')), ('6GB', '256GB', Decimal('30000.00'))]),
+
+        # Apple iPhone 13 Series
+        (b_apple, s_ip13, 'iPhone 13', 2021, [('4GB', '128GB', Decimal('26000.00')), ('4GB', '256GB', Decimal('30000.00')), ('4GB', '512GB', Decimal('35000.00'))]),
+
+        # Samsung
+        (b_samsung, s_galaxy_s, 'Galaxy S21', 2021, [('8GB', '128GB', Decimal('14500.00')), ('8GB', '256GB', Decimal('17000.00'))]),
+        (b_samsung, s_galaxy_s, 'Galaxy S24 Ultra', 2024, [('12GB', '256GB', Decimal('68000.00')), ('12GB', '512GB', Decimal('76000.00'))]),
+    ]
+
+    for brand, series, m_name, year, variants in models_list:
+        pm, _ = PhoneModel.objects.update_or_create(
+            brand=brand,
+            name=m_name,
+            defaults={
+                'series': series,
+                'release_year': year,
+                'image_base64': phone_graphic_svg,
+                'is_active': True
+            }
+        )
+        for ram, storage, price in variants:
+            StorageVariant.objects.update_or_create(
+                model=pm,
+                ram=ram,
+                storage=storage,
+                defaults={'base_price': price, 'min_price': Decimal('500.00'), 'is_active': True}
             )
 
-    print("✅ Catalog seeded with Brands, Models, and Storage Variants")
+    print("✅ Models, Series and Storage Variants seeded")
 
-    # 4. Seed Live Test Orders in different states to demonstrate the full workflow
-    v_ip13 = StorageVariant.objects.filter(model__name='iPhone 13', storage='128GB').first()
-    v_s23 = StorageVariant.objects.filter(model__name='Galaxy S23', storage='128GB').first()
-    v_op12 = StorageVariant.objects.filter(model__name='OnePlus 12', storage='256GB').first()
-    v_pix8 = StorageVariant.objects.filter(model__name='Pixel 8 Pro', storage='128GB').first()
+    # ================= 5. DYNAMIC 11-STEP QUESTIONNAIRE =================
+    # High-contrast SVGs
+    img_screen_clean = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23F0FDF4'/><rect x='45' y='20' width='110' height='160' rx='16' fill='%231E293B' stroke='%2316A34A' stroke-width='3'/><rect x='52' y='32' width='96' height='136' rx='8' fill='%230F172A'/><circle cx='100' cy='100' r='20' fill='%2316A34A'/><path d='M92 100 L98 106 L108 94' stroke='white' stroke-width='3' fill='none'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='11' fill='%2316A34A'>NO DEFECT</text></svg>"
+    img_screen_scratch = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FFFBEB'/><rect x='45' y='20' width='110' height='160' rx='16' fill='%231E293B' stroke='%23F59E0B' stroke-width='3'/><rect x='52' y='32' width='96' height='136' rx='8' fill='%230F172A'/><path d='M65 50 L115 75 M75 110 L130 135 M60 140 L100 155' stroke='%23F59E0B' stroke-width='2' stroke-linecap='round' stroke-dasharray='4,4'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='11' fill='%23D97706'>SCRATCHES</text></svg>"
+    img_screen_crack = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200' width='200' height='200'><rect width='200' height='200' rx='24' fill='%23FEF2F2'/><rect x='45' y='20' width='110' height='160' rx='16' fill='%231E293B' stroke='%23DC2626' stroke-width='3'/><rect x='52' y='32' width='96' height='136' rx='8' fill='%230F172A'/><path d='M100 80 L65 40 M100 80 L140 50 M100 80 L80 120 M80 120 L55 145 M80 120 L125 155 M100 80 L135 115 M135 115 L145 140' stroke='%23EF4444' stroke-width='3' stroke-linecap='round'/><text x='100' y='18' text-anchor='middle' font-family='Arial' font-weight='black' font-size='11' fill='%23DC2626'>BROKEN / CRACKED</text></svg>"
+    
+    # 11 Steps
+    steps_data = [
+        # Step 2: Device Details
+        (2, 'Device Details', 'Verify calling and screen replacement status', 'MULTIPLE', 'Smartphone', 'Ensure device powers on without looping', [
+            ('CALLING_OK', 'Calling Functional', 'Phone can make and receive cellular calls', img_screen_clean, False, 'FLAT', Decimal('0.00'), False, False),
+            ('DISPLAY_REPLACED', 'Replaced / Duplicate Display', 'Screen was replaced by non-official shop', img_screen_scratch, True, 'FLAT', Decimal('1500.00'), False, False),
+        ]),
 
-    # SVG payment receipt preview
-    sample_receipt_svg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 350 450' width='350' height='450'><rect width='100%25' height='100%25' fill='%230f172a'/><circle cx='175' cy='70' r='36' fill='%2310b981'/><path d='M160 70 L170 80 L190 60' stroke='white' stroke-width='6' fill='none' stroke-linecap='round'/><text x='175' y='135' font-family='Arial' font-size='22' font-weight='bold' fill='white' text-anchor='middle'>Paid Successfully</text><text x='175' y='175' font-family='Arial' font-size='32' font-weight='bold' fill='%2338bdf8' text-anchor='middle'>%E2%82%B9 24,000</text><rect x='30' y='210' width='290' height='180' rx='8' fill='%231e293b'/><text x='45' y='240' font-family='Arial' font-size='14' fill='%2394a3b8'>Paid to:</text><text x='45' y='265' font-family='Arial' font-size='16' font-weight='bold' fill='white'>Vikram Mehra</text><text x='45' y='285' font-family='Arial' font-size='14' fill='%23cbd5e1'>vikram@icici</text><text x='45' y='320' font-family='Arial' font-size='14' fill='%2394a3b8'>UPI Ref / UTR:</text><text x='45' y='345' font-family='Arial' font-size='15' font-weight='bold' fill='%2310b981'>432109876543</text><text x='45' y='370' font-family='Arial' font-size='12' fill='%2394a3b8'>State Bank of India %E2%80%A2 15-Nov-2026</text></svg>"
+        # Step 3: Display Glass Condition
+        (3, 'Display Glass Condition', 'Choose the display glass condition of your device', 'SINGLE', 'Smartphone', 'Check your screen under bright light and from different angles', [
+            ('DISP_NO_DEFECT', 'No Defect', 'Pristine screen without scratches or cracks', img_screen_clean, False, 'FLAT', Decimal('0.00'), False, False),
+            ('DISP_SCRATCHES', 'Scratches', 'Hairline micro-scratches on glass surface', img_screen_scratch, True, 'FLAT', Decimal('500.00'), False, False),
+            ('DISP_BROKEN', 'Broken / Cracked', 'Spiderweb cracks or physical glass breaks', img_screen_crack, True, 'FLAT', Decimal('2500.00'), False, False),
+        ]),
 
-    if v_ip13:
-        # Order 1: Ready for Admin Payout (Status: OWNERSHIP_TRANSFERRED)
-        PhoneSale.objects.update_or_create(
-            sale_code='PHN-2026-001',
+        # Step 4: Display Defects
+        (4, 'Display Defects', 'Check for internal OLED / LCD panel issues', 'MULTIPLE', 'Layers', 'Look for vertical colored lines or black spots', [
+            ('DEAD_SPOTS', 'Dead Spots / Black Ink', 'Ink bleeding or black dots on display', img_screen_crack, True, 'FLAT', Decimal('1500.00'), False, False),
+            ('GREEN_LINES', 'Display Lines / Discoloration', 'Green, pink or white lines on screen', img_screen_crack, True, 'PERCENTAGE', Decimal('15.00'), False, False),
+        ]),
+
+        # Step 5: Body Defects
+        (5, 'Body Defects', 'Check the metal or aluminum frame of your phone', 'MULTIPLE', 'Shield', 'Inspect corners and sides for drop dents', [
+            ('BODY_MINOR_SCRATCH', 'Minor Scratches', 'Light daily usage scuffs on frame', img_screen_scratch, True, 'FLAT', Decimal('500.00'), False, False),
+            ('BODY_DENT', 'Body Dent / Chipped', 'Corner dents or chipped aluminum', img_screen_crack, True, 'FLAT', Decimal('500.00'), False, False),
+            ('BODY_BENT', 'Body Bend', 'Device is visibly bent or curved', img_screen_crack, True, 'FLAT', Decimal('2000.00'), False, False),
+        ]),
+
+        # Step 6: Panel / Back Glass
+        (6, 'Panel Defects', 'Check back cover or rear glass condition', 'SINGLE', 'Layers', 'Look for cracks around camera module', [
+            ('PANEL_CLEAN', 'Clean Back Panel', 'No cracks on rear glass', img_screen_clean, False, 'FLAT', Decimal('0.00'), False, False),
+            ('PANEL_CRACKED', 'Back Glass Broken', 'Cracked or shattered rear glass panel', img_screen_crack, True, 'FLAT', Decimal('2000.00'), False, False),
+            ('PANEL_LOOSE', 'Loose / Missing Back Cover', 'Back cover popping open or loose', img_screen_scratch, True, 'FLAT', Decimal('1000.00'), False, False),
+        ]),
+
+        # Step 7: SIM & Network
+        (7, 'SIM & Network', 'SIM tray and wireless network connectivity', 'MULTIPLE', 'Wifi', 'Ensure SIM tray ejects smoothly', [
+            ('SIM_TRAY_FAIL', 'SIM Tray Missing or Damaged', 'Tray broken or missing', img_screen_scratch, True, 'FLAT', Decimal('300.00'), False, False),
+            ('SIM_CARD_FAIL', 'SIM Card Not Detecting', 'No service or invalid SIM error', img_screen_crack, True, 'FLAT', Decimal('1200.00'), False, False),
+        ]),
+
+        # Step 8: Camera Faults
+        (8, 'Camera Faults', 'Select multiple options if device has more than one fault', 'MULTIPLE', 'Camera', 'Open camera app and test zoom, front & rear lenses', [
+            ('FRONT_CAM_FAULT', 'Front Camera Faulty', 'Front camera blank or not opening', img_screen_crack, True, 'FLAT', Decimal('1500.00'), False, False),
+            ('FRONT_CAM_GLASS', 'Front Camera Glass Scratch / Broken', 'Cracked glass over selfie camera', img_screen_scratch, True, 'FLAT', Decimal('800.00'), False, False),
+            ('BACK_CAM_FAULT', 'Back Camera Faulty', 'Blur, jitter, blank or not opening', img_screen_crack, True, 'FLAT', Decimal('2000.00'), False, False),
+            ('BACK_CAM_GLASS', 'Back Camera Glass Scratch / Broken', 'Lens glass broken or cracked', img_screen_crack, True, 'FLAT', Decimal('800.00'), False, False),
+        ]),
+
+        # Step 9: Functional Faults
+        (9, 'Functional Faults', 'Select all applicable functional faults', 'MULTIPLE', 'Settings', 'Test biometric Face ID, audio speakers and mic', [
+            ('PROXIMITY_FAIL', 'Proximity Sensor', 'Screen does not turn off during calls', img_screen_scratch, True, 'FLAT', Decimal('600.00'), False, False),
+            ('EARPIECE_FAIL', 'Headset / Earpiece Speaker', 'No sound or low distorted sound', img_screen_scratch, True, 'FLAT', Decimal('600.00'), False, False),
+            ('LOUDSPEAKER_FAIL', 'Loud Speaker', 'Ring tones or media audio not playing', img_screen_crack, True, 'FLAT', Decimal('800.00'), False, False),
+            ('MIC_FAIL', 'Microphone', 'Callers cannot hear your voice', img_screen_crack, True, 'FLAT', Decimal('800.00'), False, False),
+            ('WIFI_FAIL', 'WiFi / Bluetooth', 'Cannot connect to wireless networks', img_screen_crack, True, 'FLAT', Decimal('1200.00'), False, False),
+            ('BATTERY_LOW', 'Battery Health (Below 80%)', 'Requires frequent charging / Service notice', img_screen_scratch, True, 'PERCENTAGE', Decimal('15.00'), False, False),
+            ('BATTERY_SWOLLEN', 'Swollen Battery (Safety Risk)', 'Bulging back cover / fire risk', img_screen_crack, True, 'FLAT', Decimal('0.00'), True, False),
+            ('ICLOUD_LOCKED', 'Apple iCloud / Google FRP Account Lock', 'Ownership lock active on phone', img_screen_crack, True, 'FLAT', Decimal('0.00'), True, False),
+        ]),
+
+        # Step 10: Accessories & Warranty
+        (10, 'Accessories & Warranty', 'Select multiple options if available', 'MULTIPLE', 'Gift', 'Including original accessories increases buyback value', [
+            ('ACC_BOX', 'Original Box', 'Original device packaging box with matching IMEI', img_screen_clean, False, 'FLAT', Decimal('0.00'), False, True),
+            ('ACC_CHARGER', 'Original Charger', 'Official wall adapter', img_screen_clean, False, 'FLAT', Decimal('0.00'), False, True),
+            ('ACC_CABLE', 'Charger Cable', 'Original charging wire', img_screen_clean, False, 'FLAT', Decimal('0.00'), False, True),
+            ('ACC_BILL', 'Invoice Bill', 'Valid retail tax purchase invoice', img_screen_clean, False, 'FLAT', Decimal('0.00'), False, True),
+            ('WARRANTY_3M', 'Warranty Below 3 Months', 'Device in official manufacturer warranty', img_screen_clean, False, 'FLAT', Decimal('0.00'), False, False),
+            ('WARRANTY_NONE', 'No Warranty', 'Device out of warranty', img_screen_clean, False, 'FLAT', Decimal('0.00'), False, False),
+        ]),
+    ]
+
+    for step_num, title, subtitle, sel_type, icon, tip, opts in steps_data:
+        cat_obj, _ = ConditionCategory.objects.update_or_create(
+            step_number=step_num,
             defaults={
-                'customer': customer_user,
-                'customer_name': 'Pooja Verma',
-                'customer_phone': '9876543212',
-                'customer_email': 'customer@example.com',
-                'variant': v_ip13,
-                'base_price': v_ip13.base_price,
-                'estimated_price': Decimal('22500.00'),
-                'final_price': Decimal('21000.00'),
-                'status': 'OWNERSHIP_TRANSFERRED',
-                'assigned_agent': agent_user,
-                'pickup_address': 'Flat 402, Green Glen Layout, Bellandur',
-                'pickup_city': 'Bengaluru',
-                'pickup_pincode': '560103',
-                'beneficiary_type': 'UPI',
-                'beneficiary_name': 'Pooja Verma',
-                'beneficiary_upi_id': 'pooja@okhdfcbank',
-                'imei_number': '354892109845123',
-                'customer_handover_signed': True,
-                'admin_notes': 'Doorstep inspection completed. Ready for UPI payout transfer.',
+                'device_category': cat_mobile,
+                'name': title,
+                'subtitle': subtitle,
+                'selection_type': sel_type,
+                'icon_name': icon,
+                'pro_tip': tip,
+                'display_order': step_num,
+                'is_active': True
+            }
+        )
+        for code, o_title, o_desc, o_img, is_defect, d_type, d_val, is_rej, is_acc in opts:
+            ConditionOption.objects.update_or_create(
+                code=code,
+                defaults={
+                    'category': cat_obj,
+                    'title': o_title,
+                    'description': o_desc,
+                    'image_base64': o_img,
+                    'is_defect': is_defect,
+                    'deduction_type': d_type,
+                    'default_deduction_value': d_val,
+                    'is_rejection': is_rej,
+                    'is_accessory_bonus': is_acc,
+                    'display_order': 1,
+                    'is_active': True
+                }
+            )
+
+    print("✅ Dynamic 11-Step Questionnaire & Options seeded")
+
+    # ================= 6. DYNAMIC CMS HOMEPAGE SECTIONS =================
+    cms_sections = [
+        ('HERO_CAROUSEL', 'Welcome Back! Sell Your Device', 'Get the best value for your old device.', 1, {
+            'slides': [
+                {
+                    'badge': 'The Device Buyback Company',
+                    'title': 'Sell Your Old Device',
+                    'subtitle': 'Get the best value for your phone, tablet, laptop & more.',
+                    'button_text': 'Start Selling Now →',
+                    'button_link': '/sell',
+                    'bg_gradient': 'from-[#0BAA4B] to-[#087C38]'
+                },
+                {
+                    'badge': 'Instant Payout Guarantee',
+                    'title': 'Doorstep Cash in 60 Seconds',
+                    'subtitle': 'Verified agent inspects device and transfers UPI to your GPay / PhonePe.',
+                    'button_text': 'Check Phone Value →',
+                    'button_link': '/sell',
+                    'bg_gradient': 'from-[#087C38] to-[#0D4722]'
+                }
+            ]
+        }),
+        ('QUICK_SERVICES', 'Quick Services', 'Fast access to your buyback operations', 2, {
+            'services': [
+                {'icon': 'Smartphone', 'title': 'Sell Device', 'desc': 'Get instant cash', 'action': 'sell'},
+                {'icon': 'Truck', 'title': 'Track Pickup', 'desc': 'Live agent status', 'action': 'track'},
+                {'icon': 'Package', 'title': 'My Orders', 'desc': 'View past sales', 'action': 'orders'},
+                {'icon': 'Headphones', 'title': 'Support', 'desc': 'Help & WhatsApp', 'action': 'support'},
+            ]
+        }),
+        ('TOP_BRANDS', 'Top Brands', 'Select your device manufacturer', 3, {
+            'brands': ['Apple', 'Samsung', 'Xiaomi', 'Google', 'OnePlus', 'Vivo', 'Oppo', 'Realme']
+        }),
+        ('SECURITY_BANNER', 'Your Data is Safe', 'We value your privacy and security. 100% Certified Data Wipe.', 4, {
+            'icon': 'ShieldCheck',
+            'title': 'Your Data is Safe',
+            'subtitle': 'We perform military-grade certified factory wipe before your phone is processed.'
+        }),
+    ]
+
+    for s_type, s_title, s_sub, s_order, s_data in cms_sections:
+        CMSHomeSection.objects.update_or_create(
+            section_type=s_type,
+            defaults={
+                'title': s_title,
+                'subtitle': s_sub,
+                'display_order': s_order,
+                'data_json': s_data,
+                'is_active': True
             }
         )
 
-        # Order 2: Already Paid with Base64 screenshot proof and UTR!
-        sale_paid, _ = PhoneSale.objects.update_or_create(
-            sale_code='PHN-2026-PAID-01',
-            defaults={
-                'customer': customer_user,
-                'customer_name': 'Vikram Mehra',
-                'customer_phone': '9870099887',
-                'customer_email': 'vikram@example.com',
-                'variant': v_ip13,
-                'base_price': v_ip13.base_price,
-                'estimated_price': Decimal('24000.00'),
-                'final_price': Decimal('24000.00'),
-                'status': 'PAYMENT_COMPLETED',
-                'assigned_agent': agent_user,
-                'pickup_address': 'Plot 12, Koramangala 4th Block',
-                'pickup_city': 'Bengaluru',
-                'pickup_pincode': '560034',
-                'beneficiary_type': 'UPI',
-                'beneficiary_name': 'Vikram Mehra',
-                'beneficiary_upi_id': 'vikram@icici',
-                'imei_number': '358941092837465',
-                'customer_handover_signed': True,
-                'admin_notes': 'Payment transferred via Google Pay.',
-            }
-        )
+    print("✅ Dynamic CMS Home Sections seeded")
 
-        Payment.objects.update_or_create(
-            sale=sale_paid,
-            defaults={
-                'amount': Decimal('24000.00'),
-                'payment_method': 'GPAY',
-                'beneficiary_name': 'Vikram Mehra',
-                'beneficiary_upi_id': 'vikram@icici',
-                'utr_number': '432109876543',
-                'payment_proof_base64': sample_receipt_svg,
-                'admin_notes': 'Paid via Google Pay business UPI. Transfer confirmed.',
-                'paid_by': admin_user,
-                'is_verified': True,
-            }
-        )
+    # ================= 7. LIVE SAMPLE ORDERS (Matching Reference Image) =================
+    sample_sale, _ = PhoneSale.objects.update_or_create(
+        sale_code='XP2610008753',
+        defaults={
+            'customer': customer_user,
+            'customer_name': 'Mohamed K.',
+            'customer_phone': '9876543212',
+            'customer_email': 'mohamed@example.com',
+            'variant': StorageVariant.objects.filter(model__name='iPhone 11', storage='128GB').first() or StorageVariant.objects.first(),
+            'base_price': Decimal('16000.00'),
+            'estimated_price': Decimal('14500.00'),
+            'final_price': Decimal('14500.00'),
+            'status': 'PICKUP_SCHEDULED',
+            'assigned_agent': agent_user,
+            'pickup_address': 'No. 42, Green Avenue, Anna Nagar',
+            'pickup_city': 'Tirupur',
+            'pickup_pincode': '641602',
+            'pickup_slot': 'Afternoon (1:00 PM - 5:00 PM)',
+            'beneficiary_type': 'UPI',
+            'beneficiary_name': 'Mohamed K.',
+            'beneficiary_upi_id': 'mohamed@okaxis',
+        }
+    )
 
-    # Order 3: Assigned to Collection Agent (Status: PICKUP_SCHEDULED)
-    if v_s23:
-        PhoneSale.objects.update_or_create(
-            sale_code='PHN-2026-002',
-            defaults={
-                'customer': customer_user,
-                'customer_name': 'Pooja Verma',
-                'customer_phone': '9876543212',
-                'customer_email': 'customer@example.com',
-                'variant': v_s23,
-                'base_price': v_s23.base_price,
-                'estimated_price': Decimal('31000.00'),
-                'final_price': Decimal('31000.00'),
-                'status': 'PICKUP_SCHEDULED',
-                'assigned_agent': agent_user,
-                'pickup_address': '14th Cross, Indiranagar',
-                'pickup_city': 'Bengaluru',
-                'pickup_pincode': '560038',
-                'pickup_slot': 'Morning (10:00 AM - 1:00 PM)',
-                'beneficiary_type': 'UPI',
-                'beneficiary_name': 'Pooja Verma',
-                'beneficiary_upi_id': 'pooja@okhdfcbank',
-                'customer_handover_signed': False,
-                'admin_notes': 'Agent Ramesh assigned for morning doorstep pickup.',
-            }
-        )
-
-    # Order 4: Revised Offer Sent - Waiting Customer Acceptance (Status: FINAL_OFFER_SENT)
-    if v_op12:
-        sale_revised, _ = PhoneSale.objects.update_or_create(
-            sale_code='PHN-2026-003',
-            defaults={
-                'customer': customer_user,
-                'customer_name': 'Arun Karthik',
-                'customer_phone': '9840192837',
-                'customer_email': 'arun@example.com',
-                'variant': v_op12,
-                'base_price': v_op12.base_price,
-                'estimated_price': Decimal('39000.00'),
-                'final_price': Decimal('36500.00'),
-                'status': 'FINAL_OFFER_SENT',
-                'assigned_agent': agent_user,
-                'pickup_address': 'Prestige Falcon City, Kanakapura Road',
-                'pickup_city': 'Bengaluru',
-                'pickup_pincode': '560062',
-                'beneficiary_type': 'BANK',
-                'beneficiary_name': 'Arun Karthik',
-                'beneficiary_account_no': '9182736450123',
-                'beneficiary_ifsc': 'HDFC0000128',
-                'imei_number': '867123049581726',
-                'customer_handover_signed': False,
-                'admin_notes': 'Minor hairline scratches on back glass during inspection. Reduced by ₹2,500.',
-            }
-        )
-
-    # Order 5: Brand New Request Submitted (Status: SUBMITTED - Awaiting Admin Assignment)
-    if v_pix8:
-        PhoneSale.objects.update_or_create(
-            sale_code='PHN-2026-004',
-            defaults={
-                'customer_name': 'Siddharth Rao',
-                'customer_phone': '9900112233',
-                'customer_email': 'sid@example.com',
-                'variant': v_pix8,
-                'base_price': v_pix8.base_price,
-                'estimated_price': Decimal('42000.00'),
-                'status': 'SUBMITTED',
-                'pickup_address': 'Sobha City, Thanisandra Main Road',
-                'pickup_city': 'Bengaluru',
-                'pickup_pincode': '560077',
-                'pickup_slot': 'Afternoon (1:00 PM - 4:00 PM)',
-                'beneficiary_type': 'UPI',
-                'beneficiary_name': 'Siddharth Rao',
-                'beneficiary_upi_id': 'sidrao@axisbank',
-                'customer_handover_signed': False,
-            }
-        )
-
-    # 5. Price History Audit Sample
-    if v_ip13:
-        PriceHistory.objects.get_or_create(
-            variant=v_ip13,
-            old_base_price=Decimal('28000.00'),
-            new_base_price=Decimal('26000.00'),
-            defaults={
-                'changed_by': admin_user,
-                'reason': 'Market markdown post festive season',
-            }
-        )
-    if v_s23:
-        PriceHistory.objects.get_or_create(
-            variant=v_s23,
-            old_base_price=Decimal('33000.00'),
-            new_base_price=Decimal('31000.00'),
-            defaults={
-                'changed_by': admin_user,
-                'reason': 'Flagship depreciation adjustment',
-            }
-        )
-
-    print("✅ Sample live orders seeded with Base64 payment proof")
-    print("✅ Price history audit entries seeded")
-    print("🎉 SEED COMPLETED SUCCESSFULLY!")
+    print(f"✅ Sample Order {sample_sale.sale_code} seeded (XP2610008753)")
+    print("🎉 MASTER X-PHONES SEED COMPLETED 100% SUCCESSFULLY!")
 
 if __name__ == '__main__':
-    run()
+    seed_database()

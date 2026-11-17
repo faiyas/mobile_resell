@@ -1,48 +1,96 @@
 import React from 'react';
-import { Smartphone, CheckCircle, Search, User, LogOut, ShieldCheck, ArrowRight, UserCheck } from 'lucide-react';
+import { 
+  Smartphone, Search, User, LogOut, ShieldCheck, 
+  ArrowRight, UserCheck, MapPin, ChevronDown, CheckCircle2 
+} from 'lucide-react';
 
-export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAuth, onLogout }) {
+export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAuth, onLogout, selectedCity = 'Tirupur', onSelectCity }) {
+  const categories = [
+    { label: 'Sell Old Mobile', slug: 'mobile' },
+    { label: 'Tablet', slug: 'tablet' },
+    { label: 'Laptop', slug: 'laptop' },
+    { label: 'Smartwatch', slug: 'smartwatch' },
+    { label: 'Dead Phone', slug: 'dead-phone' },
+  ];
+
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 sm:h-16">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E7EEE9] shadow-sm">
+      {/* Top micro bar for categories (matching reference image) */}
+      <div className="hidden lg:block bg-[#F7FAF8] border-b border-[#E7EEE9] py-1.5 px-4 text-xs font-semibold text-[#17251C]">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <span className="text-[10px] font-black uppercase text-[#0BAA4B] tracking-wider">Fast Services:</span>
+            <div className="flex items-center gap-3">
+              {categories.map((cat, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveTab('sell')}
+                  className="hover:text-[#0BAA4B] transition-colors flex items-center gap-1 text-[11px]"
+                >
+                  <span className="text-[#0BAA4B]">●</span> {cat.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-[#7B8980]">
+            <span className="flex items-center gap-1 text-[#17251C] font-bold">
+              <MapPin className="w-3.5 h-3.5 text-[#0BAA4B]" /> {selectedCity}
+            </span>
+            <span>|</span>
+            <span className="text-[#0BAA4B] font-bold">Free Doorstep Pickup</span>
+          </div>
+        </div>
+      </div>
 
-          {/* Logo */}
+      {/* Main Navbar */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 sm:h-18">
+
+          {/* X-PHONES Brand Logo */}
           <div
             onClick={() => setActiveTab(currentUser?.role === 'ADMIN' ? 'admin' : currentUser?.role === 'COLLECTION_AGENT' ? 'inspection' : 'sell')}
-            className="flex items-center gap-2 cursor-pointer group shrink-0"
+            className="flex items-center gap-2.5 cursor-pointer group shrink-0 select-none"
           >
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
-              <Smartphone className="w-4 h-4 sm:w-5 sm:h-5" />
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] flex items-center justify-center text-white shadow-lg shadow-[#0BAA4B]/20 group-hover:scale-105 transition-transform font-black text-xl">
+              X
             </div>
             <div>
-              <div className="flex items-center gap-1">
-                <span className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">ReCell</span>
-                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-1 py-0.2 rounded">India</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xl sm:text-2xl font-black tracking-tight text-[#17251C]">
+                  X-PHONES
+                </span>
+                <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider bg-[#E8F8ED] text-[#087C38] px-1.5 py-0.5 rounded-full border border-[#0BAA4B]/20">
+                  Buyback
+                </span>
               </div>
-              <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium -mt-1 hidden sm:block">Sell Phone · Instant Cash</p>
+              <p className="text-[9px] sm:text-[10px] text-[#7B8980] font-bold tracking-wider uppercase -mt-0.5 hidden xs:block">
+                The Device Buyback Company
+              </p>
             </div>
           </div>
 
           {/* Desktop Navigation Links (Strict Role-Based) */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1.5 text-xs sm:text-sm font-bold">
             <button
               onClick={() => setActiveTab('sell')}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors ${activeTab === 'sell'
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
+              className={`px-3 py-2 rounded-xl transition ${
+                activeTab === 'sell'
+                  ? 'bg-[#E8F8ED] text-[#087C38]'
+                  : 'text-[#17251C] hover:bg-[#F7FAF8] hover:text-[#0BAA4B]'
+              }`}
             >
-              Sell Old Phone
+              Sell Device
             </button>
+
             <button
               onClick={() => setActiveTab('track')}
-              className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 ${activeTab === 'track'
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
+              className={`px-3 py-2 rounded-xl transition flex items-center gap-1.5 ${
+                activeTab === 'track'
+                  ? 'bg-[#E8F8ED] text-[#087C38]'
+                  : 'text-[#17251C] hover:bg-[#F7FAF8] hover:text-[#0BAA4B]'
+              }`}
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-4 h-4 text-[#0BAA4B]" />
               {currentUser?.role === 'CUSTOMER' ? 'My Orders' : 'Track Status'}
             </button>
 
@@ -50,13 +98,14 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             {currentUser?.role === 'ADMIN' && (
               <button
                 onClick={() => setActiveTab('admin')}
-                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 ${activeTab === 'admin'
-                    ? 'bg-indigo-50 text-indigo-700'
-                    : 'text-indigo-600 hover:bg-indigo-50'
-                  }`}
+                className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${
+                  activeTab === 'admin'
+                    ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
+                    : 'text-[#087C38] bg-[#E8F8ED] hover:bg-[#0BAA4B] hover:text-white'
+                }`}
               >
                 <ShieldCheck className="w-4 h-4" />
-                Admin Dashboard
+                Admin CMS Desk
               </button>
             )}
 
@@ -64,13 +113,14 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             {(currentUser?.role === 'COLLECTION_AGENT' || currentUser?.role === 'ADMIN') && (
               <button
                 onClick={() => setActiveTab('inspection')}
-                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 ${activeTab === 'inspection'
-                    ? 'bg-amber-50 text-amber-700'
-                    : 'text-amber-600 hover:bg-amber-50'
-                  }`}
+                className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${
+                  activeTab === 'inspection'
+                    ? 'bg-amber-600 text-white shadow-md'
+                    : 'text-amber-800 bg-amber-50 hover:bg-amber-100'
+                }`}
               >
                 <UserCheck className="w-4 h-4" />
-                Collection Agent Portal
+                Agent Inspection
               </button>
             )}
           </nav>
@@ -80,12 +130,12 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             {currentUser ? (
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="text-right">
-                  <p className="text-xs font-bold text-slate-800 leading-none truncate max-w-[85px] xs:max-w-[120px] sm:max-w-none">
+                  <p className="text-xs font-black text-[#17251C] leading-none truncate max-w-[85px] xs:max-w-[120px] sm:max-w-none">
                     {currentUser.full_name || currentUser.email}
                   </p>
-                  <span className={`text-[9px] sm:text-[10px] font-bold uppercase tracking-wide ${
-                    currentUser.role === 'ADMIN' ? 'text-indigo-600' :
-                    currentUser.role === 'COLLECTION_AGENT' ? 'text-amber-600' : 'text-emerald-600'
+                  <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wide ${
+                    currentUser.role === 'ADMIN' ? 'text-[#087C38]' :
+                    currentUser.role === 'COLLECTION_AGENT' ? 'text-amber-600' : 'text-[#0BAA4B]'
                   }`}>
                     {currentUser.role === 'ADMIN' ? '👑 Admin' : currentUser.role === 'COLLECTION_AGENT' ? '🛵 Agent' : '👤 Customer'}
                   </span>
@@ -93,27 +143,27 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
                 <button
                   onClick={onLogout}
                   title="Logout"
-                  className="p-1.5 sm:p-2 rounded-lg border border-slate-200 text-slate-600 hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition-colors"
+                  className="p-2 rounded-xl border border-[#E7EEE9] text-[#7B8980] hover:text-rose-600 hover:border-rose-200 hover:bg-rose-50 transition"
                 >
-                  <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <LogOut className="w-4 h-4" />
                 </button>
               </div>
             ) : (
               <button
                 onClick={onOpenAuth}
-                className="flex items-center gap-1 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-700 hover:text-emerald-600 bg-slate-100 hover:bg-slate-200 px-2.5 sm:px-3 py-1.5 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 text-xs font-black text-white bg-[#0BAA4B] hover:bg-[#087C38] px-3.5 sm:px-4 py-2 rounded-xl shadow-md shadow-[#0BAA4B]/20 transition"
               >
-                <User className="w-3.5 h-3.5" />
-                Login
+                <User className="w-4 h-4" />
+                <span>Login</span>
               </button>
             )}
 
             <button
               onClick={() => setActiveTab('sell')}
-              className={`${currentUser ? 'hidden sm:flex' : 'flex'} bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-xl shadow-sm transition items-center gap-1 shrink-0 whitespace-nowrap`}
+              className={`${currentUser ? 'hidden sm:flex' : 'hidden md:flex'} bg-[#087C38] hover:bg-[#0D4722] text-white font-black text-xs sm:text-sm px-3.5 sm:px-4 py-2 rounded-xl shadow-md transition items-center gap-1.5 shrink-0 whitespace-nowrap`}
             >
-              <span>Get Price</span>
-              <ArrowRight className="w-3.5 h-3.5 hidden sm:inline" />
+              <span>Sell Device</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
 

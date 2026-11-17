@@ -11,20 +11,26 @@ class ConditionOptionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'category', 'category_name', 'code', 'title', 'description',
             'image_base64',
-            'is_defect', 'deduction_type', 'default_deduction_value',
+            'is_defect', 'is_accessory_bonus', 'is_warranty',
+            'deduction_type', 'default_deduction_value',
             'exclusive_group', 'is_rejection',
             'display_order', 'is_active'
         ]
 
 class ConditionCategorySerializer(serializers.ModelSerializer):
     options = serializers.SerializerMethodField()
+    device_category_name = serializers.ReadOnlyField(source='device_category.name')
 
     class Meta:
         model = ConditionCategory
-        fields = ['id', 'name', 'description', 'icon_name', 'display_order', 'is_active', 'options']
+        fields = [
+            'id', 'device_category', 'device_category_name', 'step_number',
+            'name', 'subtitle', 'selection_type', 'pro_tip',
+            'icon_name', 'display_order', 'is_active', 'options'
+        ]
 
     def get_options(self, obj):
-        active_options = obj.options.filter(is_active=True)
+        active_options = obj.options.filter(is_active=True).order_by('display_order')
         return ConditionOptionSerializer(active_options, many=True).data
 
 class EstimateCalculationSerializer(serializers.Serializer):

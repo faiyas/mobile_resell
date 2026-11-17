@@ -2,19 +2,75 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from .models import Brand, PhoneModel, StorageVariant
-from .serializers import BrandSerializer, BrandBasicSerializer, PhoneModelSerializer, StorageVariantSerializer
+from .models import DeviceCategory, Brand, DeviceSeries, PhoneModel, StorageVariant, CMSHomeSection
+from .serializers import (
+    DeviceCategorySerializer, BrandSerializer, BrandBasicSerializer, 
+    DeviceSeriesSerializer, PhoneModelSerializer, StorageVariantSerializer,
+    CMSHomeSectionSerializer
+)
 
+# ================= 1. DEVICE CATEGORIES (Mobile, Tablet, Laptop, Watch, Dead Phone) =================
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def categories_list_view(request):
+    if request.method == 'GET':
+        show_all = request.GET.get('all', 'false').lower() == 'true'
+        if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
+            categories = DeviceCategory.objects.all()
+        else:
+            categories = DeviceCategory.objects.filter(is_active=True)
+        return Response(DeviceCategorySerializer(categories, many=True).data)
+
+    elif request.method == 'POST':
+        if not request.user.is_authenticated or request.user.role != 'ADMIN':
+            return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = DeviceCategorySerializer(data=request.data)
+        if serializer.is_valid():
+            cat = serializer.save()
+            return Response(DeviceCategorySerializer(cat).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([AllowAny])
+def category_detail_view(request, pk):
+    try:
+        category = DeviceCategory.objects.get(pk=pk)
+    except DeviceCategory.DoesNotExist:
+        return Response({'detail': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(DeviceCategorySerializer(category).data)
+
+    if not request.user.is_authenticated or request.user.role != 'ADMIN':
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'PUT':
+        serializer = DeviceCategorySerializer(category, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        category.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+# ================= 2. BRANDS =================
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def brands_list_view(request):
     if request.method == 'GET':
         include_models = request.GET.get('include_models', 'false').lower() == 'true'
         show_all = request.GET.get('all', 'false').lower() == 'true'
+        category_id = request.GET.get('category')
+        
         if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
             brands = Brand.objects.all()
         else:
             brands = Brand.objects.filter(is_active=True)
+
+        if category_id:
+            brands = brands.filter(category_id=category_id)
 
         if include_models:
             serializer = BrandSerializer(brands, many=True)
@@ -23,7 +79,6 @@ def brands_list_view(request):
         return Response(serializer.data)
 
     elif request.method == 'POST':
-        # Admin can add brands with Base64 logos
         if not request.user.is_authenticated or request.user.role != 'ADMIN':
             return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         serializer = BrandBasicSerializer(data=request.data)
@@ -58,19 +113,44 @@ def brand_detail_view(request, pk):
         brand.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+# ================= 3. SERIES =================
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def series_list_view(request):
+    if request.method == 'GET':
+        brand_id = request.GET.get('brand')
+        queryset = DeviceSeries.objects.filter(is_active=True)
+        if brand_id:
+            queryset = queryset.filter(brand_id=brand_id)
+        return Response(DeviceSeriesSerializer(queryset, many=True).data)
+
+    elif request.method == 'POST':
+        if not request.user.is_authenticated or request.user.role != 'ADMIN':
+            return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        serializer = DeviceSeriesSerializer(data=request.data)
+        if serializer.is_valid():
+            series = serializer.save()
+            return Response(DeviceSeriesSerializer(series).data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+# ================= 4. MODELS =================
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def models_list_view(request):
     if request.method == 'GET':
         brand_id = request.GET.get('brand')
+        series_id = request.GET.get('series')
         show_all = request.GET.get('all', 'false').lower() == 'true'
         if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
-            queryset = PhoneModel.objects.all().select_related('brand')
+            queryset = PhoneModel.objects.all().select_related('brand', 'series')
         else:
-            queryset = PhoneModel.objects.filter(is_active=True).select_related('brand')
+            queryset = PhoneModel.objects.filter(is_active=True).select_related('brand', 'series')
 
         if brand_id:
             queryset = queryset.filter(brand_id=brand_id)
+        if series_id:
+            queryset = queryset.filter(series_id=series_id)
+
         serializer = PhoneModelSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -109,6 +189,7 @@ def model_detail_view(request, pk):
         phone_model.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+# ================= 5. STORAGE VARIANTS & BASE PRICES =================
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def variants_list_create_view(request):
@@ -158,7 +239,6 @@ def variant_detail_view(request, pk):
             updated_variant = serializer.save()
             new_price = updated_variant.base_price
 
-            # If base_price changed, record in PriceHistory
             if old_price != new_price:
                 from apps.valuation.models import PriceHistory
                 reason = request.data.get('change_reason', 'Admin base price update')
@@ -176,3 +256,28 @@ def variant_detail_view(request, pk):
     elif request.method == 'DELETE':
         variant.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+# ================= 6. DYNAMIC CMS HOMEPAGE BUILDER =================
+@api_view(['GET', 'POST', 'PUT'])
+@permission_classes([AllowAny])
+def cms_sections_view(request):
+    if request.method == 'GET':
+        sections = CMSHomeSection.objects.filter(is_active=True).order_by('display_order')
+        return Response(CMSHomeSectionSerializer(sections, many=True).data)
+
+    if not request.user.is_authenticated or request.user.role != 'ADMIN':
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method in ['POST', 'PUT']:
+        section_type = request.data.get('section_type')
+        section, _ = CMSHomeSection.objects.update_or_create(
+            section_type=section_type,
+            defaults={
+                'title': request.data.get('title', ''),
+                'subtitle': request.data.get('subtitle', ''),
+                'data_json': request.data.get('data_json', {}),
+                'display_order': request.data.get('display_order', 0),
+                'is_active': request.data.get('is_active', True),
+            }
+        )
+        return Response(CMSHomeSectionSerializer(section).data)

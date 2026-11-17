@@ -28,11 +28,11 @@ def login_view(request):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    email = serializer.validated_data['email']
+    email = serializer.validated_data['email'].strip()
     password = serializer.validated_data['password']
 
     try:
-        user = User.objects.get(email=email)
+        user = User.objects.get(email__iexact=email)
     except User.DoesNotExist:
         return Response({'detail': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
 

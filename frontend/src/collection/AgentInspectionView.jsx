@@ -35,6 +35,7 @@ export default function AgentInspectionView({ currentUser }) {
 
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null); // { type: 'success' | 'error', message: string, status: string }
+  const [formError, setFormError] = useState('');
   const [showCustomerAnswers, setShowCustomerAnswers] = useState(true);
 
   const feedbackRef = useRef(null);
@@ -138,19 +139,23 @@ export default function AgentInspectionView({ currentUser }) {
   const handleSubmitInspection = async (e) => {
     e.preventDefault();
     if (!selectedSale) return;
+    setFormError('');
 
     if (!cloudLocksRemoved) {
-      alert("CRITICAL REQUIREMENT: Apple iCloud or Google FRP account MUST be signed out and device factory reset before proceeding!");
+      setFormError("CRITICAL REQUIREMENT: Apple iCloud or Google FRP account MUST be signed out and device factory reset before proceeding!");
+      setTimeout(() => feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
       return;
     }
 
     if (!verifiedImei.trim() || verifiedImei.trim().length < 8) {
-      alert("Please enter the verified 15-digit device IMEI number (dial *#06# on phone keypad).");
+      setFormError("Please enter the verified 15-digit device IMEI number (dial *#06# on phone keypad).");
+      setTimeout(() => feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
       return;
     }
 
     if (!suggestedFinalPrice || Number(suggestedFinalPrice) <= 0) {
-      alert("Please enter a valid final buyback price.");
+      setFormError("Please enter a valid final buyback price.");
+      setTimeout(() => feedbackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
       return;
     }
 
@@ -199,7 +204,7 @@ export default function AgentInspectionView({ currentUser }) {
         type: 'success',
         status: newStatus,
         message: newStatus === 'OWNERSHIP_TRANSFERRED'
-          ? `✓ Inspection Recorded! Price matches estimate (₹${Number(suggestedFinalPrice).toLocaleString('en-IN')}). Ownership transferred to ReCell. Ready for Admin Payout Disbursal.`
+          ? `✓ Inspection Recorded! Price matches estimate (₹${Number(suggestedFinalPrice).toLocaleString('en-IN')}). Device handover complete · Ownership transferred to X-PHONES. Ready for Admin Payout Disbursal.`
           : `✓ Inspection Submitted! Revised offer of ₹${Number(suggestedFinalPrice).toLocaleString('en-IN')} sent to customer. Status updated to FINAL OFFER SENT.`
       });
 
@@ -243,24 +248,24 @@ export default function AgentInspectionView({ currentUser }) {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-6">
+    <div className="max-w-5xl mx-auto px-2 sm:px-4 py-3 sm:py-6 space-y-3 sm:space-y-6 pb-32 md:pb-12">
       
       {/* Top Header Card */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg flex items-center justify-between">
+      <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] text-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl shadow-lg flex items-center justify-between">
         <div className="min-w-0 pr-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
-              Field Collection Agent
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-200 bg-white/10 border border-white/20 px-2 py-0.5 rounded-lg">
+              X-PHONES Field Agent
             </span>
-            <span className="text-[9px] sm:text-[10px] text-slate-400">
-              {assignedSales.length} {assignedSales.length === 1 ? 'Pickup' : 'Pickups'} Assigned
+            <span className="text-[9px] sm:text-[10px] text-emerald-100">
+              {assignedSales.length} {assignedSales.length === 1 ? 'Pickup' : 'Pickups'} In Queue
             </span>
           </div>
           <h2 className="text-base sm:text-2xl font-black mt-1 truncate">
             Doorstep Device Inspection & Handover
           </h2>
-          <p className="text-[10px] sm:text-xs text-slate-400 truncate">
-            Agent: <strong className="text-slate-200">{currentUser?.full_name || 'Pickup Specialist'}</strong>
+          <p className="text-[10px] sm:text-xs text-[#E8F8ED] truncate">
+            Assigned Agent: <strong className="text-white">{currentUser?.full_name || 'Pickup Specialist'}</strong>
           </p>
         </div>
 
@@ -268,9 +273,9 @@ export default function AgentInspectionView({ currentUser }) {
           onClick={() => loadAssignedSales(selectedSale?.id)}
           disabled={loading}
           title="Refresh assigned queue"
-          className="p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition shrink-0 active:scale-95"
+          className="p-2 sm:p-2.5 rounded-xl bg-white/15 hover:bg-white/25 border border-white/20 text-white transition shrink-0 active:scale-95"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-400' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-300' : ''}`} />
         </button>
       </div>
 
@@ -279,7 +284,7 @@ export default function AgentInspectionView({ currentUser }) {
         <div className="flex items-center justify-between mb-1.5 px-0.5">
           <span className="text-xs font-black text-slate-900 flex items-center gap-1">
             <span>🛵 Your Assigned Pickups:</span>
-            <span className="bg-slate-200 text-slate-800 text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
+            <span className="bg-[#E8F8ED] text-[#087C38] text-[10px] font-extrabold px-1.5 py-0.2 rounded-full">
               {assignedSales.length}
             </span>
           </span>
@@ -295,7 +300,7 @@ export default function AgentInspectionView({ currentUser }) {
                 onClick={() => selectOrderForInspection(s)}
                 className={`snap-start shrink-0 w-[240px] p-2.5 rounded-2xl border transition text-left cursor-pointer active:scale-98 ${
                   isSelected
-                    ? 'bg-amber-50 border-amber-500 shadow-md ring-2 ring-amber-500/20'
+                    ? 'bg-[#E8F8ED] border-[#0BAA4B] shadow-md ring-2 ring-[#0BAA4B]/20'
                     : 'bg-white border-slate-200 shadow-sm'
                 }`}
               >
@@ -310,7 +315,7 @@ export default function AgentInspectionView({ currentUser }) {
                 </h5>
                 <div className="flex justify-between items-center text-[11px] mt-1 text-slate-500">
                   <span className="truncate max-w-[120px]">{s.customer_name}</span>
-                  <span className="font-black text-emerald-700">₹{Number(s.final_price || s.estimated_price).toLocaleString('en-IN')}</span>
+                  <span className="font-black text-[#0BAA4B]">₹{Number(s.final_price || s.estimated_price).toLocaleString('en-IN')}</span>
                 </div>
               </div>
             );
@@ -341,8 +346,8 @@ export default function AgentInspectionView({ currentUser }) {
                   onClick={() => selectOrderForInspection(s)}
                   className={`cursor-pointer p-3 rounded-2xl border transition ${
                     isSelected
-                      ? 'bg-amber-50 border-amber-500 shadow-sm ring-2 ring-amber-500/20'
-                      : 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
+                      ? 'bg-[#E8F8ED] border-[#0BAA4B] shadow-sm ring-2 ring-[#0BAA4B]/20'
+                      : 'bg-white border-slate-200 hover:border-[#0BAA4B]/40 shadow-sm'
                   }`}
                 >
                   <div className="flex justify-between items-start mb-1">
@@ -701,7 +706,17 @@ export default function AgentInspectionView({ currentUser }) {
             </div>
 
             {/* INLINE LIVE FEEDBACK & STATUS REFLECTION BANNER (Positioned right above submit) */}
-            <div ref={feedbackRef}>
+            <div ref={feedbackRef} className="space-y-2">
+              {formError && (
+                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold animate-shake flex items-start gap-2 shadow-sm">
+                  <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-black text-rose-900">Validation Notice</p>
+                    <p className="mt-0.5 leading-snug">{formError}</p>
+                  </div>
+                </div>
+              )}
+
               {feedback && (
                 <div className={`p-3.5 sm:p-4 rounded-2xl border text-xs font-bold animate-fade-in ${
                   feedback.type === 'success'
@@ -727,19 +742,19 @@ export default function AgentInspectionView({ currentUser }) {
               )}
 
               {/* If already inspected and no fresh feedback, show verified status indicator */}
-              {!feedback && (selectedSale.has_inspection || selectedSale.status === 'OWNERSHIP_TRANSFERRED' || selectedSale.status === 'FINAL_OFFER_SENT') && (
-                <div className="p-3 bg-slate-100 border border-slate-200 text-slate-700 rounded-2xl text-xs flex items-center justify-between">
+              {!feedback && !formError && (selectedSale.has_inspection || selectedSale.status === 'OWNERSHIP_TRANSFERRED' || selectedSale.status === 'FINAL_OFFER_SENT') && (
+                <div className="p-3 bg-[#E8F8ED] border border-[#0BAA4B]/30 text-[#087C38] rounded-2xl text-xs flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <CheckCircle2 className="w-4 h-4 text-[#0BAA4B] shrink-0" />
                     <span className="font-bold">
                       {selectedSale.status === 'OWNERSHIP_TRANSFERRED' 
-                        ? 'Handover Completed · Ownership Transferred to ReCell'
+                        ? 'Handover Completed · Ownership Transferred to X-PHONES'
                         : selectedSale.status === 'FINAL_OFFER_SENT'
                         ? 'Revised Final Offer Sent to Customer'
                         : 'Inspection Recorded'}
                     </span>
                   </div>
-                  <span className="text-[10px] text-slate-500 font-bold">
+                  <span className="text-[10px] text-[#087C38] font-black">
                     Agreed: ₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}
                   </span>
                 </div>
@@ -750,12 +765,12 @@ export default function AgentInspectionView({ currentUser }) {
             <button
               type="submit"
               disabled={submitting}
-              className={`w-full text-white font-black py-3.5 rounded-2xl shadow-md transition flex items-center justify-center gap-2 text-xs sm:text-sm active:scale-98 ${
+              className={`w-full text-white font-black py-4 rounded-2xl shadow-lg shadow-[#0BAA4B]/20 transition flex items-center justify-center gap-2 text-xs sm:text-sm active:scale-98 ${
                 submitting
-                  ? 'bg-slate-700 cursor-not-allowed'
+                  ? 'bg-slate-700 cursor-not-allowed opacity-80'
                   : selectedSale.has_inspection
-                  ? 'bg-emerald-700 hover:bg-emerald-800'
-                  : 'bg-slate-900 hover:bg-black'
+                  ? 'bg-gradient-to-r from-[#087C38] to-[#0BAA4B] hover:brightness-105'
+                  : 'bg-gradient-to-r from-[#087C38] to-[#0BAA4B] hover:brightness-105'
               }`}
             >
               {submitting ? (

@@ -40,7 +40,23 @@ export default function CataloguePricingManager() {
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
-  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', icon_name: 'Smartphone', display_order: 0, is_active: true });
+  const [categoryForm, setCategoryForm] = useState({ 
+    name: '', 
+    subtitle: '', 
+    step_number: 1, 
+    selection_type: 'SINGLE', 
+    pro_tip: '', 
+    icon_name: 'Smartphone', 
+    display_order: 0, 
+    is_active: true 
+  });
+
+  const [deviceCategories, setDeviceCategories] = useState([]);
+  const [seriesList, setSeriesList] = useState([]);
+  const [cmsSections, setCmsSections] = useState([]);
+  const [editingCmsSection, setEditingCmsSection] = useState(null);
+  const [cmsForm, setCmsForm] = useState({ title: '', subtitle: '', badge: '', is_active: true });
+  const [selectedQuestionStep, setSelectedQuestionStep] = useState(null);
 
   const [optionModalOpen, setOptionModalOpen] = useState(false);
   const [editingOption, setEditingOption] = useState(null);
@@ -73,13 +89,16 @@ export default function CataloguePricingManager() {
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [bData, mData, vData, cData, oData, hData] = await Promise.all([
+      const [bData, mData, vData, cData, oData, hData, dCats, sData, cmsData] = await Promise.all([
         api.getBrands(false, true).catch(() => []),
         api.getModels('', true).catch(() => []),
         api.getVariants('', true).catch(() => []),
         api.getConditionCategories(true).catch(() => []),
         api.getConditionOptions('', true).catch(() => []),
         api.getPriceHistory().catch(() => []),
+        api.getCategories(true).catch(() => []),
+        api.getSeries().catch(() => []),
+        api.getCMSSections().catch(() => []),
       ]);
 
       setBrands(bData);
@@ -88,6 +107,33 @@ export default function CataloguePricingManager() {
       setConditionCategories(cData);
       setConditionOptions(oData);
       setPriceHistory(hData);
+      setDeviceCategories(dCats);
+      setSeriesList(sData);
+      setCmsSections(cmsData);
+
+      if (cmsData.length > 0) {
+        setEditingCmsSection(cmsData[0]);
+        setCmsForm({
+          title: cmsData[0].title,
+          subtitle: cmsData[0].subtitle || '',
+          badge: cmsData[0].data_json?.badge || '',
+          is_active: cmsData[0].is_active
+        });
+      }
+
+      if (cData.length > 0) {
+        setSelectedQuestionStep(cData[0]);
+        setCategoryForm({
+          name: cData[0].name,
+          subtitle: cData[0].subtitle || '',
+          step_number: cData[0].step_number || 1,
+          selection_type: cData[0].selection_type || 'SINGLE',
+          pro_tip: cData[0].pro_tip || '',
+          icon_name: cData[0].icon_name || 'Smartphone',
+          display_order: cData[0].display_order || 0,
+          is_active: cData[0].is_active
+        });
+      }
 
       // Default simulator selections
       if (bData.length > 0 && !simBrandId) setSimBrandId(bData[0].id.toString());
@@ -338,6 +384,10 @@ export default function CataloguePricingManager() {
       setEditingCategory(cat);
       setCategoryForm({
         name: cat.name,
+        subtitle: cat.subtitle || '',
+        step_number: cat.step_number || 1,
+        selection_type: cat.selection_type || 'SINGLE',
+        pro_tip: cat.pro_tip || '',
         description: cat.description || '',
         icon_name: cat.icon_name || 'Smartphone',
         display_order: cat.display_order || 0,
@@ -347,6 +397,10 @@ export default function CataloguePricingManager() {
       setEditingCategory(null);
       setCategoryForm({
         name: '',
+        subtitle: '',
+        step_number: categories.length + 1,
+        selection_type: 'SINGLE',
+        pro_tip: '',
         description: '',
         icon_name: 'Smartphone',
         display_order: categories.length + 1,
@@ -361,15 +415,39 @@ export default function CataloguePricingManager() {
     try {
       if (editingCategory) {
         await api.updateConditionCategory(editingCategory.id, categoryForm);
-        showFeedback('success', `Category '${categoryForm.name}' updated`);
+        showFeedback('success', `Questionnaire Step '${categoryForm.name}' updated`);
       } else {
         await api.createConditionCategory(categoryForm);
-        showFeedback('success', `Category '${categoryForm.name}' created`);
+        showFeedback('success', `Questionnaire Step '${categoryForm.name}' created`);
       }
       setCategoryModalOpen(false);
       loadAllData();
     } catch (err) {
-      alert(err.message);
+      alert(err.message || 'Error saving question step');
+    }
+  };
+
+  const handleSaveCmsSection = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!editingCmsSection) return;
+    try {
+      const payload = {
+        section_type: editingCmsSection.section_type,
+        title: cmsForm.title,
+        subtitle: cmsForm.subtitle,
+        display_order: editingCmsSection.display_order,
+        is_active: cmsForm.is_active,
+        data_json: {
+          ...(editingCmsSection.data_json || {}),
+          badge: cmsForm.badge,
+        }
+      };
+      await api.updateCMSSection(payload);
+      showFeedback('success', `CMS Section '${editingCmsSection.section_type}' saved to Database!`);
+      const fresh = await api.getCMSSections();
+      setCmsSections(fresh);
+    } catch (err) {
+      alert(err.message || 'Failed to update CMS section');
     }
   };
 
@@ -479,13 +557,15 @@ export default function CataloguePricingManager() {
       {/* Sub Navigation Tabs */}
       <div className="flex border-b border-slate-200 gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         {[
-          { id: 'brands', label: '1. Brands', count: brands.length },
-          { id: 'models', label: '2. Phone Models', count: models.length },
-          { id: 'variants', label: '3. Storage & Base Prices', count: variants.length },
-          { id: 'categories', label: '4. Condition Categories', count: categories.length },
-          { id: 'deductions', label: '5. Deduction Rules', count: options.length },
-          { id: 'simulator', label: '6. Live Valuation Simulator', badge: 'Interactive' },
-          { id: 'history', label: '7. Price History Audit', count: priceHistory.length },
+          { id: 'cms', label: '🎨 Homepage Builder (CMS)', count: cmsSections.length },
+          { id: 'questionnaire', label: '📋 Questionnaire Builder (11 Steps)', count: categories.length },
+          { id: 'brands', label: '📱 Brands', count: brands.length },
+          { id: 'models', label: '🏷️ Models', count: models.length },
+          { id: 'variants', label: '💾 Storage & Base Prices', count: variants.length },
+          { id: 'deductions', label: '📉 Deduction Rules', count: options.length },
+          { id: 'device_categories', label: '🗂️ Categories & Series', count: deviceCategories.length },
+          { id: 'simulator', label: '⚡ Valuation Simulator', badge: 'Interactive' },
+          { id: 'history', label: '📜 Price Audit Log', count: priceHistory.length },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -512,6 +592,383 @@ export default function CataloguePricingManager() {
           </button>
         ))}
       </div>
+
+      {/* ================= CMS HOMEPAGE BUILDER (Matching Infographic) ================= */}
+      {subTab === 'cms' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <span>🎨 Homepage Builder (Dynamic CMS)</span>
+                <span className="text-[10px] bg-[#E8F8ED] text-[#087C38] px-2 py-0.5 rounded-full font-bold">100% Dynamic DB</span>
+              </h3>
+              <p className="text-xs text-slate-500">Configure promotional hero banners, quick service links, top brands, and security policies without touching code.</p>
+            </div>
+            <button
+              onClick={() => handleSaveCmsSection()}
+              className="bg-gradient-to-r from-[#087C38] to-[#0BAA4B] hover:brightness-105 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
+            >
+              <Check className="w-4 h-4" /> Save Changes
+            </button>
+          </div>
+
+          {/* Green Live Hero Banner Card (Exact match to Infographic preview) */}
+          <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] text-white p-6 sm:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-400/30">
+            <div className="space-y-2 max-w-xl">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 text-white px-3 py-1 rounded-full">
+                {cmsForm.badge || 'X-PHONES · Buyback Company'}
+              </span>
+              <h2 className="text-2xl sm:text-4xl font-black mt-2 leading-tight">
+                {cmsForm.title || 'Sell Your Old Device'}
+              </h2>
+              <p className="text-xs sm:text-sm text-[#E8F8ED] leading-relaxed">
+                {cmsForm.subtitle || 'Get the best value for your phone, tablet, laptop & more with instant doorstep payout.'}
+              </p>
+              <div className="pt-2 flex items-center gap-3">
+                <button type="button" className="bg-white text-[#087C38] font-black text-xs px-5 py-2.5 rounded-xl shadow-lg hover:bg-[#E8F8ED] transition flex items-center gap-1.5">
+                  <span>Start Selling Now</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-[11px] text-emerald-200 font-bold">⚡ Doorstep in 60 Mins</span>
+              </div>
+            </div>
+
+            <div className="w-36 h-36 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex flex-col items-center justify-center p-3 text-center text-xs shrink-0">
+              <Smartphone className="w-12 h-12 text-white mb-2" />
+              <span className="font-extrabold text-[11px]">Customer View</span>
+              <span className="text-[9px] text-emerald-200">Live Preview</span>
+            </div>
+          </div>
+
+          {/* CMS Section Blocks Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Left: Section Selector */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">Homepage Sections ({cmsSections.length})</h4>
+              <div className="space-y-2">
+                {cmsSections.map((sec) => (
+                  <div
+                    key={sec.id}
+                    onClick={() => {
+                      setEditingCmsSection(sec);
+                      setCmsForm({
+                        title: sec.title,
+                        subtitle: sec.subtitle || '',
+                        badge: sec.data_json?.badge || '',
+                        is_active: sec.is_active
+                      });
+                    }}
+                    className={`p-3.5 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
+                      editingCmsSection?.id === sec.id
+                        ? 'bg-[#E8F8ED] border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20 shadow-sm'
+                        : 'bg-white border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div>
+                      <span className="font-extrabold text-xs text-slate-900 capitalize">{sec.section_type.replace(/_/g, ' ')}</span>
+                      <p className="text-[11px] text-slate-500 truncate max-w-[160px]">{sec.title}</p>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sec.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                      {sec.is_active ? 'Active' : 'Hidden'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Section Editor */}
+            {editingCmsSection && (
+              <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
+                <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                  <h4 className="font-black text-slate-900 text-sm">
+                    Edit Section: <span className="text-[#0BAA4B] capitalize">{editingCmsSection.section_type.replace(/_/g, ' ')}</span>
+                  </h4>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={cmsForm.is_active}
+                      onChange={(e) => setCmsForm({ ...cmsForm, is_active: e.target.checked })}
+                      className="rounded text-[#0BAA4B] focus:ring-[#0BAA4B]"
+                    />
+                    <span>Visible on Customer App</span>
+                  </label>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Section Title *</label>
+                    <input
+                      type="text"
+                      value={cmsForm.title}
+                      onChange={(e) => setCmsForm({ ...cmsForm, title: e.target.value })}
+                      className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#0BAA4B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Section Subtitle</label>
+                    <input
+                      type="text"
+                      value={cmsForm.subtitle}
+                      onChange={(e) => setCmsForm({ ...cmsForm, subtitle: e.target.value })}
+                      className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#0BAA4B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Badge Text (Optional)</label>
+                    <input
+                      type="text"
+                      value={cmsForm.badge}
+                      onChange={(e) => setCmsForm({ ...cmsForm, badge: e.target.value })}
+                      className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#0BAA4B]"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleSaveCmsSection}
+                      className="bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black px-6 py-2.5 rounded-xl shadow transition text-xs"
+                    >
+                      Save Section
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ================= QUESTIONNAIRE BUILDER (11 Evaluation Steps) ================= */}
+      {subTab === 'questionnaire' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <span>📋 Questionnaire Evaluation Builder (11 Steps)</span>
+                <span className="text-[10px] bg-[#E8F8ED] text-[#087C38] px-2 py-0.5 rounded-full font-bold">11 Steps Complete</span>
+              </h3>
+              <p className="text-xs text-slate-500">Every step in the customer evaluation wizard is dynamically fetched from this database table.</p>
+            </div>
+            <button
+              onClick={() => handleOpenCategoryModal()}
+              className="bg-[#0BAA4B] hover:bg-[#087C38] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" /> Add Questionnaire Step
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Left Column: 11 Steps List */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">Evaluation Steps</h4>
+              <div className="space-y-2 max-h-[700px] overflow-y-auto pr-1">
+                {categories.map((cat, idx) => {
+                  const isSelected = selectedQuestionStep?.id === cat.id;
+                  const catOpts = options.filter(o => o.category === cat.id);
+                  return (
+                    <div
+                      key={cat.id}
+                      onClick={() => {
+                        setSelectedQuestionStep(cat);
+                        setCategoryForm({
+                          name: cat.name,
+                          subtitle: cat.subtitle || '',
+                          step_number: cat.step_number || (idx + 1),
+                          selection_type: cat.selection_type || 'SINGLE',
+                          pro_tip: cat.pro_tip || '',
+                          icon_name: cat.icon_name || 'Smartphone',
+                          display_order: cat.display_order || idx,
+                          is_active: cat.is_active
+                        });
+                      }}
+                      className={`p-3 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-[#E8F8ED] border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20 shadow-sm'
+                          : 'bg-white border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="min-w-0 pr-2">
+                        <span className="text-[9px] font-mono font-black text-[#087C38] uppercase">
+                          Step {cat.step_number || (idx + 1)} of {categories.length}
+                        </span>
+                        <h5 className="font-extrabold text-slate-900 text-xs truncate mt-0.5">{cat.name}</h5>
+                        <span className="text-[10px] text-slate-400">{catOpts.length} Options Attached</span>
+                      </div>
+                      <span className={`text-[10px] font-black shrink-0 px-2 py-0.5 rounded-full ${
+                        cat.selection_type === 'MULTIPLE' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {cat.selection_type}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right Column: Edit Question Panel & Attached Option Cards */}
+            {selectedQuestionStep && (
+              <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
+                <div className="flex justify-between items-center pb-3 border-b border-slate-100">
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-[#0BAA4B]">Step {categoryForm.step_number} Configuration</span>
+                    <h4 className="font-black text-slate-900 text-base">{categoryForm.name}</h4>
+                  </div>
+                  <button
+                    onClick={() => handleOpenOptionModal()}
+                    className="text-xs bg-[#E8F8ED] text-[#087C38] hover:bg-[#0BAA4B] hover:text-white font-extrabold px-3 py-1.5 rounded-xl transition flex items-center gap-1"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Option Card
+                  </button>
+                </div>
+
+                {/* Question Properties Form */}
+                <form onSubmit={handleSaveCategory} className="space-y-3 text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Question Title *</label>
+                      <input
+                        type="text"
+                        required
+                        value={categoryForm.name}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                        className="w-full p-2.5 border border-slate-300 rounded-xl font-bold focus:ring-2 focus:ring-[#0BAA4B]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Question Type *</label>
+                      <select
+                        value={categoryForm.selection_type}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, selection_type: e.target.value })}
+                        className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white focus:ring-2 focus:ring-[#0BAA4B]"
+                      >
+                        <option value="SINGLE">Single Selection (A/B Visual Cards)</option>
+                        <option value="MULTIPLE">Multiple Selection (Check all faults)</option>
+                        <option value="ACCESSORY">Accessories & Box (Bonus/Deduction)</option>
+                        <option value="WARRANTY">Warranty & Bill Verification</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Subtitle / Customer Instruction</label>
+                    <input
+                      type="text"
+                      value={categoryForm.subtitle}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, subtitle: e.target.value })}
+                      placeholder="e.g. Choose the display glass condition of your device"
+                      className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0BAA4B]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Pro Tip for Customer</label>
+                    <input
+                      type="text"
+                      value={categoryForm.pro_tip}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, pro_tip: e.target.value })}
+                      placeholder="e.g. Check your screen under bright light and from different angles."
+                      className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0BAA4B]"
+                    />
+                  </div>
+
+                  {/* Attached Options (A/B Visual Cards) */}
+                  <div className="pt-2">
+                    <label className="block font-black text-slate-800 uppercase tracking-wider text-[10px] mb-2">
+                      Visual Option Cards ({options.filter(o => o.category === selectedQuestionStep.id).length})
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {options.filter(o => o.category === selectedQuestionStep.id).map((opt) => (
+                        <div key={opt.id} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between text-center relative group">
+                          <div className="text-left">
+                            {opt.image_base64 && (
+                              <img src={opt.image_base64} alt="" className="w-10 h-10 object-contain mx-auto mb-1 rounded" />
+                            )}
+                            <h6 className="font-extrabold text-slate-900 text-xs truncate">{opt.title}</h6>
+                            <span className="text-[10px] font-black text-rose-600 block mt-0.5">
+                              {opt.deduction_type === 'PERCENTAGE' ? `-${opt.default_deduction_value}%` : `-₹${Number(opt.default_deduction_value).toLocaleString('en-IN')}`}
+                            </span>
+                          </div>
+                          <div className="mt-1 pt-1 border-t border-slate-200 flex justify-between text-[10px]">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenOptionModal(opt)}
+                              className="text-indigo-600 font-bold hover:underline"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteOption(opt)}
+                              className="text-rose-600 font-bold hover:underline"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-2">
+                    <button
+                      type="submit"
+                      className="bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black px-6 py-2.5 rounded-xl shadow transition text-xs"
+                    >
+                      Save Question
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ================= DEVICE CATEGORIES & SERIES ================= */}
+      {subTab === 'device_categories' && (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900">Device Categories & Brand Series</h3>
+              <p className="text-xs text-slate-500">Categories (Mobile, Tablet, Laptop, etc.) and series (iPhone 11, S21 Series) managed in DB.</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Device Categories */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+              <h4 className="font-extrabold text-slate-900 text-sm">1. Device Categories ({deviceCategories.length})</h4>
+              <div className="grid grid-cols-2 gap-2">
+                {deviceCategories.map((dc) => (
+                  <div key={dc.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-xs text-slate-900">{dc.name}</span>
+                      <span className="text-[10px] text-slate-400 block font-mono">{dc.slug}</span>
+                    </div>
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">Active</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Brand Series */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
+              <h4 className="font-extrabold text-slate-900 text-sm">2. Configured Series ({seriesList.length})</h4>
+              <div className="grid grid-cols-2 gap-2 max-h-[360px] overflow-y-auto pr-1">
+                {seriesList.map((s) => (
+                  <div key={s.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50">
+                    <span className="font-bold text-xs text-slate-900">{s.name}</span>
+                    <span className="text-[10px] text-indigo-600 block">{s.brand_name || 'Brand Series'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= 1. BRAND MANAGEMENT ================= */}
       {subTab === 'brands' && (

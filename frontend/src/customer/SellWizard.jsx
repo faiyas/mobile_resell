@@ -1,40 +1,51 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Smartphone, ShieldCheck, Check, ArrowRight, ArrowLeft, 
-  HelpCircle, AlertCircle, Calendar, MapPin, CreditCard, 
-  Sparkles, CheckCircle2, ChevronRight, IndianRupee, Layers
+  Smartphone, Tablet, Laptop, Watch, AlertOctagon, Layers, 
+  Search, ArrowRight, ArrowLeft, Check, CheckCircle2, ChevronRight, 
+  Sparkles, ShieldCheck, MapPin, Calendar, Clock, CreditCard, Banknote, 
+  HelpCircle, AlertTriangle, Copy, Truck, Gift
 } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function SellWizard({ onOrderCreated, currentUser }) {
-  // Steps: 1. Brand, 2. Model & Storage, 3. Condition, 4. Price & Valuation, 5. Pickup & Payment, 6. Success
-  const [step, setStep] = useState(1);
-  
-  // Data lists
+  // Navigation: 1=Category, 2=Brand, 3=Model&Variant, 4=Questionnaire(Steps 2-10), 5=Quote, 6=PickupBooking, 7=Success
+  const [currentScreen, setCurrentScreen] = useState(1);
+  const [questionStepIndex, setQuestionStepIndex] = useState(0);
+
+  // Dynamic DB Lists
+  const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
+  const [seriesList, setSeriesList] = useState([]);
   const [models, setModels] = useState([]);
-  const [conditionCategories, setConditionCategories] = useState([]);
+  const [questionSteps, setQuestionSteps] = useState([]);
 
   // Selections
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedBrand, setSelectedBrand] = useState(null);
+  const [selectedSeriesId, setSelectedSeriesId] = useState('ALL');
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
-  const [selectedDefectCodes, setSelectedDefectCodes] = useState([]);
+  const [selectedOptionCodes, setSelectedOptionCodes] = useState([]);
 
-  // Live calculated valuation
+  // Filters
+  const [brandSearch, setBrandSearch] = useState('');
+  const [modelSearch, setModelSearch] = useState('');
+
+  // Valuation Quote
   const [valuationResult, setValuationResult] = useState(null);
   const [valuing, setValuing] = useState(false);
 
-  // Customer Contact & Pickup
+  // Customer Contact & Pickup Form
   const [customerName, setCustomerName] = useState(currentUser?.full_name || '');
   const [customerPhone, setCustomerPhone] = useState(currentUser?.phone || '');
   const [customerEmail, setCustomerEmail] = useState(currentUser?.email || '');
   const [pickupAddress, setPickupAddress] = useState('');
-  const [pickupCity, setPickupCity] = useState('Bengaluru');
-  const [pickupPincode, setPickupPincode] = useState('560001');
-  const [pickupSlot, setPickupSlot] = useState('Morning (10:00 AM - 1:00 PM)');
+  const [pickupCity, setPickupCity] = useState('Tirupur');
+  const [pickupPincode, setPickupPincode] = useState('641602');
+  const [pickupDate, setPickupDate] = useState(new Date().toISOString().split('T')[0]);
+  const [pickupSlot, setPickupSlot] = useState('Afternoon (1:00 PM - 5:00 PM)');
 
-  // Customer Payout Method
+  // Payout Method
   const [beneficiaryType, setBeneficiaryType] = useState('UPI');
   const [beneficiaryName, setBeneficiaryName] = useState(currentUser?.full_name || '');
   const [beneficiaryUpiId, setBeneficiaryUpiId] = useState('');
@@ -43,15 +54,13 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
 
   const [submitting, setSubmitting] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [copiedCode, setCopiedCode] = useState(false);
 
-  // Initial load: brands & condition categories
+  // Initial Load: Categories & Dynamic Questionnaire from DB
   useEffect(() => {
-    api.getBrands().then(setBrands).catch(console.error);
-    api.getConditionCategories().then(setConditionCategories).catch(console.error);
+    loadInitialData();
   }, []);
 
-  // Update customer details when user logs in
   useEffect(() => {
     if (currentUser) {
       if (!customerName) setCustomerName(currentUser.full_name || '');
@@ -61,15 +70,48 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
     }
   }, [currentUser]);
 
-  // Load models when brand changes
+  const loadInitialData = async () => {
+    try {
+      const [cats, qSteps] = await Promise.all([
+        api.getCategories(),
+        api.getConditionCategories(),
+      ]);
+      setCategories(cats);
+      setQuestionSteps(qSteps);
+      if (cats.length > 0) {
+        handleSelectCategory(cats[0]);
+      }
+    } catch (err) {
+      console.error("Initial load failed:", err);
+    }
+  };
+
+  const handleSelectCategory = async (category) => {
+    setSelectedCategory(category);
+    setSelectedBrand(null);
+    setSelectedModel(null);
+    setSelectedVariant(null);
+    try {
+      const brandsData = await api.getBrands(false, false, category.id);
+      setBrands(brandsData);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleSelectBrand = async (brand) => {
     setSelectedBrand(brand);
     setSelectedModel(null);
     setSelectedVariant(null);
+    setSelectedSeriesId('ALL');
     try {
-      const modelsData = await api.getModels(brand.id);
+      const [seriesData, modelsData] = await Promise.all([
+        api.getSeries(brand.id),
+        api.getModels(brand.id),
+      ]);
+      setSeriesList(seriesData);
       setModels(modelsData);
-      setStep(2);
+      setCurrentScreen(3);
     } catch (e) {
       console.error(e);
     }
@@ -82,148 +124,139 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
     }
   };
 
-  const toggleDefectCode = (code) => {
-    if (selectedDefectCodes.includes(code)) {
-      setSelectedDefectCodes(selectedDefectCodes.filter(c => c !== code));
+  const toggleOptionCode = (code, exclusiveGroup = null) => {
+    if (exclusiveGroup) {
+      // Find other options in this exclusive group and replace
+      const currentCategory = questionSteps[questionStepIndex];
+      const groupCodes = currentCategory?.options?.filter(o => o.exclusive_group === exclusiveGroup).map(o => o.code) || [];
+      const filtered = selectedOptionCodes.filter(c => !groupCodes.includes(c));
+      if (!selectedOptionCodes.includes(code)) {
+        setSelectedOptionCodes([...filtered, code]);
+      } else {
+        setSelectedOptionCodes(filtered);
+      }
     } else {
-      setSelectedDefectCodes([...selectedDefectCodes, code]);
+      if (selectedOptionCodes.includes(code)) {
+        setSelectedOptionCodes(selectedOptionCodes.filter(c => c !== code));
+      } else {
+        setSelectedOptionCodes([...selectedOptionCodes, code]);
+      }
     }
   };
 
-  // Recalculate dynamic price whenever variant or defect questions change
   const computeValuation = async () => {
     if (!selectedVariant) return;
     setValuing(true);
     try {
-      const res = await api.calculateEstimate(selectedVariant.id, selectedDefectCodes);
+      const res = await api.calculateEstimate(selectedVariant.id, selectedOptionCodes);
       setValuationResult(res);
-      setStep(4);
-    } catch (err) {
-      console.error(err);
-      setErrorMsg(err.message || 'Failed to calculate price');
+      setCurrentScreen(5); // Show quote screen
+    } catch (e) {
+      alert("Valuation calculation failed: " + e.message);
     } finally {
       setValuing(false);
     }
   };
 
-  const handleSubmitOrder = async (e) => {
+  const handleSubmitBooking = async (e) => {
     e.preventDefault();
+    if (!selectedVariant) return;
     setSubmitting(true);
-    setErrorMsg('');
-
-    if (beneficiaryType === 'UPI' && !beneficiaryUpiId.includes('@')) {
-      setErrorMsg('Please enter a valid UPI ID (e.g. yourname@okaxis, 9876543210@paytm)');
-      setSubmitting(false);
-      return;
-    }
-
     try {
       const payload = {
         variant_id: selectedVariant.id,
-        selected_option_codes: selectedDefectCodes,
+        selected_option_codes: selectedOptionCodes,
         customer_name: customerName,
         customer_phone: customerPhone,
         customer_email: customerEmail,
         pickup_address: pickupAddress,
         pickup_city: pickupCity,
         pickup_pincode: pickupPincode,
+        pickup_date: pickupDate,
         pickup_slot: pickupSlot,
         beneficiary_type: beneficiaryType,
-        beneficiary_name: beneficiaryName || customerName,
+        beneficiary_name: beneficiaryName,
         beneficiary_upi_id: beneficiaryUpiId,
         beneficiary_account_no: beneficiaryAccountNo,
         beneficiary_ifsc: beneficiaryIfsc,
       };
-
       const res = await api.submitSale(payload);
       setCreatedOrder(res);
-      setStep(6);
+      setCurrentScreen(7); // Show tracking screen
       if (onOrderCreated) onOrderCreated(res);
     } catch (err) {
-      setErrorMsg(err.message || 'Failed to submit request');
+      alert("Failed to submit pickup request: " + err.message);
     } finally {
       setSubmitting(false);
     }
   };
 
+  const filteredBrands = brands.filter(b => 
+    b.name.toLowerCase().includes(brandSearch.toLowerCase())
+  );
+
+  const filteredModels = models.filter(m => {
+    const matchesSearch = m.name.toLowerCase().includes(modelSearch.toLowerCase());
+    const matchesSeries = selectedSeriesId === 'ALL' || String(m.series) === String(selectedSeriesId);
+    return matchesSearch && matchesSeries;
+  });
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8">
-      
-      {/* Wizard Progress Stepper (Mobile Optimized) */}
-      <div className="mb-6 bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex items-center justify-between max-w-3xl mx-auto">
-          {[
-            { num: 1, label: 'Brand' },
-            { num: 2, label: 'Model' },
-            { num: 3, label: 'Checks' },
-            { num: 4, label: 'Offer' },
-            { num: 5, label: 'Payout' },
-          ].map((s, idx) => (
-            <div key={s.num} className="flex items-center flex-1 justify-center">
-              <div className="flex flex-col items-center">
-                <div 
-                  className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center font-bold text-xs transition-colors ${
-                    step === s.num
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20 ring-2 sm:ring-4 ring-emerald-100'
-                      : step > s.num
-                      ? 'bg-emerald-100 text-emerald-800'
-                      : 'bg-slate-100 text-slate-400'
-                  }`}
-                >
-                  {step > s.num ? <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 stroke-[3]" /> : s.num}
-                </div>
-                <span className={`text-[10px] sm:text-[11px] font-semibold mt-1 truncate ${step >= s.num ? 'text-slate-800' : 'text-slate-400'}`}>
-                  {s.label}
-                </span>
-              </div>
-              {idx < 4 && (
-                <div className={`flex-1 h-0.5 mx-1 sm:mx-2 rounded ${step > s.num ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-              )}
-            </div>
-          ))}
-        </div>
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-6">
+
+      {/* TOP CATEGORY PILLS BAR (Matching Reference Image Header) */}
+      <div className="bg-white rounded-2xl p-2 border border-[#E7EEE9] shadow-sm flex items-center gap-2 overflow-x-auto scrollbar-none">
+        {categories.map((cat) => {
+          const isSelected = selectedCategory?.id === cat.id;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => {
+                handleSelectCategory(cat);
+                setCurrentScreen(2);
+              }}
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition shrink-0 flex items-center gap-2 ${
+                isSelected
+                  ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
+                  : 'text-[#17251C] hover:bg-[#F7FAF8] hover:text-[#0BAA4B]'
+              }`}
+            >
+              <span>{cat.name === 'Mobile' ? '📱' : cat.name === 'Tablet' ? '📟' : cat.name === 'Laptop' ? '💻' : cat.name === 'Smartwatch' ? '⌚' : '🔌'}</span>
+              <span>Sell {cat.name}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {errorMsg && (
-        <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm font-semibold flex items-center gap-2">
-          <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-          <span>{errorMsg}</span>
-        </div>
-      )}
-
-      {/* ================= STEP 1: SELECT BRAND ================= */}
-      {step === 1 && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="text-center max-w-xl mx-auto">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-              Step 1 of 5
+      {/* ================= SCREEN 1: CATEGORY SELECTION ================= */}
+      {currentScreen === 1 && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="text-center max-w-xl mx-auto space-y-1">
+            <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-3 py-1 rounded-full border border-[#0BAA4B]/20">
+              Step 1 of Buyback
             </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2">
-              Select Your Phone Brand
-            </h2>
-            <p className="text-sm text-slate-500 mt-1">
-              Choose your manufacturer to view eligible models for instant sell & buyback.
-            </p>
+            <h2 className="text-2xl sm:text-3xl font-black text-[#17251C]">Sell Your Device</h2>
+            <p className="text-xs text-[#7B8980]">Choose a device category to get started with instant doorstep valuation</p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
-            {brands.map((brand) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 pt-2">
+            {categories.map((cat) => (
               <div
-                key={brand.id}
-                onClick={() => handleSelectBrand(brand)}
-                className="group cursor-pointer bg-white border border-slate-200 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 rounded-2xl p-6 text-center transition flex flex-col items-center justify-center min-h-[160px]"
+                key={cat.id}
+                onClick={() => {
+                  handleSelectCategory(cat);
+                  setCurrentScreen(2);
+                }}
+                className="cursor-pointer bg-white border-2 border-[#E7EEE9] hover:border-[#0BAA4B] hover:shadow-xl hover:shadow-[#0BAA4B]/10 rounded-3xl p-5 text-center transition flex flex-col items-center justify-between min-h-[170px] group"
               >
-                <div className="w-20 h-14 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  {brand.logo_base64 ? (
-                    <img src={brand.logo_base64} alt={brand.name} className="max-h-12 max-w-full object-contain" />
-                  ) : (
-                    <Smartphone className="w-10 h-10 text-slate-400" />
-                  )}
+                <div className="w-14 h-14 rounded-2xl bg-[#E8F8ED] text-[#0BAA4B] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                  {cat.name === 'Mobile' ? '📱' : cat.name === 'Tablet' ? '📟' : cat.name === 'Laptop' ? '💻' : cat.name === 'Smartwatch' ? '⌚' : cat.name === 'Dead Phone' ? '⚠️' : '🔌'}
                 </div>
-                <h3 className="font-bold text-slate-900 group-hover:text-emerald-700 transition">
-                  {brand.name}
-                </h3>
-                <span className="text-xs text-slate-400 mt-1 flex items-center gap-1 group-hover:text-emerald-600">
+                <div>
+                  <h4 className="font-black text-[#17251C] text-base group-hover:text-[#0BAA4B] transition">{cat.name}</h4>
+                  <p className="text-[11px] text-[#7B8980] mt-0.5">{cat.subtitle || `Sell your ${cat.name.toLowerCase()}`}</p>
+                </div>
+                <span className="text-[11px] font-bold text-[#0BAA4B] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
                   Select <ChevronRight className="w-3.5 h-3.5" />
                 </span>
               </div>
@@ -232,101 +265,200 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
         </div>
       )}
 
-      {/* ================= STEP 2: SELECT MODEL & VARIANT ================= */}
-      {step === 2 && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+      {/* ================= SCREEN 2: CHOOSE BRAND ================= */}
+      {currentScreen === 2 && (
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#E7EEE9] pb-4">
             <div>
-              <span className="text-xs font-bold text-emerald-600 uppercase">Selected Brand</span>
-              <h3 className="text-xl font-extrabold text-slate-900">{selectedBrand?.name}</h3>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-2 py-0.5 rounded-full">
+                  {selectedCategory?.name || 'Device'}
+                </span>
+                <h3 className="text-xl sm:text-2xl font-black text-[#17251C]">Choose Your Brand</h3>
+              </div>
+              <p className="text-xs text-[#7B8980] mt-0.5">Select the manufacturer brand of your device</p>
             </div>
-            <button
-              onClick={() => setStep(1)}
-              className="text-xs font-bold text-slate-600 hover:text-emerald-600 flex items-center gap-1 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Change Brand
-            </button>
+            
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-[#7B8980] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search brand..."
+                value={brandSearch}
+                onChange={(e) => setBrandSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-white border border-[#E7EEE9] rounded-xl text-xs font-bold text-[#17251C] focus:ring-2 focus:ring-[#0BAA4B] focus:outline-none"
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 pt-2">
+            {filteredBrands.map((brand) => (
+              <div
+                key={brand.id}
+                onClick={() => handleSelectBrand(brand)}
+                className="group cursor-pointer bg-white border-2 border-[#E7EEE9] hover:border-[#0BAA4B] hover:shadow-lg rounded-2xl p-4 text-center transition flex flex-col items-center justify-center min-h-[140px]"
+              >
+                <div className="w-16 h-12 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                  {brand.logo_base64 ? (
+                    <img src={brand.logo_base64} alt={brand.name} className="max-h-10 max-w-full object-contain" />
+                  ) : (
+                    <Smartphone className="w-8 h-8 text-[#7B8980]" />
+                  )}
+                </div>
+                <h4 className="font-black text-[#17251C] text-xs sm:text-sm group-hover:text-[#0BAA4B] transition">{brand.name}</h4>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ================= SCREEN 3: CHOOSE MODEL & STORAGE VARIANT ================= */}
+      {currentScreen === 3 && (
+        <div className="space-y-5 animate-fade-in">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-[#E7EEE9] pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentScreen(2)}
+                  className="p-1 rounded-lg hover:bg-slate-100 text-[#7B8980]"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <h3 className="text-xl sm:text-2xl font-black text-[#17251C]">
+                  {selectedBrand?.name} — Choose Model
+                </h3>
+              </div>
+              <p className="text-xs text-[#7B8980] mt-0.5">Select your specific model and storage capacity</p>
+            </div>
+
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 text-[#7B8980] absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search device model..."
+                value={modelSearch}
+                onChange={(e) => setModelSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-white border border-[#E7EEE9] rounded-xl text-xs font-bold text-[#17251C] focus:ring-2 focus:ring-[#0BAA4B] focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Series Filter Pills (e.g. All, iPhone 11 Series, iPhone 12 Series) */}
+          {seriesList.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={() => setSelectedSeriesId('ALL')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap ${
+                  selectedSeriesId === 'ALL'
+                    ? 'bg-[#0BAA4B] text-white shadow-sm'
+                    : 'bg-white text-[#7B8980] border border-[#E7EEE9] hover:bg-slate-50'
+                }`}
+              >
+                All Series
+              </button>
+              {seriesList.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setSelectedSeriesId(s.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap ${
+                    selectedSeriesId === s.id
+                      ? 'bg-[#0BAA4B] text-white shadow-sm'
+                      : 'bg-white text-[#7B8980] border border-[#E7EEE9] hover:bg-slate-50'
+                  }`}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Models Grid & Storage Variants */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Models Column */}
             <div className="md:col-span-2 space-y-3">
-              <h4 className="font-bold text-slate-900 text-sm">Select Phone Model:</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[460px] overflow-y-auto pr-1">
-                {models.map((model) => (
-                  <div
-                    key={model.id}
-                    onClick={() => handleSelectModel(model)}
-                    className={`cursor-pointer p-4 rounded-xl border transition flex items-center gap-3 ${
-                      selectedModel?.id === model.id
-                        ? 'bg-emerald-50/70 border-emerald-500 shadow-sm ring-2 ring-emerald-500/20'
-                        : 'bg-white border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="w-12 h-14 bg-slate-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden p-1">
-                      {model.image_base64 ? (
-                        <img src={model.image_base64} alt={model.name} className="max-h-full object-contain" />
-                      ) : (
-                        <Smartphone className="w-6 h-6 text-slate-400" />
-                      )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-1">
+                {filteredModels.map((m) => {
+                  const isSelected = selectedModel?.id === m.id;
+                  return (
+                    <div
+                      key={m.id}
+                      onClick={() => handleSelectModel(m)}
+                      className={`cursor-pointer rounded-2xl border-2 p-3 text-center transition flex flex-col items-center justify-between min-h-[160px] ${
+                        isSelected
+                          ? 'border-[#0BAA4B] bg-[#E8F8ED]/60 shadow-md ring-2 ring-[#0BAA4B]/20'
+                          : 'border-[#E7EEE9] bg-white hover:border-[#0BAA4B]/60'
+                      }`}
+                    >
+                      <div className="w-16 h-20 bg-slate-50 rounded-xl flex items-center justify-center p-1.5 overflow-hidden">
+                        {m.image_base64 ? (
+                          <img src={m.image_base64} alt={m.name} className="max-h-full object-contain" />
+                        ) : (
+                          <Smartphone className="w-8 h-8 text-[#7B8980]" />
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-black text-xs text-[#17251C] mt-2 line-clamp-2">{m.name}</h4>
+                        <span className="text-[10px] text-[#0BAA4B] font-bold block mt-0.5">
+                          {m.variants?.length || 0} Variants
+                        </span>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <h4 className="font-bold text-slate-900 text-sm truncate">{model.name}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">{model.variants?.length || 0} Storage Variants</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* Storage Variants Column */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-              <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <Layers className="w-4 h-4 text-emerald-600" />
+            <div className="bg-white border-2 border-[#E7EEE9] rounded-3xl p-5 shadow-sm space-y-4">
+              <h4 className="font-black text-sm text-[#17251C] flex items-center gap-1.5">
+                <Layers className="w-4 h-4 text-[#0BAA4B]" />
                 Select Storage Variant:
               </h4>
 
               {selectedModel ? (
                 <div className="space-y-3">
                   <div className="space-y-2">
-                    {selectedModel.variants?.map((v) => (
-                      <div
-                        key={v.id}
-                        onClick={() => setSelectedVariant(v)}
-                        className={`cursor-pointer p-3.5 rounded-xl border transition flex items-center justify-between ${
-                          selectedVariant?.id === v.id
-                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                            : 'bg-slate-50 border-slate-200 hover:border-emerald-300 text-slate-800'
-                        }`}
-                      >
-                        <div>
-                          <p className="font-bold text-sm">
-                            {v.ram ? `${v.ram} / ` : ''}{v.storage}
-                          </p>
-                          <span className={`text-[11px] ${selectedVariant?.id === v.id ? 'text-emerald-100' : 'text-slate-500'}`}>
-                            Mint Base: ₹{Number(v.base_price).toLocaleString('en-IN')}
-                          </span>
+                    {selectedModel.variants?.map((v) => {
+                      const isVarSelected = selectedVariant?.id === v.id;
+                      return (
+                        <div
+                          key={v.id}
+                          onClick={() => setSelectedVariant(v)}
+                          className={`cursor-pointer p-3 rounded-2xl border-2 transition flex items-center justify-between ${
+                            isVarSelected
+                              ? 'border-[#0BAA4B] bg-[#0BAA4B] text-white shadow-md'
+                              : 'border-[#E7EEE9] bg-[#F7FAF8] text-[#17251C] hover:border-[#0BAA4B]/40'
+                          }`}
+                        >
+                          <div>
+                            <p className="font-black text-sm">
+                              {v.ram ? `${v.ram} / ` : ''}{v.storage}
+                            </p>
+                            <span className={`text-[11px] font-bold ${isVarSelected ? 'text-[#E8F8ED]' : 'text-[#7B8980]'}`}>
+                              Base Buyback: ₹{Number(v.base_price).toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          {isVarSelected && <CheckCircle2 className="w-5 h-5 text-white shrink-0" />}
                         </div>
-                        {selectedVariant?.id === v.id && (
-                          <CheckCircle2 className="w-5 h-5 text-white shrink-0" />
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
-                  <div className="pt-4 border-t border-slate-100">
-                    <button
-                      onClick={() => setStep(3)}
-                      disabled={!selectedVariant}
-                      className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3 rounded-xl shadow transition flex items-center justify-center gap-2"
-                    >
-                      Answer Condition Questions <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => {
+                      setQuestionStepIndex(0);
+                      setCurrentScreen(4); // Start questionnaire
+                    }}
+                    disabled={!selectedVariant}
+                    className="w-full bg-[#0BAA4B] hover:bg-[#087C38] disabled:bg-slate-200 disabled:text-slate-400 text-white font-black py-3.5 rounded-2xl shadow-lg shadow-[#0BAA4B]/20 transition flex items-center justify-center gap-2 text-sm mt-4"
+                  >
+                    Start Device Evaluation <ArrowRight className="w-4 h-4" />
+                  </button>
                 </div>
               ) : (
-                <div className="text-center py-12 text-slate-400 text-xs">
-                  ← Select a model to view storage and base price
+                <div className="text-center py-16 text-[#7B8980] text-xs">
+                  ← Tap a phone model on the left to view available storage and base prices.
                 </div>
               )}
             </div>
@@ -334,130 +466,101 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
         </div>
       )}
 
-      {/* ================= STEP 3: CONDITION QUESTIONS ================= */}
-      {step === 3 && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-4">
-            <div>
-              <span className="text-xs font-bold text-emerald-600 uppercase">Configured Device</span>
-              <h3 className="text-xl font-extrabold text-slate-900">
-                {selectedModel?.name} ({selectedVariant?.ram ? `${selectedVariant.ram} / ` : ''}{selectedVariant?.storage})
-              </h3>
-              <p className="text-xs text-slate-500">Max Base Price (Mint condition): ₹{Number(selectedVariant?.base_price).toLocaleString('en-IN')}</p>
-            </div>
-            <button
-              onClick={() => setStep(2)}
-              className="text-xs font-bold text-slate-600 hover:text-emerald-600 flex items-center gap-1 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back
-            </button>
-          </div>
+      {/* ================= SCREEN 4: DYNAMIC QUESTIONNAIRE (STEPS 2-10) ================= */}
+      {currentScreen === 4 && questionSteps.length > 0 && (
+        <div className="space-y-5 animate-fade-in max-w-3xl mx-auto">
+          {(() => {
+            const currentCat = questionSteps[questionStepIndex];
+            if (!currentCat) return null;
 
-          {/* Mint Condition Shortcut */}
-          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-slate-900 text-sm">Is your phone like new with zero defects?</h4>
-                <p className="text-xs text-slate-600">If your device has no scratches, cracks or hardware issues, get the maximum valuation.</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedDefectCodes([]);
-                computeValuation();
-              }}
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs px-4 py-2.5 rounded-xl shadow transition shrink-0 whitespace-nowrap"
-            >
-              ✓ Mint Condition (Top Price)
-            </button>
-          </div>
-
-          <div className="text-center sm:text-left">
-            <h3 className="text-lg font-black text-slate-900">Check Your Phone's Condition:</h3>
-            <p className="text-xs text-slate-500">Tap any picture that matches visible defects on your phone. If none apply, leave unselected.</p>
-          </div>
-
-          {/* Condition Categories with Visual Cards */}
-          <div className="space-y-6">
-            {conditionCategories.map((cat) => (
-              <div key={cat.id} className="bg-white border border-slate-200 rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
-                      <Smartphone className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="font-black text-slate-900 text-sm">{cat.name}</h4>
-                      <p className="text-[11px] text-slate-500">{cat.description}</p>
-                    </div>
+            return (
+              <div className="bg-white border-2 border-[#E7EEE9] rounded-3xl p-5 sm:p-7 shadow-sm space-y-5">
+                
+                {/* Step indicator header */}
+                <div className="flex items-center justify-between border-b border-[#E7EEE9] pb-3">
+                  <div>
+                    <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-2.5 py-0.5 rounded-full border border-[#0BAA4B]/20">
+                      Step {questionStepIndex + 2} of 11
+                    </span>
+                    <h3 className="text-lg sm:text-xl font-black text-[#17251C] mt-1">
+                      {selectedModel?.name} — {currentCat.name}
+                    </h3>
+                    <p className="text-xs text-[#7B8980]">{currentCat.subtitle || 'Choose device condition'}</p>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-md">
-                    {cat.options?.filter(o => selectedDefectCodes.includes(o.code)).length || 0} Reported
+                  <span className="text-xs font-black text-[#7B8980]">
+                    {questionStepIndex + 2}/11
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {cat.options?.map((opt) => {
-                    const isChecked = selectedDefectCodes.includes(opt.code);
+                {/* Pro tip card if configured */}
+                {currentCat.pro_tip && (
+                  <div className="bg-[#FFFBEB] border border-[#F59E0B]/30 rounded-2xl p-3 flex items-start gap-2.5 text-xs text-[#92400E]">
+                    <HelpCircle className="w-4 h-4 text-[#F59E0B] shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block font-black">Pro Tip:</strong>
+                      <span>{currentCat.pro_tip}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Question Options Cards (Visual A/B Cards) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
+                  {currentCat.options?.map((opt) => {
+                    const isSelected = selectedOptionCodes.includes(opt.code);
                     return (
                       <div
                         key={opt.id}
-                        onClick={() => toggleDefectCode(opt.code)}
-                        className={`cursor-pointer rounded-2xl border-2 p-3 transition flex flex-col justify-between active:scale-[0.98] select-none ${
-                          isChecked
+                        onClick={() => toggleOptionCode(opt.code, opt.exclusive_group)}
+                        className={`cursor-pointer rounded-2xl border-2 p-3.5 transition flex flex-col justify-between active:scale-[0.98] select-none ${
+                          isSelected
                             ? opt.is_rejection
-                              ? 'bg-rose-50 border-rose-500 shadow-md ring-2 ring-rose-500/20'
-                              : 'bg-amber-50/80 border-amber-500 shadow-md ring-2 ring-amber-500/20'
-                            : 'bg-slate-50/60 border-slate-200 hover:border-slate-300 hover:bg-white shadow-sm'
+                              ? 'border-rose-600 bg-rose-50 shadow-md ring-2 ring-rose-500/20'
+                              : 'border-[#0BAA4B] bg-[#E8F8ED]/70 shadow-md ring-2 ring-[#0BAA4B]/20'
+                            : 'border-[#E7EEE9] bg-[#F7FAF8] hover:border-[#0BAA4B]/50 hover:bg-white'
                         }`}
                       >
-                        {/* Top selection indicator */}
+                        {/* Top Indicator */}
                         <div className="flex justify-between items-center mb-2">
-                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                            isChecked
-                              ? opt.is_rejection ? 'bg-rose-600 text-white' : 'bg-amber-600 text-white'
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            isSelected
+                              ? opt.is_rejection ? 'bg-rose-600 text-white' : 'bg-[#0BAA4B] text-white'
                               : 'bg-slate-200 text-slate-700'
                           }`}>
-                            {isChecked ? (opt.is_rejection ? '🛑 Rejection' : '⚠️ Selected') : 'Tap if applies'}
+                            {isSelected ? '✓ Selected' : 'Tap to select'}
                           </span>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition ${
-                            isChecked
-                              ? opt.is_rejection ? 'border-rose-600 bg-rose-600 text-white' : 'border-amber-600 bg-amber-600 text-white'
-                              : 'border-slate-300 bg-white'
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            isSelected ? 'border-[#0BAA4B] bg-[#0BAA4B] text-white' : 'border-slate-300 bg-white'
                           }`}>
-                            {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                            {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                           </div>
                         </div>
 
-                        {/* Visual Defect Photograph / Illustration */}
-                        <div className="w-full h-32 sm:h-36 rounded-xl bg-white border border-slate-200/80 overflow-hidden flex items-center justify-center mb-2.5 p-2 shadow-inner">
+                        {/* Visual Image */}
+                        <div className="w-full h-32 sm:h-36 rounded-xl bg-white border border-[#E7EEE9] overflow-hidden flex items-center justify-center p-2 mb-2 shadow-inner">
                           {opt.image_base64 ? (
                             <img src={opt.image_base64} alt={opt.title} className="max-h-full max-w-full object-contain" />
                           ) : (
-                            <Smartphone className="w-12 h-12 text-slate-300" />
+                            <Smartphone className="w-10 h-10 text-slate-300" />
                           )}
                         </div>
 
-                        {/* Text & Deduction */}
                         <div>
-                          <h5 className={`font-black text-xs sm:text-sm leading-tight ${isChecked ? 'text-slate-900' : 'text-slate-800'}`}>
-                            {opt.title}
-                          </h5>
+                          <h5 className="font-black text-xs sm:text-sm text-[#17251C] leading-snug">{opt.title}</h5>
                           {opt.description && (
-                            <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-1">{opt.description}</p>
+                            <p className="text-[10px] text-[#7B8980] mt-0.5 line-clamp-1">{opt.description}</p>
                           )}
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-200/60 text-[10px]">
-                            <span className="text-slate-400 font-bold uppercase">Impact</span>
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-[#E7EEE9] text-[10px]">
+                            <span className="text-[#7B8980] font-bold">Price Impact</span>
                             {opt.is_rejection ? (
                               <span className="font-black text-rose-600">Rejects Offer (₹0)</span>
-                            ) : opt.deduction_type === 'PERCENTAGE' ? (
-                              <span className="font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">-{opt.default_deduction_value}%</span>
+                            ) : opt.is_accessory_bonus ? (
+                              <span className="font-black text-[#0BAA4B]">+ Accessory Added</span>
+                            ) : Number(opt.default_deduction_value) > 0 ? (
+                              <span className="font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
+                                -₹{Number(opt.default_deduction_value).toLocaleString('en-IN')}
+                              </span>
                             ) : (
-                              <span className="font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">-₹{Number(opt.default_deduction_value).toLocaleString('en-IN')}</span>
+                              <span className="font-black text-[#0BAA4B]">✓ No Impact (₹0)</span>
                             )}
                           </div>
                         </div>
@@ -465,280 +568,276 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                     );
                   })}
                 </div>
-              </div>
-            ))}
-          </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200">
-            <span className="text-xs text-slate-500 font-bold">
-              {selectedDefectCodes.length} {selectedDefectCodes.length === 1 ? 'Defect' : 'Defects'} Selected
-            </span>
-            <button
-              onClick={computeValuation}
-              disabled={valuing}
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2 text-base active:scale-98"
-            >
-              {valuing ? 'Calculating Best Offer...' : 'See My Estimated Cash Offer'}
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-      )}
+                {/* Navigation Buttons: Previous & Continue */}
+                <div className="flex items-center justify-between pt-4 border-t border-[#E7EEE9]">
+                  <button
+                    onClick={() => {
+                      if (questionStepIndex > 0) {
+                        setQuestionStepIndex(questionStepIndex - 1);
+                      } else {
+                        setCurrentScreen(3);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-black text-[#17251C] bg-white border border-[#E7EEE9] hover:bg-slate-50 px-4 py-2.5 rounded-xl transition"
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" /> Previous
+                  </button>
 
-      {/* ================= STEP 4: VALUATION RESULT ================= */}
-      {step === 4 && valuationResult && (
-        <div className="space-y-6 animate-fade-in max-w-2xl mx-auto">
-          <div className="bg-gradient-to-br from-slate-900 to-slate-950 text-white rounded-3xl p-8 shadow-2xl relative overflow-hidden border border-slate-800">
-            <div className="absolute top-0 right-0 p-8 opacity-10">
-              <Sparkles className="w-48 h-48" />
-            </div>
-
-            <div className="relative z-10 text-center space-y-3">
-              <span className="text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1 rounded-full">
-                Indicative Buyback Valuation
-              </span>
-              <h3 className="text-xl font-bold text-slate-300">
-                {valuationResult.brand} {valuationResult.model} ({valuationResult.variant})
-              </h3>
-
-              <div className="py-4">
-                <span className="text-sm text-slate-400 block font-medium">Estimated Selling Price:</span>
-                <span className="text-4xl sm:text-5xl font-black text-emerald-400 tracking-tight">
-                  ₹{Number(valuationResult.estimated_price).toLocaleString('en-IN')}
-                </span>
-                <p className="text-xs text-slate-400 mt-2">
-                  *Final offer confirmed upon physical inspection by our collection agent.
-                </p>
-              </div>
-            </div>
-
-            {/* Itemized deduction breakdown */}
-            <div className="bg-slate-800/80 rounded-2xl p-4 mt-6 border border-slate-700 space-y-2 text-xs">
-              <div className="flex justify-between text-slate-300 font-semibold pb-2 border-b border-slate-700">
-                <span>Base Model Value (Mint):</span>
-                <span>₹{Number(valuationResult.base_price).toLocaleString('en-IN')}</span>
-              </div>
-
-              {valuationResult.deductions?.length > 0 ? (
-                valuationResult.deductions.map((d, i) => (
-                  <div key={i} className="flex justify-between text-rose-300">
-                    <span>- {d.title}:</span>
-                    <span>-₹{Number(d.deduction_amount).toLocaleString('en-IN')}</span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-emerald-400 font-medium py-1">
-                  ✓ Full Mint Condition! No condition deductions applied.
+                  <button
+                    onClick={() => {
+                      if (questionStepIndex < questionSteps.length - 1) {
+                        setQuestionStepIndex(questionStepIndex + 1);
+                      } else {
+                        computeValuation(); // Finished questions, compute quote
+                      }
+                    }}
+                    className="flex items-center gap-1.5 text-xs font-black text-white bg-[#0BAA4B] hover:bg-[#087C38] px-6 py-2.5 rounded-xl shadow-md shadow-[#0BAA4B]/20 transition"
+                  >
+                    {questionStepIndex === questionSteps.length - 1 ? 'Get Estimated Quote' : 'Continue'} <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              )}
 
-              <div className="flex justify-between font-bold text-emerald-400 pt-2 border-t border-slate-700 text-sm">
-                <span>Total Net Offer:</span>
-                <span>₹{Number(valuationResult.estimated_price).toLocaleString('en-IN')}</span>
               </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 pt-2">
-            <button
-              onClick={() => setStep(3)}
-              className="w-1/3 border border-slate-300 hover:bg-slate-100 font-bold py-3.5 rounded-xl text-slate-700 text-sm transition"
-            >
-              Modify Conditions
-            </button>
-            <button
-              onClick={() => setStep(5)}
-              className="w-2/3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 rounded-xl shadow-lg shadow-emerald-600/20 text-sm transition flex items-center justify-center gap-2"
-            >
-              Schedule Pickup & Payout <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
+            );
+          })()}
         </div>
       )}
 
-      {/* ================= STEP 5: PICKUP & PAYOUT DETAILS ================= */}
-      {step === 5 && (
-        <form onSubmit={handleSubmitOrder} className="space-y-6 animate-fade-in max-w-2xl mx-auto">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <div>
-              <span className="text-xs font-bold text-emerald-600 uppercase">Step 5 of 5</span>
-              <h3 className="text-xl font-extrabold text-slate-900">Doorstep Pickup & Payment Info</h3>
+      {/* ================= SCREEN 5: GET ESTIMATED QUOTE ================= */}
+      {currentScreen === 5 && valuationResult && (
+        <div className="max-w-xl mx-auto space-y-5 animate-fade-in">
+          
+          {/* Green Hero Quote Banner */}
+          <div className="bg-gradient-to-br from-[#0BAA4B] via-[#087C38] to-[#0D4722] text-white rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-3">
+            <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full inline-block">
+              Indicative Buyback Valuation
+            </span>
+            <h3 className="text-xl sm:text-2xl font-black">
+              {valuationResult.brand} {valuationResult.model} ({valuationResult.variant})
+            </h3>
+
+            <div className="py-2">
+              <span className="text-xs text-[#E8F8ED] block font-bold">Estimated Buyback Value</span>
+              <span className="text-4xl sm:text-5xl font-black tracking-tight text-white drop-shadow">
+                ₹{Number(valuationResult.estimated_price).toLocaleString('en-IN')}
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setStep(4)}
-              className="text-xs font-bold text-slate-600 hover:text-emerald-600 flex items-center gap-1 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" /> Back
-            </button>
+
+            <p className="text-[11px] text-[#E8F8ED] max-w-sm mx-auto">
+              Subject to physical doorstep verification by our collection agent before payout.
+            </p>
           </div>
 
-          {/* Contact Details */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-            <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-emerald-600" /> Customer Contact & Pickup Address
+          {/* Transparent Price Summary Card */}
+          <div className="bg-white border-2 border-[#E7EEE9] rounded-3xl p-5 sm:p-6 space-y-3 text-xs shadow-sm">
+            <h4 className="font-black text-sm text-[#17251C] border-b border-[#E7EEE9] pb-2">
+              Price Summary Breakdown:
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex justify-between items-center py-1">
+              <span className="text-[#7B8980]">Base Market Price (Mint condition):</span>
+              <strong className="text-[#17251C] font-black">₹{Number(valuationResult.base_price).toLocaleString('en-IN')}</strong>
+            </div>
+
+            {valuationResult.breakdown?.map((item, idx) => (
+              <div key={idx} className="flex justify-between items-center py-1 text-amber-800">
+                <span>{item.title}:</span>
+                <span className="font-black">-₹{Number(item.deduction).toLocaleString('en-IN')}</span>
+              </div>
+            ))}
+
+            <div className="flex justify-between items-center pt-3 border-t border-[#E7EEE9] text-sm">
+              <span className="font-black text-[#17251C]">Final Estimated Offer:</span>
+              <span className="text-xl font-black text-[#0BAA4B]">
+                ₹{Number(valuationResult.estimated_price).toLocaleString('en-IN')}
+              </span>
+            </div>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setCurrentScreen(4)}
+              className="w-1/3 bg-white border border-[#E7EEE9] hover:bg-slate-50 text-[#17251C] font-black py-3.5 rounded-2xl transition text-xs"
+            >
+              ← Edit Answers
+            </button>
+            <button
+              onClick={() => setCurrentScreen(6)}
+              className="w-2/3 bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black py-3.5 rounded-2xl shadow-xl shadow-[#0BAA4B]/20 transition flex items-center justify-center gap-2 text-sm"
+            >
+              Proceed to Pickup <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* ================= SCREEN 6: DOORSTEP BOOKING & PAYOUT DETAILS ================= */}
+      {currentScreen === 6 && (
+        <form onSubmit={handleSubmitBooking} className="max-w-xl mx-auto bg-white border-2 border-[#E7EEE9] rounded-3xl p-5 sm:p-7 shadow-sm space-y-5 animate-fade-in text-xs">
+          
+          <div className="border-b border-[#E7EEE9] pb-3">
+            <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-2.5 py-0.5 rounded-full">
+              Final Step
+            </span>
+            <h3 className="text-lg sm:text-xl font-black text-[#17251C] mt-1">Book Free Doorstep Pickup</h3>
+            <p className="text-xs text-[#7B8980]">Our certified agent will visit your home and disburse instant cash</p>
+          </div>
+
+          {/* Personal Info */}
+          <div className="space-y-3">
+            <h4 className="font-black text-[#17251C] text-sm">1. Customer Information</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Your Full Name *</label>
+                <label className="block font-bold text-[#17251C] mb-1">Full Name *</label>
                 <input
                   type="text"
                   required
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Rahul Sharma"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+                  placeholder="e.g. Mohamed K."
+                  className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
                 />
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Mobile Number (For Agent Call) *</label>
+                <label className="block font-bold text-[#17251C] mb-1">Mobile Number *</label>
                 <input
                   type="tel"
                   required
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="9876543210"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+                  placeholder="e.g. 9876543210"
+                  className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
                 />
               </div>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Street Address / House No / Landmark *</label>
-              <textarea
-                required
-                rows={2}
-                value={pickupAddress}
-                onChange={(e) => setPickupAddress(e.target.value)}
-                placeholder="Flat 302, Palm Heights, Outer Ring Road..."
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Address */}
+          <div className="space-y-3">
+            <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-[#0BAA4B]" /> 2. Pickup Address
+            </h4>
+            <textarea
+              required
+              rows={2}
+              value={pickupAddress}
+              onChange={(e) => setPickupAddress(e.target.value)}
+              placeholder="Door No, Street Name, Area / Landmark"
+              className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-medium bg-[#F7FAF8]"
+            />
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">City / Region *</label>
+                <label className="block font-bold text-[#17251C] mb-1">City</label>
                 <input
                   type="text"
                   required
                   value={pickupCity}
                   onChange={(e) => setPickupCity(e.target.value)}
-                  placeholder="Bengaluru, Delhi, Mumbai..."
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+                  className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
                 />
               </div>
-
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">PIN Code *</label>
+                <label className="block font-bold text-[#17251C] mb-1">Pincode</label>
                 <input
                   type="text"
                   required
                   value={pickupPincode}
                   onChange={(e) => setPickupPincode(e.target.value)}
-                  placeholder="560103"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+                  className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
                 />
               </div>
             </div>
+          </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Preferred Collection Slot</label>
+          {/* Date & Slot */}
+          <div className="space-y-3">
+            <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-[#0BAA4B]" /> 3. Preferred Date & Time
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                type="date"
+                required
+                value={pickupDate}
+                onChange={(e) => setPickupDate(e.target.value)}
+                className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
+              />
               <select
                 value={pickupSlot}
                 onChange={(e) => setPickupSlot(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+                className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
               >
                 <option value="Morning (10:00 AM - 1:00 PM)">Morning (10:00 AM - 1:00 PM)</option>
-                <option value="Afternoon (1:00 PM - 4:00 PM)">Afternoon (1:00 PM - 4:00 PM)</option>
-                <option value="Evening (4:00 PM - 7:30 PM)">Evening (4:00 PM - 7:30 PM)</option>
+                <option value="Afternoon (1:00 PM - 5:00 PM)">Afternoon (1:00 PM - 5:00 PM)</option>
+                <option value="Evening (5:00 PM - 8:00 PM)">Evening (5:00 PM - 8:00 PM)</option>
               </select>
             </div>
           </div>
 
-          {/* Customer Payout Method */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-emerald-600" />
-                Where should we send your payout? (₹{Number(valuationResult?.estimated_price).toLocaleString('en-IN')})
-              </h4>
-            </div>
-
-            {/* UPI or Bank Selector */}
+          {/* Payment Method */}
+          <div className="space-y-3">
+            <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
+              <Banknote className="w-4 h-4 text-[#0BAA4B]" /> 4. Instant Payment Details
+            </h4>
+            
             <div className="grid grid-cols-2 gap-3">
-              <div
+              <button
+                type="button"
                 onClick={() => setBeneficiaryType('UPI')}
-                className={`cursor-pointer p-3 rounded-xl border text-center font-bold text-xs transition ${
+                className={`p-3 rounded-2xl border-2 font-black transition ${
                   beneficiaryType === 'UPI'
-                    ? 'bg-emerald-50 border-emerald-600 text-emerald-800 ring-2 ring-emerald-500/20'
-                    : 'bg-slate-50 border-slate-200 text-slate-600'
+                    ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38]'
+                    : 'border-[#E7EEE9] bg-white text-[#7B8980]'
                 }`}
               >
-                UPI ID (Google Pay, PhonePe, Paytm)
-              </div>
-              <div
+                Instant UPI (GPay / PhonePe)
+              </button>
+              <button
+                type="button"
                 onClick={() => setBeneficiaryType('BANK')}
-                className={`cursor-pointer p-3 rounded-xl border text-center font-bold text-xs transition ${
+                className={`p-3 rounded-2xl border-2 font-black transition ${
                   beneficiaryType === 'BANK'
-                    ? 'bg-emerald-50 border-emerald-600 text-emerald-800 ring-2 ring-emerald-500/20'
-                    : 'bg-slate-50 border-slate-200 text-slate-600'
+                    ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38]'
+                    : 'border-[#E7EEE9] bg-white text-[#7B8980]'
                 }`}
               >
-                Direct Bank Transfer (IMPS/NEFT)
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Account Holder / Payee Name *</label>
-              <input
-                type="text"
-                required
-                value={beneficiaryName}
-                onChange={(e) => setBeneficiaryName(e.target.value)}
-                placeholder="Exact name matching bank/UPI"
-                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
-              />
+                Direct Bank Transfer
+              </button>
             </div>
 
             {beneficiaryType === 'UPI' ? (
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">UPI ID (VPA) *</label>
+                <label className="block font-bold text-[#17251C] mb-1">UPI ID (e.g. mobile@okaxis) *</label>
                 <input
                   type="text"
                   required
                   value={beneficiaryUpiId}
                   onChange={(e) => setBeneficiaryUpiId(e.target.value)}
-                  placeholder="e.g. 9876543210@paytm or yourname@okaxis"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
+                  placeholder="e.g. 9876543210@paytm"
+                  className="w-full p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">Our admin will transfer funds to this UPI ID upon pickup & inspection.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Bank Account Number *</label>
-                  <input
-                    type="text"
-                    required
-                    value={beneficiaryAccountNo}
-                    onChange={(e) => setBeneficiaryAccountNo(e.target.value)}
-                    placeholder="e.g. 0123456789012"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">IFSC Code *</label>
-                  <input
-                    type="text"
-                    required
-                    value={beneficiaryIfsc}
-                    onChange={(e) => setBeneficiaryIfsc(e.target.value.toUpperCase())}
-                    placeholder="e.g. SBIN0001234"
-                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm uppercase focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  required
+                  placeholder="Bank Account Number"
+                  value={beneficiaryAccountNo}
+                  onChange={(e) => setBeneficiaryAccountNo(e.target.value)}
+                  className="p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8]"
+                />
+                <input
+                  type="text"
+                  required
+                  placeholder="IFSC Code"
+                  value={beneficiaryIfsc}
+                  onChange={(e) => setBeneficiaryIfsc(e.target.value.toUpperCase())}
+                  className="p-2.5 border border-[#E7EEE9] rounded-xl font-bold bg-[#F7FAF8] font-mono"
+                />
               </div>
             )}
           </div>
@@ -746,79 +845,95 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-4 rounded-2xl shadow-xl shadow-emerald-600/20 text-base transition flex items-center justify-center gap-2"
+            className="w-full bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#0BAA4B]/20 transition flex items-center justify-center gap-2 text-sm"
           >
-            {submitting ? 'Submitting Sale Request...' : 'Confirm & Request Free Pickup'}
-            <CheckCircle2 className="w-5 h-5" />
+            {submitting ? 'Confirming Doorstep Pickup...' : 'Confirm Doorstep Pickup Booking →'}
           </button>
+
         </form>
       )}
 
-      {/* ================= STEP 6: CONFIRMATION SUCCESS ================= */}
-      {step === 6 && createdOrder && (
-        <div className="max-w-xl mx-auto bg-white rounded-3xl border border-slate-200 p-8 text-center shadow-xl space-y-6 animate-fade-in">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto ring-8 ring-emerald-50">
-            <Check className="w-8 h-8 stroke-[3]" />
+      {/* ================= SCREEN 7: ORDER CONFIRMATION & TRACKING TIMELINE ================= */}
+      {currentScreen === 7 && createdOrder && (
+        <div className="max-w-xl mx-auto bg-white border-2 border-[#E7EEE9] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 animate-fade-in text-center">
+          
+          <div className="w-16 h-16 rounded-full bg-[#E8F8ED] text-[#0BAA4B] flex items-center justify-center mx-auto shadow-md shadow-[#0BAA4B]/20">
+            <CheckCircle2 className="w-9 h-9" />
           </div>
 
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-              Sale Request Received
-            </span>
-            <h2 className="text-2xl font-black text-slate-900 mt-2">
-              Pickup Scheduled Successfully!
-            </h2>
-            <p className="text-sm text-slate-500 mt-1">
-              Your tracking reference is:
-            </p>
-            <div className="inline-block bg-slate-900 text-white font-mono text-xl font-bold px-4 py-2 rounded-xl mt-2 tracking-wider">
-              {createdOrder.sale_code}
+            <h3 className="text-2xl font-black text-[#17251C]">Pickup Booked Successfully!</h3>
+            <p className="text-xs text-[#7B8980] mt-1">Our certified technician will visit your location to inspect the device.</p>
+          </div>
+
+          {/* Request ID Badge */}
+          <div className="bg-[#F7FAF8] border border-[#E7EEE9] rounded-2xl p-4 flex items-center justify-between">
+            <div className="text-left">
+              <span className="text-[10px] text-[#7B8980] font-black uppercase">Request ID</span>
+              <h4 className="text-lg font-black text-[#17251C] font-mono">{createdOrder.sale_code}</h4>
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(createdOrder.sale_code);
+                setCopiedCode(true);
+                setTimeout(() => setCopiedCode(false), 2000);
+              }}
+              className="px-3 py-1.5 bg-white border border-[#E7EEE9] rounded-xl text-xs font-black text-[#0BAA4B] hover:bg-[#E8F8ED] transition flex items-center gap-1"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span>{copiedCode ? 'Copied!' : 'Copy'}</span>
+            </button>
+          </div>
+
+          {/* 5-Stage Visual Timeline matching reference image */}
+          <div className="text-left space-y-4 pt-2">
+            <h4 className="font-black text-sm text-[#17251C]">Live Order Status:</h4>
+            
+            <div className="space-y-4 pl-3 border-l-2 border-[#0BAA4B]">
+              <div className="relative pl-5">
+                <div className="absolute -left-[19px] top-0.5 w-4 h-4 rounded-full bg-[#0BAA4B] ring-4 ring-[#E8F8ED]" />
+                <strong className="text-xs text-[#17251C] block font-black">1. Request Submitted</strong>
+                <span className="text-[10px] text-[#7B8980]">Valuation generated & details received</span>
+              </div>
+
+              <div className="relative pl-5">
+                <div className="absolute -left-[19px] top-0.5 w-4 h-4 rounded-full bg-[#0BAA4B] ring-4 ring-[#E8F8ED]" />
+                <strong className="text-xs text-[#17251C] block font-black">2. Quote Generated</strong>
+                <span className="text-[10px] text-[#0BAA4B] font-bold">Estimated ₹{Number(createdOrder.estimated_price).toLocaleString('en-IN')}</span>
+              </div>
+
+              <div className="relative pl-5">
+                <div className="absolute -left-[19px] top-0.5 w-4 h-4 rounded-full bg-slate-300" />
+                <strong className="text-xs text-[#7B8980] block font-black">3. Pickup Scheduled</strong>
+                <span className="text-[10px] text-[#7B8980]">Assigned to Ramesh Kumar (Pickup Specialist)</span>
+              </div>
+
+              <div className="relative pl-5">
+                <div className="absolute -left-[19px] top-0.5 w-4 h-4 rounded-full bg-slate-300" />
+                <strong className="text-xs text-[#7B8980] block font-black">4. Device Inspection</strong>
+                <span className="text-[10px] text-[#7B8980]">In-person hardware and IMEI verification</span>
+              </div>
+
+              <div className="relative pl-5">
+                <div className="absolute -left-[19px] top-0.5 w-4 h-4 rounded-full bg-slate-300" />
+                <strong className="text-xs text-[#7B8980] block font-black">5. Final Price & Instant Payout</strong>
+                <span className="text-[10px] text-[#7B8980]">Direct transfer to {createdOrder.beneficiary_upi_id || 'Bank account'}</span>
+              </div>
             </div>
           </div>
 
-          <div className="bg-slate-50 rounded-2xl p-4 text-left space-y-2 text-xs border border-slate-200">
-            <div className="flex justify-between py-1 border-b border-slate-200">
-              <span className="text-slate-500">Device:</span>
-              <span className="font-bold text-slate-800">{createdOrder.brand_name} {createdOrder.model_name}</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-200">
-              <span className="text-slate-500">Indicative Price:</span>
-              <span className="font-bold text-emerald-700">₹{Number(createdOrder.estimated_price).toLocaleString('en-IN')}</span>
-            </div>
-            <div className="flex justify-between py-1 border-b border-slate-200">
-              <span className="text-slate-500">Pickup Slot:</span>
-              <span className="font-bold text-slate-800">{createdOrder.pickup_slot}</span>
-            </div>
-            <div className="flex justify-between py-1">
-              <span className="text-slate-500">Payout Target:</span>
-              <span className="font-bold text-slate-800">{createdOrder.beneficiary_upi_id || createdOrder.beneficiary_account_no}</span>
-            </div>
-          </div>
+          <button
+            onClick={() => {
+              setCurrentScreen(1);
+              setSelectedModel(null);
+              setSelectedVariant(null);
+              setSelectedOptionCodes([]);
+            }}
+            className="w-full bg-[#17251C] hover:bg-black text-white font-black py-3.5 rounded-2xl transition text-xs"
+          >
+            Sell Another Device →
+          </button>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button
-              onClick={() => {
-                if (onOrderCreated) onOrderCreated(createdOrder);
-              }}
-              className="w-full bg-slate-900 hover:bg-black text-white font-bold py-3 rounded-xl transition text-sm"
-            >
-              Track Live Order Status
-            </button>
-            <button
-              onClick={() => {
-                setStep(1);
-                setSelectedBrand(null);
-                setSelectedModel(null);
-                setSelectedVariant(null);
-                setSelectedDefectCodes([]);
-                setValuationResult(null);
-                setCreatedOrder(null);
-              }}
-              className="w-full border border-slate-300 hover:bg-slate-50 font-bold py-3 rounded-xl text-slate-700 transition text-sm"
-            >
-              Sell Another Phone
-            </button>
-          </div>
         </div>
       )}
 

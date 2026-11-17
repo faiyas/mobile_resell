@@ -15,10 +15,20 @@ from apps.catalog.models import StorageVariant
 def condition_categories_view(request):
     if request.method == 'GET':
         show_all = request.GET.get('all', 'false').lower() == 'true'
+        device_cat = request.GET.get('device_category')
+        
         if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
             categories = ConditionCategory.objects.all()
         else:
             categories = ConditionCategory.objects.filter(is_active=True)
+
+        if device_cat:
+            if str(device_cat).isdigit():
+                categories = categories.filter(device_category_id=int(device_cat))
+            else:
+                categories = categories.filter(device_category__slug=device_cat)
+
+        categories = categories.order_by('step_number', 'display_order')
         serializer = ConditionCategorySerializer(categories, many=True)
         return Response(serializer.data)
     

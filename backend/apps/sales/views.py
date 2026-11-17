@@ -32,7 +32,8 @@ def sales_list_create_view(request):
         elif user.role == 'CUSTOMER':
             queryset = queryset.filter(customer=user) | queryset.filter(customer_phone=user.phone)
         elif user.role == 'COLLECTION_AGENT':
-            queryset = queryset.filter(assigned_agent=user)
+            # Collection agent sees assigned tasks OR unassigned bookings needing pickup
+            queryset = queryset.filter(assigned_agent=user) | queryset.filter(assigned_agent__isnull=True, status__in=['SUBMITTED', 'PICKUP_SCHEDULED'])
         # ADMIN sees all
 
         status_filter = request.GET.get('status')
@@ -159,18 +160,21 @@ def reject_final_offer_view(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def assign_pickup_view(request, pk):
-    """Admin schedules pickup and assigns agent"""
-    if request.user.role != 'ADMIN':
-        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+    """Admin or Collection Agent schedules pickup and assigns agent"""
+    if request.user.role not in ['ADMIN', 'COLLECTION_AGENT']:
+        return Response({'detail': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
     sale = get_object_or_404(PhoneSale, id=pk)
     agent_id = request.data.get('agent_id')
     pickup_date = request.data.get('pickup_date')
     pickup_slot = request.data.get('pickup_slot')
 
-    if agent_id:
+    if request.user.role == 'COLLECTION_AGENT':
+        sale.assigned_agent = request.user
+    elif agent_id:
         agent = get_object_or_404(User, id=agent_id, role='COLLECTION_AGENT')
         sale.assigned_agent = agent
+
     if pickup_date:
         sale.pickup_date = pickup_date
     if pickup_slot:

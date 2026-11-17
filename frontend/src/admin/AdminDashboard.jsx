@@ -86,8 +86,20 @@ export default function AdminDashboard({ currentUser }) {
         pickup_slot: pickupSlot,
       });
       const code = assignSale.sale_code;
+      const targetAgent = agents.find(a => String(a.id) === String(selectedAgentId));
+      
+      // Fast optimistic update: update table immediately
+      setSales(prev => prev.map(s => s.id === assignSale.id ? {
+        ...s,
+        assigned_agent: selectedAgentId,
+        assigned_agent_name: targetAgent ? targetAgent.full_name : (s.assigned_agent_name || 'Assigned Agent'),
+        status: 'PICKUP_SCHEDULED',
+        pickup_date: pickupDate,
+        pickup_slot: pickupSlot
+      } : s));
+
       setAssignSale(null);
-      setSuccessToast(`Pickup scheduled & assigned successfully for order ${code}!`);
+      setSuccessToast(`✓ Pickup scheduled & assigned to ${targetAgent ? targetAgent.full_name : 'Agent'} for order ${code}!`);
       setTimeout(() => setSuccessToast(''), 3500);
       loadDashboardData();
     } catch (err) {
@@ -129,25 +141,25 @@ export default function AdminDashboard({ currentUser }) {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in">
       
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 text-white p-5 sm:p-8 rounded-3xl shadow-xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#087C38] via-[#0BAA4B] to-[#0D4722] text-white p-5 sm:p-8 rounded-3xl shadow-xl">
         <div>
-          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded">
-            Super Admin Control Center
+          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#E8F8ED] bg-white/20 border border-white/20 px-2.5 py-0.5 rounded-full inline-block">
+            Super Admin Control Center · X-PHONES Platform
           </span>
           <h1 className="text-xl sm:text-3xl font-black mt-2">
-            Mobile Buyback Operations Desk
+            Operations & Dynamic CMS Desk
           </h1>
-          <p className="text-[11px] sm:text-xs text-slate-400 mt-1">
-            Manage device valuations, assign pickup agents, and authorize UPI / Bank payouts with Base64 proof.
+          <p className="text-[11px] sm:text-xs text-[#E8F8ED] mt-1">
+            Dynamic homepage builder, questionnaire steps, pricing deductions, agent assignments & UPI/Bank payouts.
           </p>
         </div>
 
         <button
           onClick={loadDashboardData}
           disabled={loading}
-          className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-4 py-2.5 rounded-xl border border-slate-700 transition w-full sm:w-auto"
+          className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-2.5 rounded-xl border border-white/20 transition w-full sm:w-auto"
         >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-emerald-400' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-white' : ''}`} />
           {loading ? 'Refreshing...' : 'Refresh Data'}
         </button>
       </div>

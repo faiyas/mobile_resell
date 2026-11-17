@@ -53,17 +53,29 @@ export const api = {
   getMe: () => request('/auth/me/'),
   getAgents: () => request('/auth/agents/'),
 
-  // Catalog
-  getBrands: (includeModels = false, all = false) => request(`/catalog/brands/?include_models=${includeModels}&all=${all}`),
+  // Catalog & Categories
+  getCategories: (all = false) => request(`/catalog/categories/?all=${all}`),
+  createCategory: (data) => request('/catalog/categories/', { method: 'POST', body: JSON.stringify(data) }),
+  updateCategory: (id, data) => request(`/catalog/categories/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCategory: (id) => request(`/catalog/categories/${id}/`, { method: 'DELETE' }),
+
+  getBrands: (includeModels = false, all = false, categoryId = null) => 
+    request(`/catalog/brands/?include_models=${includeModels}&all=${all}${categoryId ? `&category=${categoryId}` : ''}`),
   createBrand: (data) => request('/catalog/brands/', { method: 'POST', body: JSON.stringify(data) }),
   updateBrand: (id, data) => request(`/catalog/brands/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteBrand: (id) => request(`/catalog/brands/${id}/`, { method: 'DELETE' }),
 
-  getModels: (brandId, all = false) => request(`/catalog/models/?${brandId ? `brand=${brandId}&` : ''}all=${all}`),
+  getSeries: (brandId) => request(`/catalog/series/?${brandId ? `brand=${brandId}` : ''}`),
+
+  getModels: (brandId, all = false, seriesId = null) => 
+    request(`/catalog/models/?${brandId ? `brand=${brandId}&` : ''}${seriesId ? `series=${seriesId}&` : ''}all=${all}`),
   getModelDetail: (id) => request(`/catalog/models/${id}/`),
   createModel: (data) => request('/catalog/models/', { method: 'POST', body: JSON.stringify(data) }),
   updateModel: (id, data) => request(`/catalog/models/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteModel: (id) => request(`/catalog/models/${id}/`, { method: 'DELETE' }),
+
+  getCMSSections: () => request('/catalog/cms/sections/'),
+  updateCMSSection: (data) => request('/catalog/cms/sections/', { method: 'POST', body: JSON.stringify(data) }),
 
   getVariants: (modelId, all = false) => request(`/catalog/variants/?${modelId ? `model=${modelId}&` : ''}all=${all}`),
   createVariant: (data) => request('/catalog/variants/', { method: 'POST', body: JSON.stringify(data) }),

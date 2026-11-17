@@ -6,7 +6,7 @@ import SellWizard from './customer/SellWizard';
 import TrackOrder from './customer/TrackOrder';
 import AdminDashboard from './admin/AdminDashboard';
 import AgentInspectionView from './collection/AgentInspectionView';
-import { getCurrentUser, removeAuthToken, removeCurrentUser } from './services/api';
+import { api, getCurrentUser, removeAuthToken, removeCurrentUser } from './services/api';
 import { 
   Smartphone, ShieldCheck, Truck, Banknote, Sparkles, 
   ArrowRight, CheckCircle2, Lock, Search, UserCheck, User, ShieldAlert, LogOut 
@@ -17,6 +17,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [trackedSaleCode, setTrackedSaleCode] = useState('');
+  const [cmsSections, setCmsSections] = useState([]);
 
   useEffect(() => {
     const user = getCurrentUser();
@@ -29,6 +30,13 @@ export default function App() {
         setActiveTab('inspection');
       }
     }
+
+    // Load dynamic CMS sections from Database
+    api.getCMSSections().then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        setCmsSections(data);
+      }
+    }).catch(console.error);
   }, []);
 
   const handleLogout = () => {
@@ -75,124 +83,137 @@ export default function App() {
       <main className="flex-1 pb-24 md:pb-12">
         
         {/* ================= 1. SELL PHONE (Customer & All) ================= */}
-        {activeTab === 'sell' && (
-          <div>
-            {/* Hero Banner */}
-            <div className="bg-gradient-to-b from-white via-slate-50 to-slate-100 border-b border-slate-200 py-8 sm:py-14 text-center px-4 relative overflow-hidden">
-              <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4 relative z-10">
-                <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full text-[11px] sm:text-xs font-extrabold text-emerald-800">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                  <span>One-Way Buyback Platform · Strictly Sell Only</span>
-                </div>
+        {activeTab === 'sell' && (() => {
+          const heroSection = cmsSections.find(s => s.section_type === 'hero_carousel');
+          const heroTitle = heroSection?.title || 'Sell Your Old Device for Instant Cash';
+          const heroSubtitle = heroSection?.subtitle || 'Get a fair, rule-based price estimate in 60 seconds. Our verified agent inspects your device at home and transfers money directly before leaving.';
+          const heroBadge = heroSection?.data_json?.badge || 'X-PHONES · Certified One-Way Buyback';
+          const heroHighlights = heroSection?.data_json?.highlights || ['Free Doorstep Pickup', 'Instant UPI Payout', '100% Certified Data Wipe'];
 
-                <h1 className="text-2xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight px-1">
-                  Sell Your Old Phone for <span className="text-emerald-600">Instant Cash</span> at Your Doorstep
-                </h1>
+          return (
+            <div>
+              {/* Dynamic Hero Banner (CMS Driven) */}
+              <div className="bg-gradient-to-b from-[#E8F8ED]/60 via-white to-[#F7FAF8] border-b border-[#E7EEE9] py-8 sm:py-14 text-center px-4 relative overflow-hidden">
+                <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4 relative z-10">
+                  <div className="inline-flex items-center gap-1.5 sm:gap-2 bg-[#E8F8ED] border border-[#0BAA4B]/30 px-3.5 py-1 rounded-full text-[11px] sm:text-xs font-black text-[#087C38] shadow-sm">
+                    <Sparkles className="w-3.5 h-3.5 text-[#0BAA4B] shrink-0" />
+                    <span>{heroBadge}</span>
+                  </div>
 
-                <p className="text-xs sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed px-2">
-                  Get a fair, rule-based price estimate in 60 seconds. Our verified agent inspects your device at home and transfers money directly to your <strong>Google Pay, PhonePe, or Bank account</strong> before leaving.
-                </p>
+                  <h1 className="text-2xl sm:text-5xl font-black text-[#17251C] tracking-tight leading-tight px-1">
+                    {heroTitle.includes('Instant') ? (
+                      <>
+                        {heroTitle.split('Instant')[0]}
+                        <span className="text-[#0BAA4B]">Instant Cash</span>
+                        {heroTitle.split('Instant')[1]?.replace(/Cash/, '')}
+                      </>
+                    ) : (
+                      <>{heroTitle}</>
+                    )}
+                  </h1>
 
-                {/* Badges */}
-                <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 pt-2 text-[11px] sm:text-xs font-bold text-slate-700">
-                  <span className="flex items-center gap-1.5 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200 shadow-sm">
-                    <Truck className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Free Doorstep Pickup
-                  </span>
-                  <span className="flex items-center gap-1.5 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200 shadow-sm">
-                    <Banknote className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Instant UPI Payout
-                  </span>
-                  <span className="flex items-center gap-1.5 bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200 shadow-sm">
-                    <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 100% Certified Data Wipe
-                  </span>
+                  <p className="text-xs sm:text-base text-[#7B8980] max-w-2xl mx-auto leading-relaxed px-2 font-medium">
+                    {heroSubtitle}
+                  </p>
+
+                  {/* Highlights from DB CMS */}
+                  <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 pt-2 text-[11px] sm:text-xs font-bold text-[#17251C]">
+                    {heroHighlights.map((hl, idx) => (
+                      <span key={idx} className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-[#E7EEE9] shadow-sm">
+                        {idx === 0 ? <Truck className="w-3.5 h-3.5 text-[#0BAA4B] shrink-0" /> : idx === 1 ? <Banknote className="w-3.5 h-3.5 text-[#0BAA4B] shrink-0" /> : <Lock className="w-3.5 h-3.5 text-[#0BAA4B] shrink-0" />}
+                        <span>{hl}</span>
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* 3 Giant Visual Action Tiles */}
-            <div className="max-w-5xl mx-auto px-3 sm:px-6 pt-6 sm:pt-8">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-5">
-                
-                {/* 1. SELL MY PHONE */}
-                <div 
-                  onClick={() => {
-                    const el = document.getElementById('sell-wizard-anchor');
-                    if (el) el.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                  className="cursor-pointer bg-gradient-to-br from-emerald-600 to-teal-700 text-white rounded-3xl p-5 sm:p-6 shadow-xl shadow-emerald-600/20 hover:scale-[1.02] transition flex flex-col justify-between group min-h-[140px]"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
-                      <Smartphone className="w-6 h-6 text-white" />
+              {/* 3 Giant Visual Action Tiles (X-PHONES Green Theme) */}
+              <div className="max-w-5xl mx-auto px-3 sm:px-6 pt-6 sm:pt-8">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-5">
+                  
+                  {/* 1. SELL MY PHONE */}
+                  <div 
+                    onClick={() => {
+                      const el = document.getElementById('sell-wizard-anchor');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                    className="cursor-pointer bg-gradient-to-br from-[#087C38] via-[#0BAA4B] to-[#0BAA4B] text-white rounded-3xl p-5 sm:p-6 shadow-xl shadow-[#0BAA4B]/20 hover:scale-[1.02] transition flex flex-col justify-between group min-h-[140px] border border-emerald-400/30"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
+                        <Smartphone className="w-6 h-6 text-white" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full">
+                        Sell Device
+                      </span>
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-1 rounded-full">
-                      Sell Old Phone
-                    </span>
-                  </div>
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-black mt-3">Sell Old Mobile</h3>
-                    <p className="text-xs text-emerald-100 mt-0.5">Instant price estimate & free home pickup</p>
-                    <span className="inline-flex items-center gap-1 font-bold text-xs mt-2 text-white">
-                      Start Selling <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </div>
-                </div>
-
-                {/* 2. TRACK MY PHONE */}
-                <div 
-                  onClick={() => setActiveTab('track')}
-                  className="cursor-pointer bg-white border-2 border-slate-200 hover:border-amber-400 hover:shadow-lg rounded-3xl p-5 sm:p-6 transition flex flex-col justify-between group min-h-[140px]"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                      <Truck className="w-6 h-6" />
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-black mt-3">Sell Old Mobile</h3>
+                      <p className="text-xs text-emerald-100 mt-0.5">Instant price estimate & free home pickup</p>
+                      <span className="inline-flex items-center gap-1 font-black text-xs mt-2 text-white">
+                        Start Selling <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                      </span>
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full">
-                      Orders
-                    </span>
                   </div>
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-black text-slate-900 mt-3">Track My Phone</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Where is my assigned agent & inspection?</p>
-                    <span className="inline-flex items-center gap-1 font-bold text-xs mt-2 text-amber-700">
-                      Check Status <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </div>
-                </div>
 
-                {/* 3. MY PAYMENT */}
-                <div 
-                  onClick={() => setActiveTab('track')}
-                  className="cursor-pointer bg-white border-2 border-slate-200 hover:border-indigo-400 hover:shadow-lg rounded-3xl p-5 sm:p-6 transition flex flex-col justify-between group min-h-[140px]"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                      <Banknote className="w-6 h-6" />
+                  {/* 2. TRACK MY PHONE */}
+                  <div 
+                    onClick={() => setActiveTab('track')}
+                    className="cursor-pointer bg-white border-2 border-[#E7EEE9] hover:border-[#0BAA4B] hover:shadow-lg rounded-3xl p-5 sm:p-6 transition flex flex-col justify-between group min-h-[140px]"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="w-12 h-12 rounded-2xl bg-[#E8F8ED] text-[#087C38] flex items-center justify-center">
+                        <Truck className="w-6 h-6" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-[#E8F8ED] text-[#087C38] px-2.5 py-1 rounded-full">
+                        Orders
+                      </span>
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full">
-                      Payouts
-                    </span>
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-black text-[#17251C] mt-3">Track My Device</h3>
+                      <p className="text-xs text-[#7B8980] mt-0.5">Where is my assigned agent & inspection?</p>
+                      <span className="inline-flex items-center gap-1 font-black text-xs mt-2 text-[#0BAA4B]">
+                        Check Status <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg sm:text-xl font-black text-slate-900 mt-3">My Payment</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">UPI transfer receipt & UTR reference</p>
-                    <span className="inline-flex items-center gap-1 font-bold text-xs mt-2 text-indigo-700">
-                      View Receipts <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </div>
-                </div>
 
+                  {/* 3. MY PAYMENT */}
+                  <div 
+                    onClick={() => setActiveTab('track')}
+                    className="cursor-pointer bg-white border-2 border-[#E7EEE9] hover:border-[#0BAA4B] hover:shadow-lg rounded-3xl p-5 sm:p-6 transition flex flex-col justify-between group min-h-[140px]"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="w-12 h-12 rounded-2xl bg-[#E8F8ED] text-[#087C38] flex items-center justify-center">
+                        <Banknote className="w-6 h-6" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-[#E8F8ED] text-[#087C38] px-2.5 py-1 rounded-full">
+                        Payouts
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-black text-[#17251C] mt-3">My Payout Receipt</h3>
+                      <p className="text-xs text-[#7B8980] mt-0.5">UPI transfer receipt & UTR reference</p>
+                      <span className="inline-flex items-center gap-1 font-black text-xs mt-2 text-[#0BAA4B]">
+                        View Receipts <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
               </div>
+
+              <div id="sell-wizard-anchor" className="pt-2" />
+
+              {/* Step-by-Step Selling Wizard */}
+              <SellWizard 
+                onOrderCreated={handleOrderCreated}
+                currentUser={currentUser}
+              />
             </div>
-
-            <div id="sell-wizard-anchor" className="pt-2" />
-
-            {/* Step-by-Step Selling Wizard */}
-            <SellWizard 
-              onOrderCreated={handleOrderCreated}
-              currentUser={currentUser}
-            />
-          </div>
-        )}
+          );
+        })()}
 
         {/* ================= 2. TRACK ORDER (Customer & All) ================= */}
         {activeTab === 'track' && (
@@ -257,7 +278,7 @@ export default function App() {
         <button
           onClick={() => setActiveTab('sell')}
           className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
-            activeTab === 'sell' ? 'text-emerald-600 font-extrabold' : 'text-slate-500 font-medium'
+            activeTab === 'sell' ? 'text-[#0BAA4B] font-black' : 'text-slate-500 font-medium'
           }`}
         >
           <Smartphone className="w-5 h-5 mb-0.5" />
@@ -268,7 +289,7 @@ export default function App() {
         <button
           onClick={() => setActiveTab('track')}
           className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
-            activeTab === 'track' ? 'text-emerald-600 font-extrabold' : 'text-slate-500 font-medium'
+            activeTab === 'track' ? 'text-[#0BAA4B] font-black' : 'text-slate-500 font-medium'
           }`}
         >
           <Search className="w-5 h-5 mb-0.5" />
@@ -280,7 +301,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab('admin')}
             className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
-              activeTab === 'admin' ? 'text-indigo-600 font-extrabold' : 'text-slate-500 font-medium'
+              activeTab === 'admin' ? 'text-[#0BAA4B] font-black' : 'text-slate-500 font-medium'
             }`}
           >
             <ShieldCheck className="w-5 h-5 mb-0.5" />
@@ -293,7 +314,7 @@ export default function App() {
           <button
             onClick={() => setActiveTab('inspection')}
             className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
-              activeTab === 'inspection' ? 'text-amber-600 font-extrabold' : 'text-slate-500 font-medium'
+              activeTab === 'inspection' ? 'text-[#0BAA4B] font-black' : 'text-slate-500 font-medium'
             }`}
           >
             <UserCheck className="w-5 h-5 mb-0.5" />
