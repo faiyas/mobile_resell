@@ -266,6 +266,23 @@ class ConditionOptionModel {
       isWarranty: json['is_warranty'] == true,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'category': categoryId,
+      'code': code,
+      'title': title,
+      'description': description,
+      'image_base64': imageBase64,
+      'deduction_type': deductionType,
+      'default_deduction_value': defaultDeductionValue,
+      'exclusive_group': exclusiveGroup,
+      'is_rejection': isRejection,
+      'is_accessory_bonus': isAccessoryBonus,
+      'is_warranty': isWarranty,
+    };
+  }
 }
 
 class ConditionCategoryModel {
@@ -294,9 +311,13 @@ class ConditionCategoryModel {
   factory ConditionCategoryModel.fromJson(Map<String, dynamic> json) {
     var opts = <ConditionOptionModel>[];
     if (json['options'] != null && json['options'] is List) {
-      opts = (json['options'] as List)
-          .map((o) => ConditionOptionModel.fromJson(o))
-          .toList();
+      for (final o in (json['options'] as List)) {
+        try {
+          if (o is Map) {
+            opts.add(ConditionOptionModel.fromJson(Map<String, dynamic>.from(o)));
+          }
+        } catch (_) {}
+      }
     }
 
     return ConditionCategoryModel(
@@ -310,6 +331,20 @@ class ConditionCategoryModel {
       displayOrder: int.tryParse(json['display_order']?.toString() ?? '') ?? (json['display_order'] is int ? json['display_order'] : 0),
       options: opts,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'subtitle': subtitle,
+      'step_number': stepNumber,
+      'selection_type': selectionType,
+      'pro_tip': proTip,
+      'icon_name': iconName,
+      'display_order': displayOrder,
+      'options': options.map((o) => o.toJson()).toList(),
+    };
   }
 }
 
@@ -421,16 +456,20 @@ class SaleOrderModel {
     final bName = isCust && cCat.isNotEmpty ? cCat : (json['brand_name']?.toString() ?? '');
     final mName = isCust && cName.isNotEmpty ? cName : (json['model_name']?.toString() ?? '');
     final sName = isCust && cSpec.isNotEmpty ? cSpec : (json['storage']?.toString() ??
-        (json['variant_details'] != null ? json['variant_details']['storage']?.toString() : null) ?? '');
+        (json['variant_details'] != null && json['variant_details'] is Map ? json['variant_details']['storage']?.toString() : null) ?? '');
 
     InspectionData? insp;
-    if (json['inspection'] != null && json['inspection'] is Map<String, dynamic>) {
-      insp = InspectionData.fromJson(json['inspection']);
+    if (json['inspection'] != null && json['inspection'] is Map) {
+      try {
+        insp = InspectionData.fromJson(Map<String, dynamic>.from(json['inspection'] as Map));
+      } catch (_) {}
     }
 
     PaymentData? pay;
-    if (json['payment'] != null && json['payment'] is Map<String, dynamic>) {
-      pay = PaymentData.fromJson(json['payment']);
+    if (json['payment'] != null && json['payment'] is Map) {
+      try {
+        pay = PaymentData.fromJson(Map<String, dynamic>.from(json['payment'] as Map));
+      } catch (_) {}
     }
 
     return SaleOrderModel(
@@ -467,6 +506,42 @@ class SaleOrderModel {
       payment: pay,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'sale_code': saleCode,
+      'customer_name': customerName,
+      'customer_phone': customerPhone,
+      'customer_email': customerEmail,
+      'is_custom_device': isCustomDevice,
+      'custom_device_name': customDeviceName,
+      'custom_device_category': customDeviceCategory,
+      'custom_device_specs': customDeviceSpecs,
+      'other_defects_notes': otherDefectsNotes,
+      'brand_name': brandName,
+      'model_name': modelName,
+      'storage': storage,
+      'base_price': basePrice,
+      'estimated_price': estimatedPrice,
+      'final_price': finalPrice,
+      'status': status,
+      'pickup_address': pickupAddress,
+      'pickup_city': pickupCity,
+      'pickup_pincode': pickupPincode,
+      'pickup_date': pickupDate,
+      'pickup_slot': pickupSlot,
+      'assigned_agent': assignedAgent,
+      'assigned_agent_name': assignedAgentName,
+      'beneficiary_type': beneficiaryType,
+      'beneficiary_name': beneficiaryName,
+      'beneficiary_upi_id': beneficiaryUpiId,
+      'imei_number': imeiNumber,
+      'created_at': createdAt,
+      'inspection': inspection?.toJson(),
+      'payment': payment?.toJson(),
+    };
+  }
 }
 
 class InspectionPhotoData {
@@ -482,6 +557,14 @@ class InspectionPhotoData {
       label: json['label']?.toString() ?? 'Inspection Photo',
       imageBase64: json['image_base64']?.toString() ?? '',
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'label': label,
+      'image_base64': imageBase64,
+    };
   }
 }
 
@@ -505,9 +588,13 @@ class InspectionData {
   factory InspectionData.fromJson(Map<String, dynamic> json) {
     var pList = <InspectionPhotoData>[];
     if (json['photos'] != null && json['photos'] is List) {
-      pList = (json['photos'] as List)
-          .map((p) => InspectionPhotoData.fromJson(p))
-          .toList();
+      for (final p in (json['photos'] as List)) {
+        try {
+          if (p is Map) {
+            pList.add(InspectionPhotoData.fromJson(Map<String, dynamic>.from(p)));
+          }
+        } catch (_) {}
+      }
     }
     return InspectionData(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? ''),
@@ -519,6 +606,17 @@ class InspectionData {
       inspectorNotes: json['inspector_notes']?.toString(),
       photos: pList,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'inspector_name': inspectorName,
+      'verified_imei': verifiedImei,
+      'suggested_final_price': suggestedFinalPrice,
+      'inspector_notes': inspectorNotes,
+      'photos': photos.map((p) => p.toJson()).toList(),
+    };
   }
 }
 
@@ -552,6 +650,18 @@ class PaymentData {
       paidAt: json['paid_at']?.toString(),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'amount': amount,
+      'payment_method': paymentMethod,
+      'utr_number': utrNumber,
+      'payment_proof_base64': paymentProofBase64,
+      'paid_by_name': paidByName,
+      'paid_at': paidAt,
+    };
+  }
 }
 
 class AgentUserModel {
@@ -575,6 +685,15 @@ class AgentUserModel {
       phone: json['phone']?.toString() ?? '',
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'email': email,
+      'full_name': fullName,
+      'phone': phone,
+    };
+  }
 }
 
 class PaymentSummaryModel {
@@ -595,5 +714,13 @@ class PaymentSummaryModel {
       totalDisbursed: double.tryParse(json['total_disbursed']?.toString() ?? '') ?? 0.0,
       payments: json['payments'] is List ? json['payments'] : [],
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'total_count': totalCount,
+      'total_disbursed': totalDisbursed,
+      'payments': payments,
+    };
   }
 }

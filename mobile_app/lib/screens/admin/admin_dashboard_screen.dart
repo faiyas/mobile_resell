@@ -41,28 +41,60 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
   Future<void> _loadAdminData() async {
     setState(() => _isLoading = true);
+
+    // 1. Fetch Sales Orders independently from DB
     try {
       final sales = await _api.getSales();
-      final summary = await _api.getPaymentsSummary();
-      final agents = await _api.getAgents();
-      final conditions = await _api.getConditionCategories();
-
       if (mounted) {
-        setState(() {
-          _sales = sales;
-          _paymentSummary = summary;
-          _agents = agents;
-          _conditionCategories = conditions;
-          _isLoading = false;
-        });
+        setState(() => _sales = sales);
       }
     } catch (e) {
+      debugPrint('AdminDashboard: Sales loading error: $e');
+    }
+
+    // 2. Fetch Payments Summary independently from DB
+    try {
+      final summary = await _api.getPaymentsSummary();
       if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load admin data: $e'), behavior: SnackBarBehavior.floating),
-        );
+        setState(() => _paymentSummary = summary);
       }
+    } catch (e) {
+      debugPrint('AdminDashboard: Payments loading error: $e');
+    }
+
+    // 3. Fetch Agents independently from DB
+    try {
+      final agents = await _api.getAgents();
+      if (mounted) {
+        setState(() => _agents = agents);
+      }
+    } catch (e) {
+      debugPrint('AdminDashboard: Agents loading error: $e');
+    }
+
+    // 4. Fetch Condition Categories independently from DB
+    try {
+      final conditions = await _api.getConditionCategories(forceRefresh: true);
+      if (mounted) {
+        setState(() => _conditionCategories = conditions);
+      }
+    } catch (e) {
+      debugPrint('AdminDashboard: Conditions loading error: $e');
+    }
+
+    if (mounted) {
+      if (_paymentSummary.totalCount == 0 && _sales.isNotEmpty) {
+        final paidSales = _sales.where((s) => s.status == 'PAYMENT_COMPLETED').toList();
+        final disbursed = paidSales.fold<double>(0.0, (sum, s) => sum + (s.finalPrice ?? s.estimatedPrice));
+        if (paidSales.isNotEmpty) {
+          _paymentSummary = PaymentSummaryModel(
+            totalCount: paidSales.length,
+            totalDisbursed: disbursed,
+            payments: [],
+          );
+        }
+      }
+      setState(() => _isLoading = false);
     }
   }
 
@@ -2525,12 +2557,48 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             ],
           ),
         ),
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: _conditionCategories.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
+        _conditionCategories.isEmpty
+            ? Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.rule_folder_outlined, size: 48, color: AppTheme.textSecondary),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'No condition rules loaded yet',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary),
+                        ),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Tap below to reload rules from cloud or restore standard defect categories.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryGreen,
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          icon: const Icon(Icons.refresh_rounded, size: 16, color: Colors.white),
+                          label: const Text('Reload Pricing & Defect Rules', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          onPressed: _loadAdminData,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            : Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _conditionCategories.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
               final cat = _conditionCategories[index];
               return GlassContainer(
                 padding: const EdgeInsets.all(16),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
@@ -12,7 +13,7 @@ class ApiService {
   String? _token;
   UserModel? _currentUser;
 
-  // In-Memory Fast Cache for 0ms Screen Transitions
+  // In-Memory Fast Cache for smooth screen transitions
   List<CMSSectionModel>? _cachedCMSSections;
   List<DeviceCategoryModel>? _cachedCategories;
   final Map<String, List<BrandModel>> _cachedBrands = {};
@@ -148,12 +149,10 @@ class ApiService {
       final res = await http.get(url, headers: _headers);
       if (res.statusCode == 200) {
         final List list = jsonDecode(res.body);
-        _cachedCMSSections = list.map((item) => CMSSectionModel.fromJson(item)).toList();
+        _cachedCMSSections = list.map((item) => CMSSectionModel.fromJson(Map<String, dynamic>.from(item))).toList();
         return _cachedCMSSections!;
       }
-    } catch (e) {
-      // Fallback local defaults if backend is spinning up
-    }
+    } catch (_) {}
     return _cachedCMSSections ?? [];
   }
 
@@ -166,7 +165,7 @@ class ApiService {
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       final List list = jsonDecode(res.body);
-      _cachedCategories = list.map((item) => DeviceCategoryModel.fromJson(item)).toList();
+      _cachedCategories = list.map((item) => DeviceCategoryModel.fromJson(Map<String, dynamic>.from(item))).toList();
       return _cachedCategories!;
     }
     return _cachedCategories ?? [];
@@ -185,7 +184,7 @@ class ApiService {
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       final List list = jsonDecode(res.body);
-      final brands = list.map((item) => BrandModel.fromJson(item)).toList();
+      final brands = list.map((item) => BrandModel.fromJson(Map<String, dynamic>.from(item))).toList();
       _cachedBrands[cacheKey] = brands;
       return brands;
     }
@@ -201,7 +200,7 @@ class ApiService {
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       final List list = jsonDecode(res.body);
-      return list.map((item) => SeriesModel.fromJson(item)).toList();
+      return list.map((item) => SeriesModel.fromJson(Map<String, dynamic>.from(item))).toList();
     }
     return [];
   }
@@ -214,7 +213,7 @@ class ApiService {
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       final List list = jsonDecode(res.body);
-      return list.map((item) => PhoneModelItem.fromJson(item)).toList();
+      return list.map((item) => PhoneModelItem.fromJson(Map<String, dynamic>.from(item))).toList();
     }
     return [];
   }
@@ -224,12 +223,12 @@ class ApiService {
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       final List list = jsonDecode(res.body);
-      return list.map((item) => StorageVariantModel.fromJson(item)).toList();
+      return list.map((item) => StorageVariantModel.fromJson(Map<String, dynamic>.from(item))).toList();
     }
     return [];
   }
 
-  // ================= 4. DYNAMIC 11-STEP QUESTIONNAIRE =================
+  // ================= 4. DYNAMIC QUESTIONNAIRE =================
   Future<List<ConditionCategoryModel>> getConditionCategories({bool forceRefresh = false}) async {
     if (!forceRefresh && _cachedConditions != null && _cachedConditions!.isNotEmpty) {
       return _cachedConditions!;
@@ -237,9 +236,21 @@ class ApiService {
     final url = Uri.parse('${ApiConfig.baseUrl}/valuation/conditions/');
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
-      final List list = jsonDecode(res.body);
-      _cachedConditions = list.map((item) => ConditionCategoryModel.fromJson(item)).toList();
-      return _cachedConditions!;
+      final dynamic raw = jsonDecode(res.body);
+      if (raw is List) {
+        final items = <ConditionCategoryModel>[];
+        for (final item in raw) {
+          try {
+            if (item is Map) {
+              items.add(ConditionCategoryModel.fromJson(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error parsing condition category: $e');
+          }
+        }
+        _cachedConditions = items;
+        return items;
+      }
     }
     return _cachedConditions ?? [];
   }
@@ -273,7 +284,7 @@ class ApiService {
     );
 
     if (res.statusCode == 201) {
-      return SaleOrderModel.fromJson(jsonDecode(res.body));
+      return SaleOrderModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
     } else {
       final err = jsonDecode(res.body);
       throw Exception(err['detail'] ?? 'Failed to book pickup');
@@ -284,7 +295,7 @@ class ApiService {
     final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleCode/');
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
-      return SaleOrderModel.fromJson(jsonDecode(res.body));
+      return SaleOrderModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
     } else {
       throw Exception('Order not found');
     }
@@ -294,8 +305,20 @@ class ApiService {
     final url = Uri.parse('${ApiConfig.baseUrl}/sales/');
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
-      final List list = jsonDecode(res.body);
-      return list.map((item) => SaleOrderModel.fromJson(item)).toList();
+      final dynamic raw = jsonDecode(res.body);
+      if (raw is List) {
+        final items = <SaleOrderModel>[];
+        for (final item in raw) {
+          try {
+            if (item is Map) {
+              items.add(SaleOrderModel.fromJson(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error parsing sale order: $e');
+          }
+        }
+        return items;
+      }
     }
     return [];
   }
@@ -322,8 +345,20 @@ class ApiService {
     final url = Uri.parse('${ApiConfig.baseUrl}/auth/agents/');
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
-      final List list = jsonDecode(res.body);
-      return list.map((item) => AgentUserModel.fromJson(item)).toList();
+      final dynamic raw = jsonDecode(res.body);
+      if (raw is List) {
+        final items = <AgentUserModel>[];
+        for (final item in raw) {
+          try {
+            if (item is Map) {
+              items.add(AgentUserModel.fromJson(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error parsing agent: $e');
+          }
+        }
+        return items;
+      }
     }
     return [];
   }
@@ -332,7 +367,10 @@ class ApiService {
     final url = Uri.parse('${ApiConfig.baseUrl}/payments/');
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
-      return PaymentSummaryModel.fromJson(jsonDecode(res.body));
+      final dynamic raw = jsonDecode(res.body);
+      if (raw is Map) {
+        return PaymentSummaryModel.fromJson(Map<String, dynamic>.from(raw));
+      }
     }
     return PaymentSummaryModel(totalCount: 0, totalDisbursed: 0.0, payments: []);
   }
@@ -436,7 +474,7 @@ class ApiService {
 
     if (res.statusCode == 201) {
       _cachedCategories = null;
-      return DeviceCategoryModel.fromJson(jsonDecode(res.body));
+      return DeviceCategoryModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
     } else {
       final err = jsonDecode(res.body);
       throw Exception(err['detail'] ?? err.toString());
@@ -463,7 +501,7 @@ class ApiService {
 
     if (res.statusCode == 201) {
       _cachedBrands.clear();
-      return BrandModel.fromJson(jsonDecode(res.body));
+      return BrandModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
     } else {
       final err = jsonDecode(res.body);
       throw Exception(err['detail'] ?? err.toString());
@@ -489,7 +527,7 @@ class ApiService {
     );
 
     if (res.statusCode == 201) {
-      return PhoneModelItem.fromJson(jsonDecode(res.body));
+      return PhoneModelItem.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
     } else {
       final err = jsonDecode(res.body);
       throw Exception(err['detail'] ?? err.toString());
@@ -505,7 +543,7 @@ class ApiService {
     );
 
     if (res.statusCode == 200) {
-      return PhoneModelItem.fromJson(jsonDecode(res.body));
+      return PhoneModelItem.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
     } else {
       final err = jsonDecode(res.body);
       throw Exception(err['detail'] ?? err.toString());
@@ -529,7 +567,7 @@ class ApiService {
     );
 
     if (res.statusCode == 201) {
-      return StorageVariantModel.fromJson(jsonDecode(res.body));
+      return StorageVariantModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
     } else {
       final err = jsonDecode(res.body);
       throw Exception(err['detail'] ?? err.toString());
