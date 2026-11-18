@@ -425,6 +425,125 @@ class ApiService {
     }
   }
 
+  // ================= CATALOG CRUD FOR ADMIN =================
+  Future<DeviceCategoryModel> createDeviceCategory(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/categories/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 201) {
+      _cachedCategories = null;
+      return DeviceCategoryModel.fromJson(jsonDecode(res.body));
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<void> deleteDeviceCategory(dynamic categoryId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/categories/$categoryId/');
+    final res = await http.delete(url, headers: _headers);
+    if (res.statusCode == 204 || res.statusCode == 200) {
+      _cachedCategories = null;
+    } else {
+      throw Exception('Failed to delete category');
+    }
+  }
+
+  Future<BrandModel> createBrand(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/brands/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 201) {
+      _cachedBrands.clear();
+      return BrandModel.fromJson(jsonDecode(res.body));
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<void> deleteBrand(dynamic brandId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/brands/$brandId/');
+    final res = await http.delete(url, headers: _headers);
+    if (res.statusCode == 204 || res.statusCode == 200) {
+      _cachedBrands.clear();
+    } else {
+      throw Exception('Failed to delete brand');
+    }
+  }
+
+  Future<PhoneModelItem> createPhoneModel(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/models/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 201) {
+      return PhoneModelItem.fromJson(jsonDecode(res.body));
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<PhoneModelItem> updatePhoneModel(dynamic modelId, Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/models/$modelId/');
+    final res = await http.put(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 200) {
+      return PhoneModelItem.fromJson(jsonDecode(res.body));
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<void> deletePhoneModel(dynamic modelId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/models/$modelId/');
+    final res = await http.delete(url, headers: _headers);
+    if (res.statusCode != 204 && res.statusCode != 200) {
+      throw Exception('Failed to delete model');
+    }
+  }
+
+  Future<StorageVariantModel> createVariant(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/variants/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 201) {
+      return StorageVariantModel.fromJson(jsonDecode(res.body));
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<void> deleteVariant(dynamic variantId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/variants/$variantId/');
+    final res = await http.delete(url, headers: _headers);
+    if (res.statusCode != 204 && res.statusCode != 200) {
+      throw Exception('Failed to delete variant');
+    }
+  }
+
   void clearCatalogCache() {
     _cachedCMSSections = null;
     _cachedCategories = null;

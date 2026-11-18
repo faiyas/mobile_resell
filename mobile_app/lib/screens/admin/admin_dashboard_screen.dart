@@ -5,6 +5,7 @@ import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
+import '../../utils/image_helper.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -1054,24 +1055,55 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 6,
+                  Row(
                     children: [
-                      ActionChip(
-                        label: const Text('Sample Scratch', style: TextStyle(fontSize: 10)),
-                        onPressed: () => setDlgState(() => imgController.text = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.lightGreen,
+                          foregroundColor: AppTheme.darkGreen,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppTheme.primaryGreen),
+                        label: const Text('Pick Photo (JPG/PNG)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final b64 = await ImageHelper.pickImageAsBase64();
+                          if (b64 != null) {
+                            setDlgState(() => imgController.text = b64);
+                          }
+                        },
                       ),
-                      ActionChip(
-                        label: const Text('Sample Cracked Glass', style: TextStyle(fontSize: 10)),
-                        onPressed: () => setDlgState(() => imgController.text = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mNkYGD4z0AEYBxVGPoDAH70BAV+q2dMAAAAAElFTkSuQmCC'),
-                      ),
+                      const SizedBox(width: 8),
                       if (imgController.text.isNotEmpty)
-                        ActionChip(
-                          label: const Text('Clear Photo', style: TextStyle(fontSize: 10, color: Colors.red)),
+                        TextButton.icon(
+                          icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                          label: const Text('Clear', style: TextStyle(color: Colors.red, fontSize: 11)),
                           onPressed: () => setDlgState(() => imgController.text = ''),
                         ),
                     ],
                   ),
+                  if (imgController.text.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Builder(builder: (ctx) {
+                      final bytes = ImageHelper.decodeBase64(imgController.text);
+                      if (bytes != null) {
+                        return Container(
+                          height: 70,
+                          width: 70,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.4)),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.memory(bytes, fit: BoxFit.cover),
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
+                  ],
                   const SizedBox(height: 20),
                   Row(
                     children: [
@@ -1119,262 +1151,38 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _uploadLogoForBrand(BrandModel brand) {
-    final urlController = TextEditingController(text: brand.logoBase64 ?? '');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: GlassContainer(
-            padding: const EdgeInsets.all(22),
-            borderRadius: BorderRadius.circular(22),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Upload Logo: ${brand.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                  const SizedBox(height: 6),
-                  const Text('Enter image Base64 data or choose a preset emblem to display on customer brand tiles.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: urlController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Image Data (Base64 string) *',
-                      hintText: 'data:image/png;base64,...',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text('Preset Quick Emblems:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    children: [
-                      ActionChip(
-                        label: const Text('Clean Default', style: TextStyle(fontSize: 10)),
-                        onPressed: () => setModalState(() => urlController.text = ''),
-                      ),
-                      ActionChip(
-                        label: const Text('HD Badge Icon', style: TextStyle(fontSize: 10)),
-                        onPressed: () => setModalState(() => urlController.text = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAEpJREFUeNpi/P//PwM1AQtjIzO6OCMBzUQrw8jIyAASZgZSYyMjgKkEZmNjYwM4jQzEpxpGg4vI04xO08kOQJphgA4WkGU4zQABBgCE1Ao0n/nF9gAAAABJRU5ErkJggg=='),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Cancel'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
-                          onPressed: () async {
-                            final val = urlController.text.trim();
-                            Navigator.pop(ctx);
-                            try {
-                              await _api.updateBrand(brand.id, {'logo_base64': val});
-                              _loadAdminData();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('✓ ${brand.name} logo updated successfully!'), backgroundColor: AppTheme.primaryGreen),
-                              );
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Failed to update logo: $e')),
-                              );
-                            }
-                          },
-                          child: const Text('Save Logo'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+  Widget _buildCatalogQuickBtn(String title, IconData icon, VoidCallback onTap) {
+    return Expanded(
+      child: GlassContainer(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: AppTheme.primaryGreen),
+            const SizedBox(height: 3),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppTheme.textPrimary),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  void _showBrandLogosManager() async {
-    List<BrandModel> brands = [];
-    try {
-      brands = await _api.getBrands();
-    } catch (_) {}
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSheetState) => ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              height: MediaQuery.of(ctx).size.height * 0.75,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(10))),
-                  ),
-                  const SizedBox(height: 16),
-                  const Row(
-                    children: [
-                      Icon(Icons.image_rounded, color: AppTheme.primaryGreen),
-                      SizedBox(width: 10),
-                      Text('Brand Logos & Image Manager', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  const Text('Upload or change logos to display in the customer mobile app.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                  const SizedBox(height: 14),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: brands.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (ctx, idx) {
-                        final b = brands[idx];
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                          leading: Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(8)),
-                            child: const Icon(Icons.phone_android, size: 20, color: AppTheme.primaryGreen),
-                          ),
-                          title: Text(b.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          subtitle: Text(b.logoBase64 != null ? 'Custom logo active' : 'Default emblem', style: const TextStyle(fontSize: 10)),
-                          trailing: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryGreen,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            icon: const Icon(Icons.upload_file_rounded, size: 14),
-                            label: const Text('Upload', style: TextStyle(fontSize: 11)),
-                            onPressed: () => _uploadLogoForBrand(b),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _uploadImageForCategory(DeviceCategoryModel cat) {
-    final urlController = TextEditingController(text: cat.imageBase64 ?? '');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Dialog(
-          backgroundColor: Colors.transparent,
-          child: GlassContainer(
-            padding: const EdgeInsets.all(22),
-            borderRadius: BorderRadius.circular(22),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Category Image: ${cat.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                  const SizedBox(height: 6),
-                  const Text('Enter Base64 image data to replace emojis/icons on the customer home screen boxes.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: urlController,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: 'Image Data (Base64 string) *',
-                      hintText: 'data:image/png;base64,...',
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text('Quick Preset Graphics:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-                  const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 6,
-                    children: [
-                      ActionChip(
-                        label: const Text('Clear / Default Icon', style: TextStyle(fontSize: 10)),
-                        onPressed: () => setModalState(() => urlController.text = ''),
-                      ),
-                      ActionChip(
-                        label: const Text('Modern Phone Graphic', style: TextStyle(fontSize: 10)),
-                        onPressed: () => setModalState(() => urlController.text = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAEpJREFUeNpi/P//PwM1AQtjIzO6OCMBzUQrw8jIyAASZgZSYyMjgKkEZmNjYwM4jQzEpxpGg4vI04xO08kOQJphgA4WkGU4zQABBgCE1Ao0n/nF9gAAAABJRU5ErkJggg=='),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () => Navigator.pop(ctx),
-                          child: const Text('Cancel'),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
-                          onPressed: () async {
-                            final val = urlController.text.trim();
-                            Navigator.pop(ctx);
-                            try {
-                              await _api.updateDeviceCategory(cat.id, {'image_base64': val});
-                              _loadAdminData();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('✓ ${cat.name} image updated successfully!'), backgroundColor: AppTheme.primaryGreen),
-                              );
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Failed to update category image: $e')),
-                              );
-                            }
-                          },
-                          child: const Text('Save Image'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showCategoryImagesManager() async {
+  // ================= 1. CATEGORIES MANAGEMENT (ADD / DELETE / IMAGE) =================
+  void _showCategoryManager() async {
     List<DeviceCategoryModel> categories = [];
     try {
       categories = await _api.getDeviceCategories(forceRefresh: true);
     } catch (_) {}
 
+    if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1386,9 +1194,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: Container(
               padding: const EdgeInsets.all(20),
-              height: MediaQuery.of(ctx).size.height * 0.75,
+              height: MediaQuery.of(ctx).size.height * 0.82,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.95),
+                color: Colors.white.withOpacity(0.96),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
               ),
               child: Column(
@@ -1397,52 +1205,1143 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   Center(
                     child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(10))),
                   ),
-                  const SizedBox(height: 16),
-                  const Row(
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(Icons.category_rounded, color: AppTheme.primaryGreen),
-                      SizedBox(width: 10),
-                      Text('Category Visual Images (Base64)', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                      const Row(
+                        children: [
+                          Icon(Icons.category_rounded, color: AppTheme.primaryGreen),
+                          SizedBox(width: 8),
+                          Text('Categories Control', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                        ],
+                      ),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryGreen,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Add Category', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () => _showAddCategoryDialog(onAdded: () async {
+                          final updated = await _api.getDeviceCategories(forceRefresh: true);
+                          setSheetState(() => categories = updated);
+                        }),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 4),
-                  const Text('Set Base64 images for Mobile, Tablet, Dead Phone & Other to replace emojis on the home screen.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                  const SizedBox(height: 14),
+                  const Text('Manage categories and upload Base64 images directly from device photo gallery.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                  const SizedBox(height: 12),
                   Expanded(
-                    child: ListView.separated(
-                      itemCount: categories.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (ctx, idx) {
-                        final c = categories[idx];
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                          leading: Container(
-                            width: 38,
-                            height: 38,
-                            decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(10)),
-                            child: const Icon(Icons.devices_rounded, size: 20, color: AppTheme.primaryGreen),
+                    child: categories.isEmpty
+                        ? const Center(child: Text('No categories found', style: TextStyle(color: AppTheme.textSecondary)))
+                        : ListView.separated(
+                            itemCount: categories.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (ctx, idx) {
+                              final c = categories[idx];
+                              final bytes = ImageHelper.decodeBase64(c.imageBase64);
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                leading: Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.lightGreen,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: bytes != null
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: Image.memory(bytes, width: 38, height: 38, fit: BoxFit.contain),
+                                        )
+                                      : const Icon(Icons.devices_rounded, size: 22, color: AppTheme.primaryGreen),
+                                ),
+                                title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                subtitle: Text(
+                                  c.imageBase64 != null && c.imageBase64!.isNotEmpty ? 'Photo active' : 'No photo',
+                                  style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.add_a_photo_outlined, size: 20, color: AppTheme.primaryGreen),
+                                      tooltip: 'Pick Image (Gallery)',
+                                      onPressed: () async {
+                                        final b64 = await ImageHelper.pickImageAsBase64();
+                                        if (b64 != null) {
+                                          await _api.updateDeviceCategory(c.id, {'image_base64': b64});
+                                          final updated = await _api.getDeviceCategories(forceRefresh: true);
+                                          setSheetState(() => categories = updated);
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text('✓ ${c.name} image updated!'), backgroundColor: AppTheme.primaryGreen),
+                                            );
+                                          }
+                                        }
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                      tooltip: 'Delete Category',
+                                      onPressed: () => _confirmDeleteCategory(c, onDeleted: () async {
+                                        final updated = await _api.getDeviceCategories(forceRefresh: true);
+                                        setSheetState(() => categories = updated);
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
-                          title: Text(c.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          subtitle: Text(c.imageBase64 != null && c.imageBase64!.isNotEmpty ? 'Custom Base64 Image Active' : 'Default Icon Fallback', style: const TextStyle(fontSize: 10)),
-                          trailing: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTheme.primaryGreen,
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                            ),
-                            icon: const Icon(Icons.image_outlined, size: 14),
-                            label: const Text('Change', style: TextStyle(fontSize: 11)),
-                            onPressed: () => _uploadImageForCategory(c),
-                          ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showAddCategoryDialog({required VoidCallback onAdded}) {
+    final nameCtrl = TextEditingController();
+    final subCtrl = TextEditingController();
+    String? selectedBase64;
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (dlgCtx, setDlgState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassContainer(
+            padding: const EdgeInsets.all(22),
+            borderRadius: BorderRadius.circular(22),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Add New Category', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Category Name *', hintText: 'e.g. Smartwatch, Laptop'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: subCtrl,
+                    decoration: const InputDecoration(labelText: 'Subtitle', hintText: 'e.g. Sell smart wearables'),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.lightGreen,
+                          foregroundColor: AppTheme.darkGreen,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppTheme.primaryGreen),
+                        label: const Text('Pick Image (Gallery)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final b64 = await ImageHelper.pickImageAsBase64();
+                          if (b64 != null) {
+                            setDlgState(() => selectedBase64 = b64);
+                          }
+                        },
+                      ),
+                      if (selectedBase64 != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                          onPressed: () => setDlgState(() => selectedBase64 = null),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (selectedBase64 != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 60,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(ImageHelper.decodeBase64(selectedBase64)!, fit: BoxFit.contain),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('Cancel')),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                          onPressed: () async {
+                            final name = nameCtrl.text.trim();
+                            if (name.isEmpty) return;
+                            Navigator.pop(dlgCtx);
+                            try {
+                              await _api.createDeviceCategory({
+                                'name': name,
+                                'subtitle': subCtrl.text.trim(),
+                                'image_base64': selectedBase64 ?? '',
+                              });
+                              onAdded();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('✓ Category "$name" created!'), backgroundColor: AppTheme.primaryGreen),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                              }
+                            }
+                          },
+                          child: const Text('Create'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteCategory(DeviceCategoryModel cat, {required VoidCallback onDeleted}) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${cat.name}"?'),
+        content: const Text('Are you sure you want to delete this category? Devices linked to this category may be affected.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _api.deleteDeviceCategory(cat.id);
+                onDeleted();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Deleted category ${cat.name}')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= 2. BRANDS MANAGEMENT (ADD / DELETE / LOGO) =================
+  void _showBrandManager() async {
+    List<BrandModel> brands = [];
+    List<DeviceCategoryModel> categories = [];
+    try {
+      brands = await _api.getBrands(forceRefresh: true);
+      categories = await _api.getDeviceCategories();
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              height: MediaQuery.of(ctx).size.height * 0.82,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.96),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(10))),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.verified_rounded, color: AppTheme.primaryGreen),
+                          SizedBox(width: 8),
+                          Text('Brands Control', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                        ],
+                      ),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryGreen,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text('Add Brand', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () => _showAddBrandDialog(categories: categories, onAdded: () async {
+                          final updated = await _api.getBrands(forceRefresh: true);
+                          setSheetState(() => brands = updated);
+                        }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('Add new device brands and upload logos from phone gallery directly.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: brands.isEmpty
+                        ? const Center(child: Text('No brands found', style: TextStyle(color: AppTheme.textSecondary)))
+                        : ListView.separated(
+                            itemCount: brands.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (ctx, idx) {
+                              final b = brands[idx];
+                              final bytes = ImageHelper.decodeBase64(b.logoBase64);
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                leading: Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.lightGreen,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: bytes != null
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: Image.memory(bytes, width: 38, height: 38, fit: BoxFit.contain),
+                                        )
+                                      : const Icon(Icons.phone_android_rounded, size: 22, color: AppTheme.primaryGreen),
+                                ),
+                                title: Text(b.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                subtitle: Text(
+                                  b.logoBase64 != null && b.logoBase64!.isNotEmpty ? 'Logo uploaded' : 'Default icon',
+                                  style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.add_a_photo_outlined, size: 20, color: AppTheme.primaryGreen),
+                                      tooltip: 'Pick Logo (Gallery)',
+                                      onPressed: () async {
+                                        final b64 = await ImageHelper.pickImageAsBase64();
+                                        if (b64 != null) {
+                                          await _api.updateBrand(b.id, {'logo_base64': b64});
+                                          final updated = await _api.getBrands(forceRefresh: true);
+                                          setSheetState(() => brands = updated);
+                                          if (mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text('✓ ${b.name} logo updated!'), backgroundColor: AppTheme.primaryGreen),
+                                            );
+                                          }
+                                        }
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                      tooltip: 'Delete Brand',
+                                      onPressed: () => _confirmDeleteBrand(b, onDeleted: () async {
+                                        final updated = await _api.getBrands(forceRefresh: true);
+                                        setSheetState(() => brands = updated);
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddBrandDialog({required List<DeviceCategoryModel> categories, required VoidCallback onAdded}) {
+    final nameCtrl = TextEditingController();
+    int? selectedCatId = categories.isNotEmpty ? categories.first.id : null;
+    String? selectedLogoBase64;
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (dlgCtx, setDlgState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassContainer(
+            padding: const EdgeInsets.all(22),
+            borderRadius: BorderRadius.circular(22),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Add New Brand', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Brand Name *', hintText: 'e.g. Apple, Google, Xiaomi'),
+                  ),
+                  const SizedBox(height: 10),
+                  if (categories.isNotEmpty)
+                    DropdownButtonFormField<int>(
+                      value: selectedCatId,
+                      decoration: const InputDecoration(labelText: 'Device Category'),
+                      items: categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+                      onChanged: (v) => setDlgState(() => selectedCatId = v),
+                    ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.lightGreen,
+                          foregroundColor: AppTheme.darkGreen,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppTheme.primaryGreen),
+                        label: const Text('Pick Logo (Gallery)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final b64 = await ImageHelper.pickImageAsBase64();
+                          if (b64 != null) {
+                            setDlgState(() => selectedLogoBase64 = b64);
+                          }
+                        },
+                      ),
+                      if (selectedLogoBase64 != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                          onPressed: () => setDlgState(() => selectedLogoBase64 = null),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (selectedLogoBase64 != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 60,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(ImageHelper.decodeBase64(selectedLogoBase64)!, fit: BoxFit.contain),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('Cancel')),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                          onPressed: () async {
+                            final name = nameCtrl.text.trim();
+                            if (name.isEmpty) return;
+                            Navigator.pop(dlgCtx);
+                            try {
+                              await _api.createBrand({
+                                'name': name,
+                                if (selectedCatId != null) 'category': selectedCatId,
+                                'logo_base64': selectedLogoBase64 ?? '',
+                              });
+                              onAdded();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('✓ Brand "$name" added!'), backgroundColor: AppTheme.primaryGreen),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                              }
+                            }
+                          },
+                          child: const Text('Create'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteBrand(BrandModel brand, {required VoidCallback onDeleted}) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${brand.name}"?'),
+        content: const Text('Are you sure you want to delete this brand? Models under this brand will also be removed.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _api.deleteBrand(brand.id);
+                onDeleted();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Deleted brand ${brand.name}')));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= 3. MODELS MANAGEMENT (ADD / DELETE / PHOTO) =================
+  void _showModelManager() async {
+    List<BrandModel> brands = [];
+    List<PhoneModelItem> models = [];
+    int? filterBrandId;
+
+    try {
+      brands = await _api.getBrands();
+      models = await _api.getModels();
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final displayModels = filterBrandId != null
+              ? models.where((m) => m.brandId == filterBrandId).toList()
+              : models;
+
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                height: MediaQuery.of(ctx).size.height * 0.85,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.96),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(10))),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.phone_android_rounded, color: AppTheme.primaryGreen),
+                            SizedBox(width: 8),
+                            Text('Phone Models Control', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                          ],
+                        ),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryGreen,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Add Model', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          onPressed: () => _showAddPhoneModelDialog(brands: brands, onAdded: () async {
+                            final updated = await _api.getModels();
+                            setSheetState(() => models = updated);
+                          }),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (brands.isNotEmpty)
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            ChoiceChip(
+                              label: const Text('All Brands'),
+                              selected: filterBrandId == null,
+                              onSelected: (_) => setSheetState(() => filterBrandId = null),
+                            ),
+                            const SizedBox(width: 6),
+                            ...brands.map((b) => Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: ChoiceChip(
+                                    label: Text(b.name),
+                                    selected: filterBrandId == b.id,
+                                    onSelected: (sel) => setSheetState(() => filterBrandId = sel ? b.id : null),
+                                  ),
+                                )),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: displayModels.isEmpty
+                          ? const Center(child: Text('No models found', style: TextStyle(color: AppTheme.textSecondary)))
+                          : ListView.separated(
+                              itemCount: displayModels.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              itemBuilder: (ctx, idx) {
+                                final m = displayModels[idx];
+                                final bytes = ImageHelper.decodeBase64(m.imageBase64);
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                  leading: Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.lightGreen,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: bytes != null
+                                        ? ClipRRect(
+                                            borderRadius: BorderRadius.circular(10),
+                                            child: Image.memory(bytes, width: 38, height: 38, fit: BoxFit.contain),
+                                          )
+                                        : const Icon(Icons.smartphone_rounded, size: 22, color: AppTheme.primaryGreen),
+                                  ),
+                                  title: Text(m.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  subtitle: Text(
+                                    '${m.brandName ?? ''} · ${m.variants.length} Variants',
+                                    style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.add_a_photo_outlined, size: 20, color: AppTheme.primaryGreen),
+                                        tooltip: 'Pick Photo (Gallery)',
+                                        onPressed: () async {
+                                          final b64 = await ImageHelper.pickImageAsBase64();
+                                          if (b64 != null) {
+                                            await _api.updatePhoneModel(m.id, {'image_base64': b64});
+                                            final updated = await _api.getModels();
+                                            setSheetState(() => models = updated);
+                                            if (mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(content: Text('✓ ${m.name} picture updated!'), backgroundColor: AppTheme.primaryGreen),
+                                              );
+                                            }
+                                          }
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                        tooltip: 'Delete Model',
+                                        onPressed: () => _confirmDeletePhoneModel(m, onDeleted: () async {
+                                          final updated = await _api.getModels();
+                                          setSheetState(() => models = updated);
+                                        }),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAddPhoneModelDialog({required List<BrandModel> brands, required VoidCallback onAdded}) {
+    if (brands.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add a brand first')));
+      return;
+    }
+
+    final nameCtrl = TextEditingController();
+    final yearCtrl = TextEditingController(text: DateTime.now().year.toString());
+    int selectedBrandId = brands.first.id;
+    String? selectedPhotoBase64;
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (dlgCtx, setDlgState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassContainer(
+            padding: const EdgeInsets.all(22),
+            borderRadius: BorderRadius.circular(22),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Add Phone Model', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<int>(
+                    value: selectedBrandId,
+                    decoration: const InputDecoration(labelText: 'Brand *'),
+                    items: brands.map((b) => DropdownMenuItem(value: b.id, child: Text(b.name))).toList(),
+                    onChanged: (v) => setDlgState(() => selectedBrandId = v!),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Model Name *', hintText: 'e.g. iPhone 15 Pro, S24 Ultra'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: yearCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Release Year', hintText: 'e.g. 2024'),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.lightGreen,
+                          foregroundColor: AppTheme.darkGreen,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppTheme.primaryGreen),
+                        label: const Text('Pick Photo (Gallery)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final b64 = await ImageHelper.pickImageAsBase64();
+                          if (b64 != null) {
+                            setDlgState(() => selectedPhotoBase64 = b64);
+                          }
+                        },
+                      ),
+                      if (selectedPhotoBase64 != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                          onPressed: () => setDlgState(() => selectedPhotoBase64 = null),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (selectedPhotoBase64 != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 60,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(ImageHelper.decodeBase64(selectedPhotoBase64)!, fit: BoxFit.contain),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('Cancel')),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                          onPressed: () async {
+                            final name = nameCtrl.text.trim();
+                            if (name.isEmpty) return;
+                            Navigator.pop(dlgCtx);
+                            try {
+                              await _api.createPhoneModel({
+                                'brand': selectedBrandId,
+                                'name': name,
+                                'release_year': int.tryParse(yearCtrl.text.trim()) ?? DateTime.now().year,
+                                'image_base64': selectedPhotoBase64 ?? '',
+                              });
+                              onAdded();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('✓ Model "$name" created!'), backgroundColor: AppTheme.primaryGreen),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                              }
+                            }
+                          },
+                          child: const Text('Create'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeletePhoneModel(PhoneModelItem model, {required VoidCallback onDeleted}) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${model.name}"?'),
+        content: const Text('Are you sure you want to delete this phone model? All storage variants will also be removed.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _api.deletePhoneModel(model.id);
+                onDeleted();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Deleted model ${model.name}')));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= 4. VARIANTS & BASE PRICE MANAGEMENT =================
+  void _showVariantManager() async {
+    List<BrandModel> brands = [];
+    List<PhoneModelItem> models = [];
+    List<StorageVariantModel> variants = [];
+    int? selectedModelId;
+
+    try {
+      brands = await _api.getBrands();
+      models = await _api.getModels();
+      if (models.isNotEmpty) {
+        selectedModelId = models.first.id;
+        variants = await _api.getVariants(selectedModelId);
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              height: MediaQuery.of(ctx).size.height * 0.85,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.96),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(10))),
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.storage_rounded, color: AppTheme.primaryGreen),
+                          SizedBox(width: 8),
+                          Text('Variants & Base Prices', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                        ],
+                      ),
+                      if (models.isNotEmpty)
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryGreen,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Add Variant', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          onPressed: () => _showAddVariantDialog(
+                            models: models,
+                            initialModelId: selectedModelId,
+                            onAdded: () async {
+                              if (selectedModelId != null) {
+                                final updated = await _api.getVariants(selectedModelId!);
+                                setSheetState(() => variants = updated);
+                              }
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (models.isNotEmpty)
+                    DropdownButtonFormField<int>(
+                      value: selectedModelId,
+                      decoration: const InputDecoration(labelText: 'Select Phone Model'),
+                      items: models.map((m) => DropdownMenuItem(value: m.id, child: Text('${m.brandName ?? ''} ${m.name}'))).toList(),
+                      onChanged: (v) async {
+                        selectedModelId = v;
+                        if (v != null) {
+                          final vList = await _api.getVariants(v);
+                          setSheetState(() => variants = vList);
+                        }
+                      },
+                    ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: variants.isEmpty
+                        ? const Center(child: Text('No storage variants found for this model', style: TextStyle(color: AppTheme.textSecondary)))
+                        : ListView.separated(
+                            itemCount: variants.length,
+                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            itemBuilder: (ctx, idx) {
+                              final v = variants[idx];
+                              return ListTile(
+                                contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                leading: Container(
+                                  width: 42,
+                                  height: 42,
+                                  decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(12)),
+                                  child: const Icon(Icons.sd_storage_rounded, color: AppTheme.primaryGreen, size: 22),
+                                ),
+                                title: Text(v.ram != null && v.ram!.isNotEmpty ? '${v.ram} / ${v.storage}' : v.storage, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                subtitle: Text('Base Buyback: ₹${v.basePrice.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: AppTheme.darkGreen, fontWeight: FontWeight.w700)),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                      tooltip: 'Delete Variant',
+                                      onPressed: () => _confirmDeleteVariant(v, onDeleted: () async {
+                                        if (selectedModelId != null) {
+                                          final updated = await _api.getVariants(selectedModelId!);
+                                          setSheetState(() => variants = updated);
+                                        }
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddVariantDialog({required List<PhoneModelItem> models, int? initialModelId, required VoidCallback onAdded}) {
+    int selectedModelId = initialModelId ?? models.first.id;
+    final ramCtrl = TextEditingController(text: '8GB');
+    final storageCtrl = TextEditingController(text: '128GB');
+    final priceCtrl = TextEditingController(text: '15000');
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (dlgCtx, setDlgState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassContainer(
+            padding: const EdgeInsets.all(22),
+            borderRadius: BorderRadius.circular(22),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Add Storage Variant', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<int>(
+                    value: selectedModelId,
+                    decoration: const InputDecoration(labelText: 'Model *'),
+                    items: models.map((m) => DropdownMenuItem(value: m.id, child: Text('${m.brandName ?? ''} ${m.name}'))).toList(),
+                    onChanged: (v) => setDlgState(() => selectedModelId = v!),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: ramCtrl,
+                          decoration: const InputDecoration(labelText: 'RAM', hintText: 'e.g. 6GB, 8GB'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextField(
+                          controller: storageCtrl,
+                          decoration: const InputDecoration(labelText: 'Storage *', hintText: 'e.g. 128GB'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: priceCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Base Buyback Price (₹) *', hintText: 'e.g. 25000'),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('Cancel')),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                          onPressed: () async {
+                            final storage = storageCtrl.text.trim();
+                            final price = double.tryParse(priceCtrl.text.trim()) ?? 0.0;
+                            if (storage.isEmpty || price <= 0) return;
+                            Navigator.pop(dlgCtx);
+                            try {
+                              await _api.createVariant({
+                                'model': selectedModelId,
+                                'ram': ramCtrl.text.trim(),
+                                'storage': storage,
+                                'base_price': price,
+                              });
+                              onAdded();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('✓ Storage variant added!'), backgroundColor: AppTheme.primaryGreen),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                              }
+                            }
+                          },
+                          child: const Text('Create'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteVariant(StorageVariantModel variant, {required VoidCallback onDeleted}) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete Variant "${variant.storage}"?'),
+        content: const Text('Are you sure you want to delete this storage variant?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _api.deleteVariant(variant.id);
+                onDeleted();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Variant deleted')));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
@@ -1450,42 +2349,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   Widget _buildPricingTab() {
     return Column(
       children: [
-        // Quick Action Bar for CMS & Catalogue
+        // Quick Action Bar for Catalog Suite
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Row(
             children: [
-              Expanded(
-                child: GlassContainer(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: _showCategoryImagesManager,
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.category_rounded, size: 15, color: AppTheme.primaryGreen),
-                      SizedBox(width: 4),
-                      Text('Category Images', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppTheme.textPrimary)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: GlassContainer(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: _showBrandLogosManager,
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.image_search_rounded, size: 15, color: AppTheme.primaryGreen),
-                      SizedBox(width: 4),
-                      Text('Brand Logos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppTheme.textPrimary)),
-                    ],
-                  ),
-                ),
-              ),
+              _buildCatalogQuickBtn('Categories', Icons.category_rounded, _showCategoryManager),
+              const SizedBox(width: 6),
+              _buildCatalogQuickBtn('Brands', Icons.verified_rounded, _showBrandManager),
+              const SizedBox(width: 6),
+              _buildCatalogQuickBtn('Models', Icons.phone_android_rounded, _showModelManager),
+              const SizedBox(width: 6),
+              _buildCatalogQuickBtn('Variants', Icons.storage_rounded, _showVariantManager),
             ],
           ),
         ),
