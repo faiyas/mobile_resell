@@ -11,7 +11,9 @@ import '../../utils/contact_launcher.dart';
 import '../../utils/image_helper.dart';
 
 class AgentInspectionScreen extends StatefulWidget {
-  const AgentInspectionScreen({super.key});
+  final SaleOrderModel? initialSale;
+
+  const AgentInspectionScreen({super.key, this.initialSale});
 
   @override
   State<AgentInspectionScreen> createState() => _AgentInspectionScreenState();
@@ -230,6 +232,10 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialSale != null) {
+      _selectedSale = widget.initialSale;
+      _selectSale(widget.initialSale!);
+    }
     _loadSales();
   }
 
@@ -245,17 +251,24 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
     setState(() => _loading = true);
     try {
       final list = await _api.getSales();
-      setState(() {
-        _sales = list;
-        if (list.isNotEmpty) {
-          _selectSale(list.first);
-        } else {
-          _selectedSale = null;
-        }
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _sales = list;
+          if (widget.initialSale != null && _selectedSale != null) {
+            final matching = list.where((s) => s.id == _selectedSale!.id).firstOrNull;
+            if (matching != null) {
+              _selectSale(matching);
+            }
+          } else if (list.isNotEmpty) {
+            _selectSale(list.first);
+          } else {
+            _selectedSale = null;
+          }
+          _loading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 

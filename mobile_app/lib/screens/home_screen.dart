@@ -11,6 +11,7 @@ import 'sell_wizard/category_selection_screen.dart';
 import 'sell_wizard/questionnaire_screen.dart';
 import 'sell_wizard/quote_and_booking_screen.dart';
 import 'orders/track_order_screen.dart';
+import 'agent/agent_dashboard_screen.dart';
 import 'agent/agent_inspection_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'auth/auth_modal_sheet.dart';
@@ -32,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<DeviceCategoryModel> _categories = [];
   List<BrandModel> _brands = [];
   SellDraftData? _savedDraft;
+  SaleOrderModel? _agentActiveSale;
 
   @override
   void initState() {
@@ -445,21 +447,28 @@ class _HomeScreenState extends State<HomeScreen> {
     } else if (isAgent) {
       if (_currentIndex >= 3) _currentIndex = 0;
       if (_currentIndex == 0) {
-        body = const AgentInspectionScreen();
+        body = AgentDashboardScreen(
+          onStartInspection: (order) {
+            setState(() {
+              _agentActiveSale = order;
+              _currentIndex = 1;
+            });
+          },
+        );
       } else if (_currentIndex == 1) {
-        body = const TrackOrderScreen();
+        body = AgentInspectionScreen(initialSale: _agentActiveSale);
       } else {
         body = _buildProfileContent(user);
       }
 
       navItems = const [
         BottomNavigationBarItem(
-          icon: Icon(Icons.verified_outlined),
-          label: 'Agent QC',
+          icon: Icon(Icons.dashboard_rounded),
+          label: 'Queue & History',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.receipt_long),
-          label: 'Handovers',
+          icon: Icon(Icons.fact_check_rounded),
+          label: 'Doorstep QC',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.person_outline),
@@ -502,12 +511,39 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppTheme.canvas,
       extendBody: true,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
-        child: ClipRRect(
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-            child: Container(
+      appBar: (isAdmin || isAgent)
+          ? (_currentIndex == 2
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(60),
+                  child: ClipRRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                      child: AppBar(
+                        backgroundColor: Colors.white.withOpacity(0.70),
+                        elevation: 0,
+                        title: Text(
+                          isAdmin ? '1103 RECELL · Admin Profile' : '1103 RECELL · Agent Profile',
+                          style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+                        ),
+                        actions: [
+                          IconButton(
+                            icon: const Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen),
+                            onPressed: _showContactSupportModal,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              : null)
+          : (_currentIndex == 1 || _currentIndex == 2
+              ? null
+              : PreferredSize(
+                  preferredSize: const Size.fromHeight(64),
+                  child: ClipRRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                      child: Container(
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.82),
                 border: Border(

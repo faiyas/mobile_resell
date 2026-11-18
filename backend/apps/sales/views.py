@@ -30,11 +30,17 @@ def sales_list_create_view(request):
             if sale_code:
                 queryset = queryset.filter(sale_code=sale_code)
         elif user.role == 'CUSTOMER':
-            queryset = queryset.filter(customer=user) | queryset.filter(customer_phone=user.phone)
+            q = queryset.filter(customer=user) | queryset.filter(customer_phone=user.phone)
+            if user.email:
+                q = q | queryset.filter(customer_email__iexact=user.email)
+            queryset = q.distinct()
         elif user.role == 'COLLECTION_AGENT':
             # Collection agent sees assigned tasks OR unassigned bookings needing pickup
-            queryset = queryset.filter(assigned_agent=user) | queryset.filter(assigned_agent__isnull=True, status__in=['SUBMITTED', 'PICKUP_SCHEDULED'])
-        # ADMIN sees all
+            queryset = (queryset.filter(assigned_agent=user) | queryset.filter(assigned_agent__isnull=True, status__in=['SUBMITTED', 'PICKUP_SCHEDULED'])).distinct()
+        elif user.role == 'ADMIN':
+            pass # Super Admin sees all orders across the business
+        else:
+            queryset = queryset.none()
 
         status_filter = request.GET.get('status')
         if status_filter:
@@ -102,7 +108,13 @@ def sales_list_create_view(request):
         estimated_price = max(base_price - total_deduction, min_price)
 
         with transaction.atomic():
-            customer_user = request.user if request.user.is_authenticated else None
+            customer_user = request.user if request.user.is_authenticated and request.user.role == 'CUSTOMER' else None
+            if not customer_user:
+                # Auto-associate to registered customer account if matching phone or email exists
+                customer_user = User.objects.filter(phone=data['customer_phone'], role='CUSTOMER').first()
+                if not customer_user and data.get('customer_email'):
+                    customer_user = User.objects.filter(email__iexact=data['customer_email'].strip(), role='CUSTOMER').first()
+
             sale = PhoneSale.objects.create(
                 customer=customer_user,
                 customer_name=data['customer_name'],
@@ -163,6 +175,21 @@ def sale_detail_view(request, pk):
             sale = PhoneSale.objects.get(sale_code=pk)
     except PhoneSale.DoesNotExist:
         return Response({'detail': 'Sale not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Strict Role-based access validation
+    user = request.user
+    if user.is_authenticated:
+        if user.role == 'CUSTOMER':
+            is_owner = (
+                sale.customer == user or
+                (user.phone and sale.customer_phone == user.phone) or
+                (user.email and sale.customer_email and sale.customer_email.strip().lower() == user.email.strip().lower())
+            )
+            if not is_owner:
+                return Response({'detail': 'You do not have permission to view this order'}, status=status.HTTP_403_FORBIDDEN)
+        elif user.role == 'COLLECTION_AGENT':
+            if sale.assigned_agent and sale.assigned_agent != user:
+                return Response({'detail': 'This order is assigned to another field agent'}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = PhoneSaleDetailSerializer(sale)
     return Response(serializer.data)
