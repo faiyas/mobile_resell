@@ -1,3 +1,4 @@
+from django.db.models import Prefetch
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -75,6 +76,9 @@ def brands_list_view(request):
                 brands = cat_brands
 
         if include_models:
+            brands = brands.prefetch_related(
+                Prefetch('models', queryset=PhoneModel.objects.filter(is_active=True).prefetch_related('variants'))
+            )
             serializer = BrandSerializer(brands, many=True)
         else:
             serializer = BrandBasicSerializer(brands, many=True)
@@ -144,9 +148,9 @@ def models_list_view(request):
         series_id = request.GET.get('series')
         show_all = request.GET.get('all', 'false').lower() == 'true'
         if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
-            queryset = PhoneModel.objects.all().select_related('brand', 'series')
+            queryset = PhoneModel.objects.all().select_related('brand', 'series').prefetch_related('variants')
         else:
-            queryset = PhoneModel.objects.filter(is_active=True).select_related('brand', 'series')
+            queryset = PhoneModel.objects.filter(is_active=True).select_related('brand', 'series').prefetch_related('variants')
 
         if brand_id:
             queryset = queryset.filter(brand_id=brand_id)

@@ -5,6 +5,9 @@ import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
+import '../auth/auth_modal_sheet.dart';
+import '../sell_wizard/category_selection_screen.dart';
+import '../../utils/contact_launcher.dart';
 
 class TrackOrderScreen extends StatefulWidget {
   final String? initialSaleCode;
@@ -42,19 +45,27 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
   }
 
   Future<void> _loadRecentOrders() async {
+    final user = _api.currentUser;
+    if (user == null) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+
     setState(() => _loading = true);
     try {
       final list = await _api.getSales();
-      setState(() {
-        _myOrders = list;
-        if (list.isNotEmpty && _order == null) {
-          _order = list.first;
-          _searchController.text = _order!.saleCode;
-        }
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _myOrders = list;
+          if (list.isNotEmpty) {
+            _order = list.first;
+            _searchController.text = _order!.saleCode;
+          }
+          _loading = false;
+        });
+      }
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -67,15 +78,19 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
 
     try {
       final o = await _api.getSaleDetail(code.trim());
-      setState(() {
-        _order = o;
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _order = o;
+          _loading = false;
+        });
+      }
     } catch (err) {
-      setState(() {
-        _error = 'Order not found for code: $code';
-        _loading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _error = 'Order not found for code: $code';
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -164,20 +179,115 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                   )
                 else if (_order != null)
                   _buildOrderTimelineCard(_order!)
+                else if (_api.currentUser == null)
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: GlassContainer(
+                        padding: const EdgeInsets.all(26),
+                        borderRadius: BorderRadius.circular(24),
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryGreen.withOpacity(0.12),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.lock_person_rounded, size: 42, color: AppTheme.primaryGreen),
+                            ),
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Track Your Personal Orders',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Doorstep pickup timelines, QC verification, and instant UPI receipts are linked to your account.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (ctx) => AuthModalSheet(
+                                    onSuccess: () {
+                                      setState(() {});
+                                      _loadRecentOrders();
+                                    },
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryGreen,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
+                              icon: const Icon(Icons.login_rounded, size: 18),
+                              label: const Text('Sign In or Register', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                            ),
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Have a pickup receipt slip? Enter the Order ID in the search bar above.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
                 else
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(40),
+                      padding: const EdgeInsets.symmetric(vertical: 20),
                       child: GlassContainer(
-                        padding: const EdgeInsets.all(24),
-                        borderRadius: BorderRadius.circular(20),
-                        child: const Column(
+                        padding: const EdgeInsets.all(26),
+                        borderRadius: BorderRadius.circular(24),
+                        child: Column(
                           children: [
-                            Icon(Icons.inventory_2_outlined, size: 40, color: AppTheme.textSecondary),
-                            SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppTheme.lightGreen,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.receipt_long_outlined, size: 40, color: AppTheme.primaryGreen),
+                            ),
+                            const SizedBox(height: 16),
                             Text(
-                              'No order selected. Enter an Order ID to track.',
-                              style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.textSecondary, fontSize: 13),
+                              'No Active Orders for ${_api.currentUser?.fullName ?? "You"}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'You haven\'t placed any device sell orders yet. Sell your old phone, tablet, or dead device today for instant doorstep cash!',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
+                            ),
+                            const SizedBox(height: 20),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const CategorySelectionScreen()),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryGreen,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
+                              icon: const Icon(Icons.sell_outlined, size: 18),
+                              label: const Text('Sell a Device Now', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
                             ),
                           ],
                         ),
@@ -384,10 +494,65 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
           borderRadius: BorderRadius.circular(16),
           child: OutlinedButton(
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Support concierge: support@1103recell.in / +91 9876543210'),
-                  behavior: SnackBarBehavior.floating,
+              showModalBottomSheet(
+                context: context,
+                backgroundColor: Colors.transparent,
+                builder: (ctx) => ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                    child: Container(
+                      padding: const EdgeInsets.all(22),
+                      color: Colors.white.withOpacity(0.96),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(10))),
+                          const SizedBox(height: 16),
+                          const Row(
+                            children: [
+                              Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen),
+                              SizedBox(width: 8),
+                              Text('1103 RECELL Order Concierge', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          ListTile(
+                            leading: const Icon(Icons.phone_rounded, color: AppTheme.primaryGreen),
+                            title: const Text('+91 90252 32453', style: TextStyle(fontWeight: FontWeight.w900)),
+                            subtitle: const Text('Direct Pickup Support & Dispute Line'),
+                            onTap: () => ContactLauncher.callHotline(context),
+                            trailing: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryGreen,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              icon: const Icon(Icons.phone_forwarded_rounded, size: 12),
+                              label: const Text('Call', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              onPressed: () => ContactLauncher.callHotline(context),
+                            ),
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.email_outlined, color: Color(0xFFD97706)),
+                            title: const Text('aiothamizha@gmail.com', style: TextStyle(fontWeight: FontWeight.w900)),
+                            subtitle: const Text('Official Support Desk'),
+                            onTap: () => ContactLauncher.sendEmail(context, subject: 'Order ${order.saleCode} Support Request'),
+                            trailing: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFD97706),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              icon: const Icon(Icons.mail_outline_rounded, size: 12),
+                              label: const Text('Mail', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              onPressed: () => ContactLauncher.sendEmail(context, subject: 'Order ${order.saleCode} Support Request'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               );
             },
@@ -402,7 +567,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                 Icon(Icons.headset_mic_outlined, size: 18, color: AppTheme.primaryGreen),
                 SizedBox(width: 8),
                 Text(
-                  'Need Help? Contact 1103 RECELL Concierge',
+                  'Need Help? Contact 1103 RECELL Support',
                   style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ],

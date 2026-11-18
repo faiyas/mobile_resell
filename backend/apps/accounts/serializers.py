@@ -4,8 +4,12 @@ from .models import User
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'phone', 'full_name', 'role', 'is_staff', 'is_superuser', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = [
+            'id', 'email', 'phone', 'full_name', 'role',
+            'default_address', 'city', 'pincode', 'default_upi_id',
+            'is_staff', 'is_superuser', 'created_at'
+        ]
+        read_only_fields = ['id', 'email', 'role', 'is_staff', 'is_superuser', 'created_at']
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)

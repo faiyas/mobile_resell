@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import '../../services/draft_sell_service.dart';
 import '../../widgets/glass_container.dart';
+import '../auth/auth_modal_sheet.dart';
 import '../orders/track_order_screen.dart';
 
 class QuoteAndBookingScreen extends StatefulWidget {
@@ -11,6 +13,13 @@ class QuoteAndBookingScreen extends StatefulWidget {
   final PhoneModelItem model;
   final StorageVariantModel variant;
   final List<String> selectedOptionCodes;
+  final bool isCustomDevice;
+  final String? customDeviceName;
+  final String? customDeviceCategory;
+  final String? customDeviceSpecs;
+  final double? customExpectedPrice;
+  final String? otherDefectsNotes;
+  final Map<String, String>? customStepNotes;
 
   const QuoteAndBookingScreen({
     super.key,
@@ -18,6 +27,13 @@ class QuoteAndBookingScreen extends StatefulWidget {
     required this.model,
     required this.variant,
     required this.selectedOptionCodes,
+    this.isCustomDevice = false,
+    this.customDeviceName,
+    this.customDeviceCategory,
+    this.customDeviceSpecs,
+    this.customExpectedPrice,
+    this.otherDefectsNotes,
+    this.customStepNotes,
   });
 
   @override
@@ -40,7 +56,8 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
-  final _pincodeController = TextEditingController(text: '641601');
+  final _cityController = TextEditingController();
+  final _pincodeController = TextEditingController();
   final _upiController = TextEditingController();
 
   String _payoutType = 'UPI';
@@ -49,12 +66,20 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
   @override
   void initState() {
     super.initState();
+    _prefillFromUser();
+    _fetchCalculation();
+  }
+
+  void _prefillFromUser() {
     final user = _api.currentUser;
     if (user != null) {
-      _nameController.text = user.fullName;
-      _phoneController.text = user.phone;
+      if (_nameController.text.isEmpty && user.fullName.isNotEmpty) _nameController.text = user.fullName;
+      if (_phoneController.text.isEmpty && user.phone.isNotEmpty) _phoneController.text = user.phone;
+      if (_addressController.text.isEmpty && user.defaultAddress.isNotEmpty) _addressController.text = user.defaultAddress;
+      if (_cityController.text.isEmpty && user.city.isNotEmpty) _cityController.text = user.city;
+      if (_pincodeController.text.isEmpty && user.pincode.isNotEmpty) _pincodeController.text = user.pincode;
+      if (_upiController.text.isEmpty && user.defaultUpiId.isNotEmpty) _upiController.text = user.defaultUpiId;
     }
-    _fetchCalculation();
   }
 
   @override
@@ -62,6 +87,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
+    _cityController.dispose();
     _pincodeController.dispose();
     _upiController.dispose();
     super.dispose();
@@ -92,35 +118,104 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
         _breakdown = bList.cast<Map<String, dynamic>>();
         _calculating = false;
       });
+      _saveDraft(est);
     } catch (e) {
       // Fallback
       setState(() {
         _estimatedPrice = widget.variant.basePrice;
         _calculating = false;
       });
+      _saveDraft(widget.variant.basePrice);
     }
+  }
+
+  void _saveDraft(double est) {
+    DraftSellService.saveDraft(
+      SellDraftData(
+        isCustomDevice: widget.isCustomDevice,
+        customDeviceName: widget.customDeviceName,
+        customDeviceCategory: widget.customDeviceCategory,
+        customDeviceSpecs: widget.customDeviceSpecs,
+        customExpectedPrice: widget.customExpectedPrice,
+        brand: widget.brand,
+        model: widget.model,
+        variant: widget.variant,
+        selectedOptionCodes: widget.selectedOptionCodes,
+        customStepNotes: widget.customStepNotes ?? {},
+        otherDefectsNotes: widget.otherDefectsNotes ?? '',
+        estimatedPrice: est,
+        savedAt: DateTime.now().toIso8601String(),
+      ),
+    );
   }
 
   Future<void> _submitBooking() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Check if user is authenticated (End-of-Funnel Login)
+    if (_api.currentUser == null) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => AuthModalSheet(
+          onSuccess: () {
+            setState(() {
+              _prefillFromUser();
+            });
+            _proceedWithBooking();
+          },
+        ),
+      );
+      return;
+    }
+
+    _proceedWithBooking();
+  }
+
+  Future<void> _proceedWithBooking() async {
     setState(() => _submitting = true);
     try {
+      final cityVal = _cityController.text.trim().isNotEmpty ? _cityController.text.trim() : 'Doorstep Pickup';
       final payload = {
         'variant_id': widget.variant.id,
         'customer_name': _nameController.text.trim(),
         'customer_phone': _phoneController.text.trim(),
         'pickup_address': _addressController.text.trim(),
-        'pickup_city': 'Tirupur',
+        'pickup_city': cityVal,
         'pickup_pincode': _pincodeController.text.trim(),
         'pickup_slot': _pickupSlot,
         'beneficiary_type': _payoutType,
         'beneficiary_name': _nameController.text.trim(),
         'beneficiary_upi_id': _upiController.text.trim(),
         'selected_option_codes': widget.selectedOptionCodes,
+        'is_custom_device': widget.isCustomDevice,
+        'custom_device_name': widget.customDeviceName ?? (widget.isCustomDevice ? widget.model.name : ''),
+        'custom_device_category': widget.customDeviceCategory ?? (widget.isCustomDevice ? widget.brand.name : 'Others'),
+        'custom_device_specs': widget.customDeviceSpecs ?? widget.variant.storage,
+        'custom_expected_price': widget.customExpectedPrice ?? widget.variant.basePrice,
+        'other_defects_notes': widget.otherDefectsNotes ?? '',
+        'custom_step_notes': widget.customStepNotes ?? {},
       };
 
       final order = await _api.createSale(payload);
+
+      // Auto-save doorstep details & UPI ID to DB so user is NEVER asked again
+      if (_api.currentUser != null) {
+        try {
+          await _api.updateProfile({
+            'full_name': _nameController.text.trim(),
+            'phone': _phoneController.text.trim(),
+            'default_address': _addressController.text.trim(),
+            'city': cityVal,
+            'pincode': _pincodeController.text.trim(),
+            'default_upi_id': _upiController.text.trim(),
+          });
+        } catch (_) {}
+      }
+
+      // Successfully booked: clear incomplete local draft
+      await DraftSellService.clearDraft();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -424,6 +519,41 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                     ),
                   ),
 
+                  // Custom Other Defects Noted
+                  if ((widget.otherDefectsNotes != null && widget.otherDefectsNotes!.isNotEmpty) ||
+                      (widget.customStepNotes != null && widget.customStepNotes!.isNotEmpty)) ...[
+                    const SizedBox(height: 14),
+                    GlassContainer(
+                      padding: const EdgeInsets.all(14),
+                      borderRadius: BorderRadius.circular(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.edit_note_rounded, color: AppTheme.primaryGreen, size: 18),
+                              SizedBox(width: 8),
+                              Text(
+                                'Other Defects & Notes Reported:',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textPrimary),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if (widget.customStepNotes != null)
+                            ...widget.customStepNotes!.entries.map(
+                              (e) => Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Text('• ${e.key}: "${e.value}"', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                              ),
+                            ),
+                          if (widget.otherDefectsNotes != null && widget.otherDefectsNotes!.isNotEmpty && widget.customStepNotes?.isEmpty != false)
+                            Text(widget.otherDefectsNotes!, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 24),
 
                   // 4. Doorstep Pickup & Instant Payout Form
@@ -443,6 +573,72 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                     borderRadius: BorderRadius.circular(24),
                     child: Column(
                       children: [
+                        if (_api.currentUser != null)
+                          Container(
+                            margin: const EdgeInsets.only(bottom: 14),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryGreen.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Logged in as ${_api.currentUser!.fullName.isNotEmpty ? _api.currentUser!.fullName : _api.currentUser!.email}. Saved profile details applied!',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.darkGreen),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          InkWell(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (ctx) => AuthModalSheet(
+                                  onSuccess: () {
+                                    setState(() {
+                                      _prefillFromUser();
+                                    });
+                                  },
+                                ),
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 14),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade50.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.amber.shade400),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.lock_person_rounded, color: Colors.amber.shade900, size: 20),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Text(
+                                      'Sign In / Register to auto-fill saved address & track orders.',
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black87),
+                                    ),
+                                  ),
+                                  Text(
+                                    'Sign In →',
+                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.amber.shade900),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+
                         TextFormField(
                           controller: _nameController,
                           decoration: InputDecoration(
@@ -478,6 +674,40 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                             fillColor: Colors.white.withOpacity(0.85),
                           ),
                           validator: (val) => val == null || val.trim().isEmpty ? 'Please enter complete address' : null,
+                        ),
+                        const SizedBox(height: 12),
+
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: TextFormField(
+                                controller: _cityController,
+                                decoration: InputDecoration(
+                                  labelText: 'City *',
+                                  prefixIcon: const Icon(Icons.location_city_rounded, color: AppTheme.primaryGreen),
+                                  filled: true,
+                                  fillColor: Colors.white.withOpacity(0.85),
+                                ),
+                                validator: (val) => val == null || val.trim().isEmpty ? 'Enter city' : null,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                controller: _pincodeController,
+                                keyboardType: TextInputType.number,
+                                decoration: InputDecoration(
+                                  labelText: 'Pincode *',
+                                  prefixIcon: const Icon(Icons.pin_drop_outlined, color: AppTheme.primaryGreen),
+                                  filled: true,
+                                  fillColor: Colors.white.withOpacity(0.85),
+                                ),
+                                validator: (val) => val == null || val.trim().length < 6 ? 'Enter pincode' : null,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 12),
 

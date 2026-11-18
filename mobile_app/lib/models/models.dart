@@ -1,10 +1,14 @@
 class UserModel {
-  final int id;
+  final dynamic id;
   final String email;
   final String username;
   final String fullName;
   final String phone;
   final String role; // 'CUSTOMER' | 'COLLECTION_AGENT' | 'ADMIN'
+  final String defaultAddress;
+  final String city;
+  final String pincode;
+  final String defaultUpiId;
 
   UserModel({
     required this.id,
@@ -13,16 +17,24 @@ class UserModel {
     required this.fullName,
     required this.phone,
     required this.role,
+    this.defaultAddress = '',
+    this.city = '',
+    this.pincode = '',
+    this.defaultUpiId = '',
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'] ?? 0,
-      email: json['email'] ?? '',
-      username: json['username'] ?? '',
-      fullName: json['full_name'] ?? json['username'] ?? '',
-      phone: json['phone'] ?? '',
-      role: json['role'] ?? 'CUSTOMER',
+      id: json['id'] is int ? json['id'] : (int.tryParse(json['id']?.toString() ?? '') ?? json['id'] ?? 0),
+      email: json['email']?.toString() ?? '',
+      username: json['username']?.toString() ?? '',
+      fullName: json['full_name']?.toString() ?? json['username']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      role: json['role']?.toString() ?? 'CUSTOMER',
+      defaultAddress: json['default_address']?.toString() ?? '',
+      city: json['city']?.toString() ?? '',
+      pincode: json['pincode']?.toString() ?? '',
+      defaultUpiId: json['default_upi_id']?.toString() ?? '',
     );
   }
 
@@ -33,6 +45,10 @@ class UserModel {
     'full_name': fullName,
     'phone': phone,
     'role': role,
+    'default_address': defaultAddress,
+    'city': city,
+    'pincode': pincode,
+    'default_upi_id': defaultUpiId,
   };
 }
 
@@ -53,11 +69,11 @@ class DeviceCategoryModel {
 
   factory DeviceCategoryModel.fromJson(Map<String, dynamic> json) {
     return DeviceCategoryModel(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
-      iconName: json['icon_name'] ?? 'Smartphone',
-      imageBase64: json['image_base64'],
+      id: int.tryParse(json['id']?.toString() ?? '') ?? (json['id'] is int ? json['id'] : 0),
+      name: json['name']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
+      iconName: json['icon_name']?.toString() ?? 'Smartphone',
+      imageBase64: json['image_base64']?.toString(),
     );
   }
 }
@@ -79,11 +95,13 @@ class BrandModel {
 
   factory BrandModel.fromJson(Map<String, dynamic> json) {
     return BrandModel(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
-      logoBase64: json['logo_base64'],
-      categoryId: json['category'],
+      id: int.tryParse(json['id']?.toString() ?? '') ?? (json['id'] is int ? json['id'] : 0),
+      name: json['name']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
+      logoBase64: json['logo_base64']?.toString(),
+      categoryId: json['category'] != null
+          ? (int.tryParse(json['category']?.toString() ?? '') ?? (json['category'] is int ? json['category'] : null))
+          : null,
     );
   }
 }
@@ -103,10 +121,10 @@ class SeriesModel {
 
   factory SeriesModel.fromJson(Map<String, dynamic> json) {
     return SeriesModel(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      brandId: json['brand'] ?? 0,
-      brandName: json['brand_name'],
+      id: int.tryParse(json['id']?.toString() ?? '') ?? (json['id'] is int ? json['id'] : 0),
+      name: json['name']?.toString() ?? '',
+      brandId: int.tryParse(json['brand']?.toString() ?? '') ?? (json['brand'] is int ? json['brand'] : 0),
+      brandName: json['brand_name']?.toString(),
     );
   }
 }
@@ -138,22 +156,40 @@ class PhoneModelItem {
 
   factory PhoneModelItem.fromJson(Map<String, dynamic> json) {
     var vList = <StorageVariantModel>[];
-    if (json['variants'] != null) {
+    if (json['variants'] != null && json['variants'] is List) {
       vList = (json['variants'] as List)
           .map((v) => StorageVariantModel.fromJson(v))
           .toList();
     }
 
+    int? bId;
+    if (json['brand'] is int) {
+      bId = json['brand'];
+    } else if (json['brand'] is Map) {
+      bId = int.tryParse(json['brand']['id']?.toString() ?? '');
+    } else if (json['brand'] != null) {
+      bId = int.tryParse(json['brand'].toString());
+    }
+
+    int? sId;
+    if (json['series'] is int) {
+      sId = json['series'];
+    } else if (json['series'] is Map) {
+      sId = int.tryParse(json['series']['id']?.toString() ?? '');
+    } else if (json['series'] != null) {
+      sId = int.tryParse(json['series'].toString());
+    }
+
     return PhoneModelItem(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      slug: json['slug'] ?? '',
-      brandId: json['brand'] is int ? json['brand'] : json['brand']?['id'],
-      brandName: json['brand_name'] ?? (json['brand'] is Map ? json['brand']['name'] : null),
-      seriesId: json['series'] is int ? json['series'] : json['series']?['id'],
-      seriesName: json['series_name'] ?? (json['series'] is Map ? json['series']['name'] : null),
-      imageBase64: json['image_base64'],
-      releaseYear: json['release_year'] ?? 2024,
+      id: int.tryParse(json['id']?.toString() ?? '') ?? (json['id'] is int ? json['id'] : 0),
+      name: json['name']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
+      brandId: bId,
+      brandName: json['brand_name']?.toString() ?? (json['brand'] is Map ? json['brand']['name']?.toString() : null),
+      seriesId: sId,
+      seriesName: json['series_name']?.toString() ?? (json['series'] is Map ? json['series']['name']?.toString() : null),
+      imageBase64: json['image_base64']?.toString(),
+      releaseYear: int.tryParse(json['release_year']?.toString() ?? '') ?? (json['release_year'] is int ? json['release_year'] : 2024),
       variants: vList,
     );
   }
@@ -176,11 +212,11 @@ class StorageVariantModel {
 
   factory StorageVariantModel.fromJson(Map<String, dynamic> json) {
     return StorageVariantModel(
-      id: json['id'] ?? 0,
-      storage: json['storage'] ?? '',
-      ram: json['ram'],
-      basePrice: double.tryParse(json['base_price'].toString()) ?? 0.0,
-      minPrice: double.tryParse(json['min_price'].toString()) ?? 0.0,
+      id: int.tryParse(json['id']?.toString() ?? '') ?? (json['id'] is int ? json['id'] : 0),
+      storage: json['storage']?.toString() ?? '',
+      ram: json['ram']?.toString(),
+      basePrice: double.tryParse(json['base_price']?.toString() ?? '') ?? 0.0,
+      minPrice: double.tryParse(json['min_price']?.toString() ?? '') ?? 0.0,
     );
   }
 }
@@ -216,18 +252,18 @@ class ConditionOptionModel {
 
   factory ConditionOptionModel.fromJson(Map<String, dynamic> json) {
     return ConditionOptionModel(
-      id: json['id'] ?? 0,
-      categoryId: json['category'] ?? 0,
-      code: json['code'] ?? '',
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      imageBase64: json['image_base64'],
-      deductionType: json['deduction_type'] ?? 'FLAT',
-      defaultDeductionValue: double.tryParse(json['default_deduction_value'].toString()) ?? 0.0,
-      exclusiveGroup: json['exclusive_group'] ?? '',
-      isRejection: json['is_rejection'] ?? false,
-      isAccessoryBonus: json['is_accessory_bonus'] ?? false,
-      isWarranty: json['is_warranty'] ?? false,
+      id: int.tryParse(json['id']?.toString() ?? '') ?? (json['id'] is int ? json['id'] : 0),
+      categoryId: int.tryParse(json['category']?.toString() ?? '') ?? (json['category'] is int ? json['category'] : 0),
+      code: json['code']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      imageBase64: json['image_base64']?.toString(),
+      deductionType: json['deduction_type']?.toString() ?? 'FLAT',
+      defaultDeductionValue: double.tryParse(json['default_deduction_value']?.toString() ?? '') ?? 0.0,
+      exclusiveGroup: json['exclusive_group']?.toString() ?? '',
+      isRejection: json['is_rejection'] == true,
+      isAccessoryBonus: json['is_accessory_bonus'] == true,
+      isWarranty: json['is_warranty'] == true,
     );
   }
 }
@@ -257,21 +293,21 @@ class ConditionCategoryModel {
 
   factory ConditionCategoryModel.fromJson(Map<String, dynamic> json) {
     var opts = <ConditionOptionModel>[];
-    if (json['options'] != null) {
+    if (json['options'] != null && json['options'] is List) {
       opts = (json['options'] as List)
           .map((o) => ConditionOptionModel.fromJson(o))
           .toList();
     }
 
     return ConditionCategoryModel(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      subtitle: json['subtitle'] ?? '',
-      stepNumber: json['step_number'] ?? 1,
-      selectionType: json['selection_type'] ?? 'SINGLE',
-      proTip: json['pro_tip'] ?? '',
-      iconName: json['icon_name'] ?? 'Smartphone',
-      displayOrder: json['display_order'] ?? 0,
+      id: int.tryParse(json['id']?.toString() ?? '') ?? (json['id'] is int ? json['id'] : 0),
+      name: json['name']?.toString() ?? '',
+      subtitle: json['subtitle']?.toString() ?? '',
+      stepNumber: int.tryParse(json['step_number']?.toString() ?? '') ?? (json['step_number'] is int ? json['step_number'] : 1),
+      selectionType: json['selection_type']?.toString() ?? 'SINGLE',
+      proTip: json['pro_tip']?.toString() ?? '',
+      iconName: json['icon_name']?.toString() ?? 'Smartphone',
+      displayOrder: int.tryParse(json['display_order']?.toString() ?? '') ?? (json['display_order'] is int ? json['display_order'] : 0),
       options: opts,
     );
   }
@@ -298,23 +334,28 @@ class CMSSectionModel {
 
   factory CMSSectionModel.fromJson(Map<String, dynamic> json) {
     return CMSSectionModel(
-      id: json['id'] ?? 0,
-      sectionType: json['section_type'] ?? '',
-      title: json['title'] ?? '',
-      subtitle: json['subtitle'] ?? '',
+      id: int.tryParse(json['id']?.toString() ?? '') ?? (json['id'] is int ? json['id'] : 0),
+      sectionType: json['section_type']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      subtitle: json['subtitle']?.toString() ?? '',
       dataJson: json['data_json'] is Map<String, dynamic> ? json['data_json'] : {},
-      displayOrder: json['display_order'] ?? 0,
-      isActive: json['is_active'] ?? true,
+      displayOrder: int.tryParse(json['display_order']?.toString() ?? '') ?? (json['display_order'] is int ? json['display_order'] : 0),
+      isActive: json['is_active'] == true,
     );
   }
 }
 
 class SaleOrderModel {
-  final int id;
+  final dynamic id; // UUID string (e.g. "b569b11a-...") or int
   final String saleCode;
   final String customerName;
   final String customerPhone;
   final String? customerEmail;
+  final bool isCustomDevice;
+  final String? customDeviceName;
+  final String? customDeviceCategory;
+  final String? customDeviceSpecs;
+  final String? otherDefectsNotes;
   final String brandName;
   final String modelName;
   final String storage;
@@ -327,6 +368,7 @@ class SaleOrderModel {
   final String pickupPincode;
   final String? pickupDate;
   final String? pickupSlot;
+  final dynamic assignedAgent;
   final String? assignedAgentName;
   final String beneficiaryType;
   final String beneficiaryName;
@@ -340,6 +382,11 @@ class SaleOrderModel {
     required this.customerName,
     required this.customerPhone,
     this.customerEmail,
+    this.isCustomDevice = false,
+    this.customDeviceName,
+    this.customDeviceCategory,
+    this.customDeviceSpecs,
+    this.otherDefectsNotes,
     required this.brandName,
     required this.modelName,
     required this.storage,
@@ -352,6 +399,7 @@ class SaleOrderModel {
     required this.pickupPincode,
     this.pickupDate,
     this.pickupSlot,
+    this.assignedAgent,
     this.assignedAgentName,
     required this.beneficiaryType,
     required this.beneficiaryName,
@@ -361,30 +409,46 @@ class SaleOrderModel {
   });
 
   factory SaleOrderModel.fromJson(Map<String, dynamic> json) {
+    final bool isCust = json['is_custom_device'] == true;
+    final String cName = json['custom_device_name']?.toString() ?? '';
+    final String cCat = json['custom_device_category']?.toString() ?? '';
+    final String cSpec = json['custom_device_specs']?.toString() ?? '';
+
+    final bName = isCust && cCat.isNotEmpty ? cCat : (json['brand_name']?.toString() ?? '');
+    final mName = isCust && cName.isNotEmpty ? cName : (json['model_name']?.toString() ?? '');
+    final sName = isCust && cSpec.isNotEmpty ? cSpec : (json['storage']?.toString() ??
+        (json['variant_details'] != null ? json['variant_details']['storage']?.toString() : null) ?? '');
+
     return SaleOrderModel(
-      id: json['id'] ?? 0,
-      saleCode: json['sale_code'] ?? '',
-      customerName: json['customer_name'] ?? '',
-      customerPhone: json['customer_phone'] ?? '',
-      customerEmail: json['customer_email'],
-      brandName: json['brand_name'] ?? '',
-      modelName: json['model_name'] ?? '',
-      storage: json['storage'] ?? '',
-      basePrice: double.tryParse(json['base_price'].toString()) ?? 0.0,
-      estimatedPrice: double.tryParse(json['estimated_price'].toString()) ?? 0.0,
+      id: json['id']?.toString() ?? '',
+      saleCode: json['sale_code']?.toString() ?? '',
+      customerName: json['customer_name']?.toString() ?? '',
+      customerPhone: json['customer_phone']?.toString() ?? '',
+      customerEmail: json['customer_email']?.toString(),
+      isCustomDevice: isCust,
+      customDeviceName: cName,
+      customDeviceCategory: cCat,
+      customDeviceSpecs: cSpec,
+      otherDefectsNotes: json['other_defects_notes']?.toString(),
+      brandName: bName.isNotEmpty ? bName : 'Others',
+      modelName: mName.isNotEmpty ? mName : 'Custom Device',
+      storage: sName.isNotEmpty ? sName : 'Standard',
+      basePrice: double.tryParse(json['base_price']?.toString() ?? '') ?? 0.0,
+      estimatedPrice: double.tryParse(json['estimated_price']?.toString() ?? '') ?? 0.0,
       finalPrice: json['final_price'] != null ? double.tryParse(json['final_price'].toString()) : null,
-      status: json['status'] ?? 'SUBMITTED',
-      pickupAddress: json['pickup_address'] ?? '',
-      pickupCity: json['pickup_city'] ?? 'City',
-      pickupPincode: json['pickup_pincode'] ?? '',
-      pickupDate: json['pickup_date'],
-      pickupSlot: json['pickup_slot'],
-      assignedAgentName: json['assigned_agent_name'],
-      beneficiaryType: json['beneficiary_type'] ?? 'UPI',
-      beneficiaryName: json['beneficiary_name'] ?? '',
-      beneficiaryUpiId: json['beneficiary_upi_id'],
-      imeiNumber: json['imei_number'],
-      createdAt: json['created_at'] ?? '',
+      status: json['status']?.toString() ?? 'SUBMITTED',
+      pickupAddress: json['pickup_address']?.toString() ?? '',
+      pickupCity: json['pickup_city']?.toString() ?? 'City',
+      pickupPincode: json['pickup_pincode']?.toString() ?? '',
+      pickupDate: json['pickup_date']?.toString(),
+      pickupSlot: json['pickup_slot']?.toString(),
+      assignedAgent: json['assigned_agent'],
+      assignedAgentName: json['assigned_agent_name']?.toString(),
+      beneficiaryType: json['beneficiary_type']?.toString() ?? 'UPI',
+      beneficiaryName: json['beneficiary_name']?.toString() ?? '',
+      beneficiaryUpiId: json['beneficiary_upi_id']?.toString(),
+      imeiNumber: json['imei_number']?.toString(),
+      createdAt: json['created_at']?.toString() ?? '',
     );
   }
 }
@@ -404,10 +468,10 @@ class AgentUserModel {
 
   factory AgentUserModel.fromJson(Map<String, dynamic> json) {
     return AgentUserModel(
-      id: json['id'] ?? 0,
-      email: json['email'] ?? '',
-      fullName: json['full_name'] ?? json['email'] ?? '',
-      phone: json['phone'] ?? '',
+      id: int.tryParse(json['id']?.toString() ?? '') ?? (json['id'] is int ? json['id'] : 0),
+      email: json['email']?.toString() ?? '',
+      fullName: json['full_name']?.toString() ?? json['email']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
     );
   }
 }
@@ -425,8 +489,9 @@ class PaymentSummaryModel {
 
   factory PaymentSummaryModel.fromJson(Map<String, dynamic> json) {
     return PaymentSummaryModel(
-      totalCount: json['total_count'] ?? 0,
-      totalDisbursed: double.tryParse(json['total_disbursed'].toString()) ?? 0.0,
+      totalCount: int.tryParse(json['total_count']?.toString() ?? '') ??
+          (json['total_count'] is int ? json['total_count'] : 0),
+      totalDisbursed: double.tryParse(json['total_disbursed']?.toString() ?? '') ?? 0.0,
       payments: json['payments'] is List ? json['payments'] : [],
     );
   }

@@ -12,6 +12,12 @@ class ApiService {
   String? _token;
   UserModel? _currentUser;
 
+  // In-Memory Fast Cache for 0ms Screen Transitions
+  List<CMSSectionModel>? _cachedCMSSections;
+  List<DeviceCategoryModel>? _cachedCategories;
+  final Map<String, List<BrandModel>> _cachedBrands = {};
+  List<ConditionCategoryModel>? _cachedConditions;
+
   UserModel? get currentUser => _currentUser;
   bool get isAuthenticated => _token != null;
 
@@ -37,6 +43,10 @@ class ApiService {
   Future<void> logout() async {
     _token = null;
     _currentUser = null;
+    _cachedCMSSections = null;
+    _cachedCategories = null;
+    _cachedBrands.clear();
+    _cachedConditions = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
     await prefs.remove('current_user');
@@ -53,7 +63,7 @@ class ApiService {
     return headers;
   }
 
-  // ================= 1. AUTHENTICATION =================
+  // ================= 1. AUTHENTICATION & PROFILE =================
   Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/auth/login/');
     final res = await http.post(
@@ -92,33 +102,81 @@ class ApiService {
     }
   }
 
+  Future<UserModel> getProfile() async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/me/');
+    final res = await http.get(url, headers: _headers);
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      final user = UserModel.fromJson(data['user']);
+      _currentUser = user;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('current_user', jsonEncode(user.toJson()));
+      return user;
+    } else {
+      throw Exception('Failed to load profile');
+    }
+  }
+
+  Future<UserModel> updateProfile(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/me/');
+    final res = await http.put(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 200) {
+      final data = jsonDecode(res.body);
+      final user = UserModel.fromJson(data['user']);
+      _currentUser = user;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('current_user', jsonEncode(user.toJson()));
+      return user;
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to update profile');
+    }
+  }
+
   // ================= 2. DYNAMIC CMS SECTIONS =================
-  Future<List<CMSSectionModel>> getCMSSections() async {
+  Future<List<CMSSectionModel>> getCMSSections({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedCMSSections != null && _cachedCMSSections!.isNotEmpty) {
+      return _cachedCMSSections!;
+    }
     final url = Uri.parse('${ApiConfig.baseUrl}/catalog/cms/sections/');
     try {
       final res = await http.get(url, headers: _headers);
       if (res.statusCode == 200) {
         final List list = jsonDecode(res.body);
-        return list.map((item) => CMSSectionModel.fromJson(item)).toList();
+        _cachedCMSSections = list.map((item) => CMSSectionModel.fromJson(item)).toList();
+        return _cachedCMSSections!;
       }
     } catch (e) {
       // Fallback local defaults if backend is spinning up
     }
-    return [];
+    return _cachedCMSSections ?? [];
   }
 
   // ================= 3. CATALOG & DEVICES =================
-  Future<List<DeviceCategoryModel>> getDeviceCategories() async {
+  Future<List<DeviceCategoryModel>> getDeviceCategories({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedCategories != null && _cachedCategories!.isNotEmpty) {
+      return _cachedCategories!;
+    }
     final url = Uri.parse('${ApiConfig.baseUrl}/catalog/categories/');
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       final List list = jsonDecode(res.body);
-      return list.map((item) => DeviceCategoryModel.fromJson(item)).toList();
+      _cachedCategories = list.map((item) => DeviceCategoryModel.fromJson(item)).toList();
+      return _cachedCategories!;
     }
-    return [];
+    return _cachedCategories ?? [];
   }
 
-  Future<List<BrandModel>> getBrands({int? categoryId}) async {
+  Future<List<BrandModel>> getBrands({int? categoryId, bool forceRefresh = false}) async {
+    final cacheKey = categoryId?.toString() ?? 'all';
+    if (!forceRefresh && _cachedBrands.containsKey(cacheKey) && _cachedBrands[cacheKey]!.isNotEmpty) {
+      return _cachedBrands[cacheKey]!;
+    }
     var endpoint = '${ApiConfig.baseUrl}/catalog/brands/?include_models=false';
     if (categoryId != null) {
       endpoint += '&category=$categoryId';
@@ -127,9 +185,11 @@ class ApiService {
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       final List list = jsonDecode(res.body);
-      return list.map((item) => BrandModel.fromJson(item)).toList();
+      final brands = list.map((item) => BrandModel.fromJson(item)).toList();
+      _cachedBrands[cacheKey] = brands;
+      return brands;
     }
-    return [];
+    return _cachedBrands[cacheKey] ?? [];
   }
 
   Future<List<SeriesModel>> getSeries({int? brandId}) async {
@@ -170,14 +230,18 @@ class ApiService {
   }
 
   // ================= 4. DYNAMIC 11-STEP QUESTIONNAIRE =================
-  Future<List<ConditionCategoryModel>> getConditionCategories() async {
+  Future<List<ConditionCategoryModel>> getConditionCategories({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedConditions != null && _cachedConditions!.isNotEmpty) {
+      return _cachedConditions!;
+    }
     final url = Uri.parse('${ApiConfig.baseUrl}/valuation/conditions/');
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       final List list = jsonDecode(res.body);
-      return list.map((item) => ConditionCategoryModel.fromJson(item)).toList();
+      _cachedConditions = list.map((item) => ConditionCategoryModel.fromJson(item)).toList();
+      return _cachedConditions!;
     }
-    return [];
+    return _cachedConditions ?? [];
   }
 
   Future<Map<String, dynamic>> calculateEstimate(int variantId, List<String> selectedOptionCodes) async {
@@ -273,7 +337,7 @@ class ApiService {
     return PaymentSummaryModel(totalCount: 0, totalDisbursed: 0.0, payments: []);
   }
 
-  Future<Map<String, dynamic>> assignPickup(int saleId, Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> assignPickup(dynamic saleId, Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/assign-pickup/');
     final res = await http.post(
       url,
@@ -305,13 +369,13 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> recordPayment(int saleId, Map<String, dynamic> payload) {
+  Future<Map<String, dynamic>> recordPayment(dynamic saleId, Map<String, dynamic> payload) {
     final Map<String, dynamic> p = Map<String, dynamic>.from(payload);
-    p['sale_id'] = saleId;
+    p['sale_id'] = saleId.toString();
     return recordPayout(p);
   }
 
-  Future<Map<String, dynamic>> updateConditionOption(int optionId, Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> updateConditionOption(dynamic optionId, Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/valuation/options/$optionId/');
     final res = await http.put(
       url,
@@ -325,5 +389,46 @@ class ApiService {
       final err = jsonDecode(res.body);
       throw Exception(err['detail'] ?? 'Failed to update deduction');
     }
+  }
+
+  Future<Map<String, dynamic>> updateBrand(dynamic brandId, Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/brands/$brandId/');
+    final res = await http.put(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 200) {
+      _cachedBrands.clear();
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to update brand logo');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateDeviceCategory(dynamic categoryId, Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/categories/$categoryId/');
+    final res = await http.put(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 200) {
+      _cachedCategories = null;
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to update category image');
+    }
+  }
+
+  void clearCatalogCache() {
+    _cachedCMSSections = null;
+    _cachedCategories = null;
+    _cachedBrands.clear();
+    _cachedConditions = null;
   }
 }

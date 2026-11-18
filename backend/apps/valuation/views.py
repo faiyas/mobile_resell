@@ -1,3 +1,4 @@
+from django.db.models import Prefetch
 from decimal import Decimal
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -28,7 +29,9 @@ def condition_categories_view(request):
             else:
                 categories = categories.filter(device_category__slug=device_cat)
 
-        categories = categories.order_by('step_number', 'display_order')
+        categories = categories.prefetch_related(
+            Prefetch('options', queryset=ConditionOption.objects.filter(is_active=True).order_by('display_order'))
+        ).order_by('step_number', 'display_order')
         serializer = ConditionCategorySerializer(categories, many=True)
         return Response(serializer.data)
     

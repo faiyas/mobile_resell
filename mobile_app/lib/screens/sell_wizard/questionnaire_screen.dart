@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import '../../services/draft_sell_service.dart';
 import '../../widgets/glass_container.dart';
 import 'quote_and_booking_screen.dart';
 
@@ -11,6 +13,11 @@ class QuestionnaireScreen extends StatefulWidget {
   final BrandModel brand;
   final PhoneModelItem model;
   final StorageVariantModel variant;
+  final bool isCustomDevice;
+  final String? customDeviceName;
+  final String? customDeviceCategory;
+  final String? customDeviceSpecs;
+  final double? customExpectedPrice;
 
   const QuestionnaireScreen({
     super.key,
@@ -18,6 +25,11 @@ class QuestionnaireScreen extends StatefulWidget {
     required this.brand,
     required this.model,
     required this.variant,
+    this.isCustomDevice = false,
+    this.customDeviceName,
+    this.customDeviceCategory,
+    this.customDeviceSpecs,
+    this.customExpectedPrice,
   });
 
   @override
@@ -31,6 +43,23 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   List<ConditionCategoryModel> _steps = [];
   int _currentStepIndex = 0;
   final Set<String> _selectedOptionCodes = {};
+  final Map<String, TextEditingController> _stepControllers = {};
+  final Map<String, String> _stepCustomNotes = {};
+
+  TextEditingController _getController(String stepName) {
+    if (!_stepControllers.containsKey(stepName)) {
+      _stepControllers[stepName] = TextEditingController(text: _stepCustomNotes[stepName] ?? '');
+    }
+    return _stepControllers[stepName]!;
+  }
+
+  @override
+  void dispose() {
+    for (var c in _stepControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -122,6 +151,115 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
         _selectedOptionCodes.add(opt.code);
       }
     });
+    _autoSaveDraft();
+  }
+
+  void _autoSaveDraft() {
+    DraftSellService.saveDraft(
+      SellDraftData(
+        isCustomDevice: widget.isCustomDevice,
+        customDeviceName: widget.customDeviceName,
+        customDeviceCategory: widget.customDeviceCategory,
+        customDeviceSpecs: widget.customDeviceSpecs,
+        customExpectedPrice: widget.customExpectedPrice,
+        brand: widget.brand,
+        model: widget.model,
+        variant: widget.variant,
+        selectedOptionCodes: _selectedOptionCodes.toList(),
+        customStepNotes: Map<String, String>.from(_stepCustomNotes),
+        otherDefectsNotes: _stepCustomNotes.values.where((v) => v.trim().isNotEmpty).join(', '),
+        estimatedPrice: widget.customExpectedPrice ?? widget.variant.basePrice,
+        savedAt: DateTime.now().toIso8601String(),
+      ),
+    );
+  }
+
+  void _showDefectPreviewDialog(ConditionOptionModel opt) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: GlassContainer(
+          padding: const EdgeInsets.all(22),
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryGreen.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.search_rounded, color: AppTheme.primaryGreen, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      opt.title,
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.textPrimary),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (opt.imageBase64 != null && opt.imageBase64!.trim().isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    height: 180,
+                    width: double.infinity,
+                    color: Colors.black12,
+                    child: Image.memory(
+                      base64Decode(opt.imageBase64!.contains(',') ? opt.imageBase64!.split(',').last : opt.imageBase64!),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Center(
+                        child: Icon(Icons.broken_image_rounded, size: 40, color: AppTheme.textSecondary),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+              Text(
+                opt.description.isNotEmpty ? opt.description : 'Physical condition inspection criteria used during doorstep verification.',
+                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: opt.defaultDeductionValue == 0 ? AppTheme.lightGreen : Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  opt.defaultDeductionValue == 0
+                      ? 'No Value Deduction (₹0)'
+                      : 'Estimated Valuation Impact: -₹${opt.defaultDeductionValue.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: opt.defaultDeductionValue == 0 ? AppTheme.darkGreen : Colors.red.shade900,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Understood'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _nextStep() {
@@ -141,7 +279,12 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
     if (_currentStepIndex < _steps.length - 1) {
       setState(() => _currentStepIndex++);
     } else {
-      // Completed all 11 steps -> Proceed to Quote
+      // Completed all steps -> Proceed to Quote
+      final combinedNotes = _stepCustomNotes.entries
+          .where((e) => e.value.trim().isNotEmpty)
+          .map((e) => '${e.key}: "${e.value.trim()}"')
+          .join('\n');
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -150,6 +293,13 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
             model: widget.model,
             variant: widget.variant,
             selectedOptionCodes: _selectedOptionCodes.toList(),
+            isCustomDevice: widget.isCustomDevice,
+            customDeviceName: widget.customDeviceName,
+            customDeviceCategory: widget.customDeviceCategory,
+            customDeviceSpecs: widget.customDeviceSpecs,
+            customExpectedPrice: widget.customExpectedPrice,
+            otherDefectsNotes: combinedNotes,
+            customStepNotes: Map<String, String>.from(_stepCustomNotes),
           ),
         ),
       );
@@ -326,14 +476,45 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const SizedBox(width: 18),
-                            Icon(
-                              _getOptionIcon(opt.code),
-                              size: 26,
-                              color: isSelected
-                                  ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen)
-                                  : AppTheme.textSecondary,
-                            ),
+                            if (opt.imageBase64 != null && opt.imageBase64!.trim().isNotEmpty)
+                              GestureDetector(
+                                onTap: () => _showDefectPreviewDialog(opt),
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.4)),
+                                    borderRadius: BorderRadius.circular(10),
+                                    boxShadow: [
+                                      BoxShadow(color: AppTheme.primaryGreen.withOpacity(0.12), blurRadius: 4),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.memory(
+                                      base64Decode(opt.imageBase64!.contains(',') ? opt.imageBase64!.split(',').last : opt.imageBase64!),
+                                      width: 28,
+                                      height: 28,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Icon(
+                                        _getOptionIcon(opt.code),
+                                        size: 24,
+                                        color: isSelected ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen) : AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else ...[
+                              const SizedBox(width: 18),
+                              Icon(
+                                _getOptionIcon(opt.code),
+                                size: 26,
+                                color: isSelected
+                                    ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen)
+                                    : AppTheme.textSecondary,
+                              ),
+                            ],
                             Icon(
                               isSelected ? Icons.check_circle : Icons.circle_outlined,
                               size: 18,
@@ -391,7 +572,77 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                 },
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
+
+              // Dynamic "Others (Specify Custom Defect/Detail)" Card
+              GlassContainer(
+                borderRadius: 18,
+                padding: const EdgeInsets.all(14),
+                border: Border.all(
+                  color: (_stepCustomNotes[currentStep.name]?.isNotEmpty == true)
+                      ? AppTheme.primaryGreen
+                      : Colors.white.withOpacity(0.85),
+                  width: (_stepCustomNotes[currentStep.name]?.isNotEmpty == true) ? 2 : 1.2,
+                ),
+                color: Colors.white.withOpacity(0.85),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGreen.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.edit_note_rounded, color: AppTheme.primaryGreen, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Other ${currentStep.name} Issue / Custom Note',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary),
+                              ),
+                              const Text(
+                                'Specify any unlisted defect or special remark for this step',
+                                style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_stepCustomNotes[currentStep.name]?.isNotEmpty == true)
+                          const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 18),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _getController(currentStep.name),
+                      decoration: InputDecoration(
+                        hintText: 'e.g. Minor scratch near camera, loose volume button, etc...',
+                        hintStyle: TextStyle(fontSize: 11, color: AppTheme.textSecondary.withOpacity(0.7)),
+                        filled: true,
+                        fillColor: Colors.white.withOpacity(0.9),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.border)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.border)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryGreen, width: 1.5)),
+                      ),
+                      maxLines: 2,
+                      onChanged: (val) {
+                        setState(() {
+                          _stepCustomNotes[currentStep.name] = val.trim();
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 16),
 
               // Pro Tip Card
               if (currentStep.proTip.isNotEmpty)

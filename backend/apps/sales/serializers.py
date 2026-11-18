@@ -7,12 +7,22 @@ from apps.inspections.models import DeviceInspection, InspectionPhoto
 from apps.payments.models import Payment
 
 class PhoneSaleConditionAnswerSerializer(serializers.ModelSerializer):
-    option_title = serializers.ReadOnlyField(source='option.title')
-    category_name = serializers.ReadOnlyField(source='option.category.name')
+    option_title = serializers.SerializerMethodField()
+    category_name = serializers.SerializerMethodField()
 
     class Meta:
         model = PhoneSaleConditionAnswer
-        fields = ['id', 'option', 'option_title', 'category_name', 'deduction_applied']
+        fields = ['id', 'option', 'step_name', 'option_title', 'category_name', 'custom_text', 'deduction_applied']
+
+    def get_option_title(self, obj):
+        if obj.option:
+            return obj.option.title
+        return obj.step_name or "Custom Defect Note"
+
+    def get_category_name(self, obj):
+        if obj.option and obj.option.category:
+            return obj.option.category.name
+        return obj.step_name or "General Notes"
 
 class InspectionPhotoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -46,9 +56,10 @@ class PaymentSimpleSerializer(serializers.ModelSerializer):
 
 class PhoneSaleDetailSerializer(serializers.ModelSerializer):
     variant_details = StorageVariantSerializer(source='variant', read_only=True)
-    brand_name = serializers.ReadOnlyField(source='variant.model.brand.name')
-    model_name = serializers.ReadOnlyField(source='variant.model.name')
-    model_image_base64 = serializers.ReadOnlyField(source='variant.model.image_base64')
+    brand_name = serializers.SerializerMethodField()
+    model_name = serializers.SerializerMethodField()
+    storage = serializers.SerializerMethodField()
+    model_image_base64 = serializers.SerializerMethodField()
     answers = PhoneSaleConditionAnswerSerializer(many=True, read_only=True)
     inspection = DeviceInspectionSerializer(read_only=True)
     payment = PaymentSimpleSerializer(read_only=True)
@@ -58,7 +69,8 @@ class PhoneSaleDetailSerializer(serializers.ModelSerializer):
         model = PhoneSale
         fields = [
             'id', 'sale_code', 'customer', 'customer_name', 'customer_phone', 'customer_email',
-            'variant', 'variant_details', 'brand_name', 'model_name', 'model_image_base64',
+            'is_custom_device', 'custom_device_name', 'custom_device_category', 'custom_device_specs', 'other_defects_notes',
+            'variant', 'variant_details', 'brand_name', 'model_name', 'storage', 'model_image_base64',
             'base_price', 'estimated_price', 'final_price', 'status',
             'assigned_agent', 'assigned_agent_name',
             'pickup_address', 'pickup_city', 'pickup_pincode', 'pickup_date', 'pickup_slot',
@@ -68,16 +80,32 @@ class PhoneSaleDetailSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'answers', 'inspection', 'payment'
         ]
 
+    def get_brand_name(self, obj):
+        if obj.is_custom_device or not obj.variant:
+            return obj.custom_device_category or "Others"
+        return obj.variant.model.brand.name
+
+    def get_model_name(self, obj):
+        if obj.is_custom_device or not obj.variant:
+            return obj.custom_device_name or "Custom Gadget"
+        return obj.variant.model.name
+
+    def get_storage(self, obj):
+        if obj.is_custom_device or not obj.variant:
+            return obj.custom_device_specs or "Custom Spec"
+        return obj.variant.storage
+
+    def get_model_image_base64(self, obj):
+        if obj.variant and obj.variant.model:
+            return obj.variant.model.image_base64
+        return None
+
 class PhoneSaleListSerializer(serializers.ModelSerializer):
-    """
-    Ultra-lightweight serializer for high-speed listing.
-    Omits heavy Base64 inspection photos and payment receipts.
-    Reduces JSON payload by 99% for instantaneous page loads.
-    """
-    brand_name = serializers.ReadOnlyField(source='variant.model.brand.name')
-    model_name = serializers.ReadOnlyField(source='variant.model.name')
-    storage = serializers.ReadOnlyField(source='variant.storage')
-    ram = serializers.ReadOnlyField(source='variant.ram')
+    """Ultra-lightweight serializer for listing orders"""
+    brand_name = serializers.SerializerMethodField()
+    model_name = serializers.SerializerMethodField()
+    storage = serializers.SerializerMethodField()
+    ram = serializers.SerializerMethodField()
     assigned_agent_name = serializers.ReadOnlyField(source='assigned_agent.full_name')
     has_inspection = serializers.SerializerMethodField()
     has_payment = serializers.SerializerMethodField()
@@ -86,6 +114,7 @@ class PhoneSaleListSerializer(serializers.ModelSerializer):
         model = PhoneSale
         fields = [
             'id', 'sale_code', 'customer_name', 'customer_phone', 'customer_email',
+            'is_custom_device', 'custom_device_name', 'custom_device_category', 'custom_device_specs', 'other_defects_notes',
             'brand_name', 'model_name', 'storage', 'ram',
             'base_price', 'estimated_price', 'final_price', 'status',
             'assigned_agent', 'assigned_agent_name',
@@ -96,6 +125,26 @@ class PhoneSaleListSerializer(serializers.ModelSerializer):
             'has_inspection', 'has_payment', 'created_at', 'updated_at'
         ]
 
+    def get_brand_name(self, obj):
+        if obj.is_custom_device or not obj.variant:
+            return obj.custom_device_category or "Others"
+        return obj.variant.model.brand.name
+
+    def get_model_name(self, obj):
+        if obj.is_custom_device or not obj.variant:
+            return obj.custom_device_name or "Custom Gadget"
+        return obj.variant.model.name
+
+    def get_storage(self, obj):
+        if obj.is_custom_device or not obj.variant:
+            return obj.custom_device_specs or "Custom Spec"
+        return obj.variant.storage
+
+    def get_ram(self, obj):
+        if obj.variant:
+            return obj.variant.ram
+        return None
+
     def get_has_inspection(self, obj):
         return hasattr(obj, 'inspection')
 
@@ -103,7 +152,14 @@ class PhoneSaleListSerializer(serializers.ModelSerializer):
         return hasattr(obj, 'payment')
 
 class PhoneSaleCreateSerializer(serializers.Serializer):
-    variant_id = serializers.IntegerField()
+    variant_id = serializers.IntegerField(required=False, allow_null=True)
+    is_custom_device = serializers.BooleanField(required=False, default=False)
+    custom_device_name = serializers.CharField(required=False, allow_blank=True, default='')
+    custom_device_category = serializers.CharField(required=False, allow_blank=True, default='Mobile')
+    custom_device_specs = serializers.CharField(required=False, allow_blank=True, default='')
+    custom_expected_price = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, allow_null=True)
+    other_defects_notes = serializers.CharField(required=False, allow_blank=True, default='')
+    custom_step_notes = serializers.DictField(required=False, default=dict)
     selected_option_codes = serializers.ListField(child=serializers.CharField(), required=False, default=list)
     customer_name = serializers.CharField(max_length=150)
     customer_phone = serializers.CharField(max_length=20)

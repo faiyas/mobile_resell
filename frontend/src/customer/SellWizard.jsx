@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Smartphone, Tablet, Laptop, Watch, AlertOctagon, Layers, 
-  Search, ArrowRight, ArrowLeft, Check, CheckCircle2, ChevronRight, 
-  Sparkles, ShieldCheck, MapPin, Calendar, Clock, CreditCard, Banknote, 
-  HelpCircle, AlertTriangle, Copy, Truck, Gift
+import {
+  Smartphone, Tablet, Laptop, Watch, AlertOctagon, Layers,
+  Search, ArrowRight, ArrowLeft, Check, CheckCircle2, ChevronRight,
+  Sparkles, ShieldCheck, MapPin, Calendar, Clock, CreditCard, Banknote,
+  HelpCircle, AlertTriangle, Copy, Truck, Gift, FileText
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -26,6 +26,12 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [selectedOptionCodes, setSelectedOptionCodes] = useState([]);
+  const [stepCustomNotes, setStepCustomNotes] = useState({});
+  const [isCustomDevice, setIsCustomDevice] = useState(false);
+  const [customDeviceName, setCustomDeviceName] = useState('');
+  const [customDeviceCategory, setCustomDeviceCategory] = useState('Others');
+  const [customDeviceSpecs, setCustomDeviceSpecs] = useState('128GB');
+  const [customExpectedPrice, setCustomExpectedPrice] = useState('8000');
 
   // Filters
   const [brandSearch, setBrandSearch] = useState('');
@@ -39,9 +45,9 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
   const [customerName, setCustomerName] = useState(currentUser?.full_name || '');
   const [customerPhone, setCustomerPhone] = useState(currentUser?.phone || '');
   const [customerEmail, setCustomerEmail] = useState(currentUser?.email || '');
-  const [pickupAddress, setPickupAddress] = useState('');
-  const [pickupCity, setPickupCity] = useState('Tirupur');
-  const [pickupPincode, setPickupPincode] = useState('641602');
+  const [pickupAddress, setPickupAddress] = useState(currentUser?.default_address || '');
+  const [pickupCity, setPickupCity] = useState(currentUser?.city || '');
+  const [pickupPincode, setPickupPincode] = useState(currentUser?.pincode || '');
   const [pickupDate, setPickupDate] = useState(new Date().toISOString().split('T')[0]);
   const [pickupSlot, setPickupSlot] = useState('Afternoon (1:00 PM - 5:00 PM)');
 
@@ -169,8 +175,20 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
     if (!selectedVariant) return;
     setSubmitting(true);
     try {
+      const combinedNotes = Object.entries(stepCustomNotes)
+        .filter(([_, v]) => v && v.trim())
+        .map(([k, v]) => `${k}: "${v.trim()}"`)
+        .join('\n');
+
       const payload = {
-        variant_id: selectedVariant.id,
+        variant_id: selectedVariant ? selectedVariant.id : null,
+        is_custom_device: isCustomDevice,
+        custom_device_name: customDeviceName || (selectedModel ? selectedModel.name : 'Custom Device'),
+        custom_device_category: customDeviceCategory || (selectedCategory ? selectedCategory.name : 'Others'),
+        custom_device_specs: customDeviceSpecs || (selectedVariant ? selectedVariant.storage : 'Standard'),
+        custom_expected_price: isCustomDevice ? (Number(customExpectedPrice) || 8000) : null,
+        other_defects_notes: combinedNotes,
+        custom_step_notes: stepCustomNotes,
         selected_option_codes: selectedOptionCodes,
         customer_name: customerName,
         customer_phone: customerPhone,
@@ -197,7 +215,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
     }
   };
 
-  const filteredBrands = brands.filter(b => 
+  const filteredBrands = brands.filter(b =>
     b.name.toLowerCase().includes(brandSearch.toLowerCase())
   );
 
@@ -221,11 +239,10 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 handleSelectCategory(cat);
                 setCurrentScreen(2);
               }}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition shrink-0 flex items-center gap-2 ${
-                isSelected
+              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition shrink-0 flex items-center gap-2 ${isSelected
                   ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/25'
                   : 'text-[#17251C] hover:bg-white/60 hover:text-[#0BAA4B]'
-              }`}
+                }`}
             >
               <span>{cat.name === 'Mobile' ? '📱' : cat.name === 'Tablet' ? '📟' : cat.name === 'Laptop' ? '💻' : cat.name === 'Smartwatch' ? '⌚' : '🔌'}</span>
               <span>Sell {cat.name}</span>
@@ -284,7 +301,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
               </div>
               <p className="text-xs text-[#7B8980] mt-0.5">Select the manufacturer brand of your device</p>
             </div>
-            
+
             <div className="relative w-full sm:w-64">
               <Search className="w-4 h-4 text-[#7B8980] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
@@ -355,11 +372,10 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
             <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
               <button
                 onClick={() => setSelectedSeriesId('ALL')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap ${
-                  selectedSeriesId === 'ALL'
+                className={`px-3 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap ${selectedSeriesId === 'ALL'
                     ? 'bg-[#0BAA4B] text-white shadow-sm'
                     : 'glass-card text-[#7B8980] hover:bg-white'
-                }`}
+                  }`}
               >
                 All Series
               </button>
@@ -367,11 +383,10 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 <button
                   key={s.id}
                   onClick={() => setSelectedSeriesId(s.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap ${
-                    selectedSeriesId === s.id
+                  className={`px-3 py-1.5 rounded-xl text-xs font-black transition whitespace-nowrap ${selectedSeriesId === s.id
                       ? 'bg-[#0BAA4B] text-white shadow-sm'
                       : 'glass-card text-[#7B8980] hover:bg-white'
-                  }`}
+                    }`}
                 >
                   {s.name}
                 </button>
@@ -390,11 +405,10 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                     <div
                       key={m.id}
                       onClick={() => handleSelectModel(m)}
-                      className={`cursor-pointer rounded-2xl p-3 text-center transition flex flex-col items-center justify-between min-h-[160px] ${
-                        isSelected
+                      className={`cursor-pointer rounded-2xl p-3 text-center transition flex flex-col items-center justify-between min-h-[160px] ${isSelected
                           ? 'border-2 border-[#0BAA4B] bg-[#E8F8ED]/70 shadow-md ring-2 ring-[#0BAA4B]/20'
                           : 'glass-card glass-card-hover'
-                      }`}
+                        }`}
                     >
                       <div className="w-16 h-20 bg-white/70 rounded-xl flex items-center justify-center p-1.5 overflow-hidden border border-white/80">
                         {m.image_base64 ? (
@@ -431,11 +445,10 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                         <div
                           key={v.id}
                           onClick={() => setSelectedVariant(v)}
-                          className={`cursor-pointer p-3 rounded-2xl border-2 transition flex items-center justify-between ${
-                            isVarSelected
+                          className={`cursor-pointer p-3 rounded-2xl border-2 transition flex items-center justify-between ${isVarSelected
                               ? 'border-[#0BAA4B] bg-[#0BAA4B] text-white shadow-md'
                               : 'glass-card text-[#17251C] hover:border-[#0BAA4B]/40'
-                          }`}
+                            }`}
                         >
                           <div>
                             <p className="font-black text-sm">
@@ -481,7 +494,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
 
             return (
               <div className="glass-panel rounded-3xl p-5 sm:p-7 shadow-sm space-y-5">
-                
+
                 {/* Step indicator header */}
                 <div className="flex items-center justify-between border-b border-white/80 pb-3">
                   <div>
@@ -517,26 +530,23 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                       <div
                         key={opt.id}
                         onClick={() => toggleOptionCode(opt.code, opt.exclusive_group)}
-                        className={`cursor-pointer rounded-2xl p-3.5 transition flex flex-col justify-between active:scale-[0.98] select-none ${
-                          isSelected
+                        className={`cursor-pointer rounded-2xl p-3.5 transition flex flex-col justify-between active:scale-[0.98] select-none ${isSelected
                             ? opt.is_rejection
                               ? 'border-2 border-rose-600 bg-rose-50/90 shadow-md ring-2 ring-rose-500/20'
                               : 'border-2 border-[#0BAA4B] bg-[#E8F8ED]/90 shadow-md ring-2 ring-[#0BAA4B]/20'
                             : 'glass-card glass-card-hover'
-                        }`}
+                          }`}
                       >
                         {/* Top Indicator */}
                         <div className="flex justify-between items-center mb-2">
-                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                            isSelected
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${isSelected
                               ? opt.is_rejection ? 'bg-rose-600 text-white' : 'bg-[#0BAA4B] text-white'
                               : 'bg-white/80 text-slate-700 border border-white'
-                          }`}>
+                            }`}>
                             {isSelected ? '✓ Selected' : 'Tap to select'}
                           </span>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            isSelected ? 'border-[#0BAA4B] bg-[#0BAA4B] text-white' : 'border-slate-300 bg-white'
-                          }`}>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-[#0BAA4B] bg-[#0BAA4B] text-white' : 'border-slate-300 bg-white'
+                            }`}>
                             {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                           </div>
                         </div>
@@ -573,6 +583,24 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                       </div>
                     );
                   })}
+                </div>
+
+                {/* Custom Defect / Special Note for this Step */}
+                <div className="glass-card p-4 rounded-2xl border border-white mt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-4 h-4 text-[#0BAA4B]" />
+                    <span className="text-xs font-black text-[#17251C]">Other {currentCat.name} Issue or Detail (Optional):</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={stepCustomNotes[currentCat.name] || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setStepCustomNotes(prev => ({ ...prev, [currentCat.name]: val }));
+                    }}
+                    placeholder={`Describe any other minor defect or remark for ${currentCat.name.toLowerCase()}...`}
+                    className="w-full text-xs p-3 rounded-xl border border-slate-200 bg-white/90 focus:outline-none focus:ring-2 focus:ring-[#0BAA4B]/40 placeholder:text-slate-400"
+                  />
                 </div>
 
                 {/* Navigation Buttons: Previous & Continue */}
@@ -613,7 +641,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
       {/* ================= SCREEN 5: GET ESTIMATED QUOTE ================= */}
       {currentScreen === 5 && valuationResult && (
         <div className="max-w-xl mx-auto space-y-5 animate-fade-in">
-          
+
           {/* Emerald Gradient Hero Quote Banner */}
           <div className="bg-gradient-to-br from-[#0BAA4B] via-[#087C38] to-[#0D4722] text-white rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-3 border border-white/30">
             <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 backdrop-blur px-3 py-1 rounded-full inline-block border border-white/20">
@@ -683,7 +711,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
       {/* ================= SCREEN 6: DOORSTEP BOOKING & PAYOUT DETAILS ================= */}
       {currentScreen === 6 && (
         <form onSubmit={handleSubmitBooking} className="max-w-xl mx-auto glass-panel rounded-3xl p-5 sm:p-7 shadow-sm space-y-5 animate-fade-in text-xs">
-          
+
           <div className="border-b border-white/80 pb-3">
             <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-2.5 py-0.5 rounded-full border border-[#0BAA4B]/20">
               Final Step
@@ -788,27 +816,25 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
             <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
               <Banknote className="w-4 h-4 text-[#0BAA4B]" /> 4. Instant Payment Details
             </h4>
-            
+
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => setBeneficiaryType('UPI')}
-                className={`p-3 rounded-2xl border-2 font-black transition ${
-                  beneficiaryType === 'UPI'
+                className={`p-3 rounded-2xl border-2 font-black transition ${beneficiaryType === 'UPI'
                     ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38]'
                     : 'glass-card text-[#7B8980]'
-                }`}
+                  }`}
               >
                 Instant UPI (GPay / PhonePe)
               </button>
               <button
                 type="button"
                 onClick={() => setBeneficiaryType('BANK')}
-                className={`p-3 rounded-2xl border-2 font-black transition ${
-                  beneficiaryType === 'BANK'
+                className={`p-3 rounded-2xl border-2 font-black transition ${beneficiaryType === 'BANK'
                     ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38]'
                     : 'glass-card text-[#7B8980]'
-                }`}
+                  }`}
               >
                 Direct Bank Transfer
               </button>
@@ -862,7 +888,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
       {/* ================= SCREEN 7: ORDER CONFIRMATION & TRACKING TIMELINE ================= */}
       {currentScreen === 7 && createdOrder && (
         <div className="max-w-xl mx-auto glass-panel rounded-3xl p-6 sm:p-8 shadow-sm space-y-6 animate-fade-in text-center">
-          
+
           <div className="w-16 h-16 rounded-full bg-[#E8F8ED] text-[#0BAA4B] flex items-center justify-center mx-auto shadow-md shadow-[#0BAA4B]/20 border border-[#0BAA4B]/30">
             <CheckCircle2 className="w-9 h-9" />
           </div>
@@ -894,7 +920,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
           {/* 5-Stage Visual Timeline */}
           <div className="text-left space-y-4 pt-2">
             <h4 className="font-black text-sm text-[#17251C]">Live Order Status:</h4>
-            
+
             <div className="space-y-4 pl-3 border-l-2 border-[#0BAA4B]">
               <div className="relative pl-5">
                 <div className="absolute -left-[19px] top-0.5 w-4 h-4 rounded-full bg-[#0BAA4B] ring-4 ring-[#E8F8ED]" />

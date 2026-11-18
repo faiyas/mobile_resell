@@ -275,22 +275,6 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
                       validator: (v) => v == null || v.trim().length < 10 ? 'Enter 10-digit number' : null,
                     ),
                     const SizedBox(height: 10),
-                    DropdownButtonFormField<String>(
-                      value: _role,
-                      decoration: InputDecoration(
-                        labelText: 'Account Role',
-                        prefixIcon: const Icon(Icons.badge_outlined, color: AppTheme.primaryGreen),
-                        filled: true,
-                        fillColor: Colors.white.withOpacity(0.85),
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'CUSTOMER', child: Text('Customer (Sell Old Gadgets)')),
-                        DropdownMenuItem(value: 'COLLECTION_AGENT', child: Text('Collection Agent (Field Team)')),
-                        DropdownMenuItem(value: 'ADMIN', child: Text('Administrator (Operations Desk)')),
-                      ],
-                      onChanged: (v) => setState(() => _role = v!),
-                    ),
-                    const SizedBox(height: 10),
                   ],
 
                   TextFormField(

@@ -30,7 +30,10 @@ class ConditionCategorySerializer(serializers.ModelSerializer):
         ]
 
     def get_options(self, obj):
-        active_options = obj.options.filter(is_active=True).order_by('display_order')
+        if hasattr(obj, '_prefetched_objects_cache') and 'options' in obj._prefetched_objects_cache:
+            active_options = [opt for opt in obj.options.all() if opt.is_active]
+        else:
+            active_options = obj.options.filter(is_active=True).order_by('display_order')
         return ConditionOptionSerializer(active_options, many=True).data
 
 class EstimateCalculationSerializer(serializers.Serializer):

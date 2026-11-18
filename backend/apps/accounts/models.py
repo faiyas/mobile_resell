@@ -32,6 +32,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     full_name = models.CharField(max_length=150, blank=True, default='')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='CUSTOMER')
     
+    # Saved Customer Doorstep & Payout Details (Auto-filled on bookings)
+    default_address = models.TextField(blank=True, default='')
+    city = models.CharField(max_length=100, blank=True, default='')
+    pincode = models.CharField(max_length=20, blank=True, default='')
+    default_upi_id = models.CharField(max_length=100, blank=True, default='')
+    
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)

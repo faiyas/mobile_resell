@@ -43,7 +43,10 @@ class BrandSerializer(serializers.ModelSerializer):
         fields = ['id', 'category', 'category_name', 'name', 'slug', 'logo_base64', 'is_active', 'display_order', 'models']
 
     def get_models(self, obj):
-        active_models = obj.models.filter(is_active=True)
+        if hasattr(obj, '_prefetched_objects_cache') and 'models' in obj._prefetched_objects_cache:
+            active_models = [m for m in obj.models.all() if m.is_active]
+        else:
+            active_models = obj.models.filter(is_active=True)
         return PhoneModelSerializer(active_models, many=True).data
 
 class BrandBasicSerializer(serializers.ModelSerializer):

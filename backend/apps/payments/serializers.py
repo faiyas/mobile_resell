@@ -18,8 +18,8 @@ class PaymentRecordSerializer(serializers.Serializer):
 
 class PaymentDetailSerializer(serializers.ModelSerializer):
     sale_code = serializers.ReadOnlyField(source='sale.sale_code')
-    model_name = serializers.ReadOnlyField(source='sale.variant.model.name')
-    brand_name = serializers.ReadOnlyField(source='sale.variant.model.brand.name')
+    model_name = serializers.SerializerMethodField()
+    brand_name = serializers.SerializerMethodField()
     paid_by_name = serializers.ReadOnlyField(source='paid_by.full_name')
 
     class Meta:
@@ -32,11 +32,25 @@ class PaymentDetailSerializer(serializers.ModelSerializer):
             'paid_by_name', 'paid_at', 'is_verified'
         ]
 
+    def get_model_name(self, obj):
+        if obj.sale and obj.sale.is_custom_device and obj.sale.custom_device_name:
+            return obj.sale.custom_device_name
+        if obj.sale and obj.sale.variant and obj.sale.variant.model:
+            return obj.sale.variant.model.name
+        return "Custom Gadget"
+
+    def get_brand_name(self, obj):
+        if obj.sale and obj.sale.is_custom_device and obj.sale.custom_device_category:
+            return obj.sale.custom_device_category
+        if obj.sale and obj.sale.variant and obj.sale.variant.model and obj.sale.variant.model.brand:
+            return obj.sale.variant.model.brand.name
+        return "Others"
+
 class PaymentListSerializer(serializers.ModelSerializer):
     """Fast list view of payments without transmitting heavy Base64 screenshot proof"""
     sale_code = serializers.ReadOnlyField(source='sale.sale_code')
-    model_name = serializers.ReadOnlyField(source='sale.variant.model.name')
-    brand_name = serializers.ReadOnlyField(source='sale.variant.model.brand.name')
+    model_name = serializers.SerializerMethodField()
+    brand_name = serializers.SerializerMethodField()
     paid_by_name = serializers.ReadOnlyField(source='paid_by.full_name')
     has_proof = serializers.SerializerMethodField()
 
@@ -49,6 +63,20 @@ class PaymentListSerializer(serializers.ModelSerializer):
             'utr_number', 'has_proof', 'admin_notes',
             'paid_by_name', 'paid_at', 'is_verified'
         ]
+
+    def get_model_name(self, obj):
+        if obj.sale and obj.sale.is_custom_device and obj.sale.custom_device_name:
+            return obj.sale.custom_device_name
+        if obj.sale and obj.sale.variant and obj.sale.variant.model:
+            return obj.sale.variant.model.name
+        return "Custom Gadget"
+
+    def get_brand_name(self, obj):
+        if obj.sale and obj.sale.is_custom_device and obj.sale.custom_device_category:
+            return obj.sale.custom_device_category
+        if obj.sale and obj.sale.variant and obj.sale.variant.model and obj.sale.variant.model.brand:
+            return obj.sale.variant.model.brand.name
+        return "Others"
 
     def get_has_proof(self, obj):
         return bool(obj.payment_proof_base64)

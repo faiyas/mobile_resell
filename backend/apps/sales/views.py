@@ -53,24 +53,36 @@ def sales_list_create_view(request):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         data = serializer.validated_data
-        variant_id = data['variant_id']
+        variant_id = data.get('variant_id')
+        is_custom = data.get('is_custom_device', False) or (variant_id is None or variant_id == 0)
         selected_codes = data.get('selected_option_codes', [])
+        custom_notes = data.get('other_defects_notes', '')
+        custom_step_notes = data.get('custom_step_notes', {})
 
-        try:
-            variant = StorageVariant.objects.select_related('model__brand').get(id=variant_id, is_active=True)
-        except StorageVariant.DoesNotExist:
-            return Response({'detail': 'Variant not found'}, status=status.HTTP_404_NOT_FOUND)
+        variant = None
+        if variant_id:
+            try:
+                variant = StorageVariant.objects.select_related('model__brand').get(id=variant_id, is_active=True)
+            except StorageVariant.DoesNotExist:
+                if not is_custom:
+                    return Response({'detail': 'Variant not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        base_price = variant.base_price
-        phone_model = variant.model
+        if variant:
+            base_price = variant.base_price
+            min_price = variant.min_price
+            phone_model = variant.model
+            overrides = {
+                mo.option_id: mo.override_deduction_value
+                for mo in ModelPricingOverride.objects.filter(phone_model=phone_model)
+            }
+        else:
+            is_custom = True
+            base_price = data.get('custom_expected_price') or Decimal('8000.00')
+            min_price = Decimal('500.00')
+            overrides = {}
 
         # Calculate exact price per valuation engine rules
         options = ConditionOption.objects.filter(code__in=selected_codes, is_active=True)
-        overrides = {
-            mo.option_id: mo.override_deduction_value
-            for mo in ModelPricingOverride.objects.filter(phone_model=phone_model)
-        }
-
         total_deduction = Decimal('0.00')
         answers_to_create = []
 
@@ -85,9 +97,9 @@ def sales_list_create_view(request):
                 else:
                     amt = opt.default_deduction_value
             total_deduction += amt
-            answers_to_create.append((opt, amt))
+            answers_to_create.append((opt, amt, ''))
 
-        estimated_price = max(base_price - total_deduction, variant.min_price)
+        estimated_price = max(base_price - total_deduction, min_price)
 
         with transaction.atomic():
             customer_user = request.user if request.user.is_authenticated else None
@@ -97,6 +109,11 @@ def sales_list_create_view(request):
                 customer_phone=data['customer_phone'],
                 customer_email=data.get('customer_email', ''),
                 variant=variant,
+                is_custom_device=is_custom,
+                custom_device_name=data.get('custom_device_name', '') or ('Custom Device' if is_custom else ''),
+                custom_device_category=data.get('custom_device_category', 'Others') if is_custom else '',
+                custom_device_specs=data.get('custom_device_specs', '') if is_custom else '',
+                other_defects_notes=custom_notes,
                 base_price=base_price,
                 estimated_price=estimated_price,
                 status='SUBMITTED',
@@ -112,12 +129,26 @@ def sales_list_create_view(request):
                 beneficiary_ifsc=data.get('beneficiary_ifsc', ''),
             )
 
-            for opt, amt in answers_to_create:
+            for opt, amt, custom_t in answers_to_create:
                 PhoneSaleConditionAnswer.objects.create(
                     sale=sale,
                     option=opt,
+                    step_name=opt.category.name if opt.category else '',
+                    custom_text=custom_t,
                     deduction_applied=amt
                 )
+
+            # Record per-step custom free-text notes
+            if isinstance(custom_step_notes, dict):
+                for step_name, note in custom_step_notes.items():
+                    if note and str(note).strip():
+                        PhoneSaleConditionAnswer.objects.create(
+                            sale=sale,
+                            option=None,
+                            step_name=str(step_name).strip(),
+                            custom_text=str(note).strip(),
+                            deduction_applied=Decimal('0.00')
+                        )
 
         return Response(PhoneSaleDetailSerializer(sale).data, status=status.HTTP_201_CREATED)
 

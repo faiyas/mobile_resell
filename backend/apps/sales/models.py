@@ -37,8 +37,18 @@ class PhoneSale(models.Model):
     customer_phone = models.CharField(max_length=20)
     customer_email = models.EmailField(blank=True)
 
-    variant = models.ForeignKey(StorageVariant, on_delete=models.PROTECT, related_name='sales')
+    # Variant is optional to support 'Others' category custom devices
+    variant = models.ForeignKey(StorageVariant, on_delete=models.PROTECT, related_name='sales', null=True, blank=True)
     
+    # Custom Device Fields (for Others, Tablets, Dead Phones without fixed SKUs)
+    is_custom_device = models.BooleanField(default=False)
+    custom_device_name = models.CharField(max_length=200, blank=True, default='')
+    custom_device_category = models.CharField(max_length=50, blank=True, default='Mobile')
+    custom_device_specs = models.TextField(blank=True, default='')
+    
+    # Consolidated user-entered custom defect notes from all steps
+    other_defects_notes = models.TextField(blank=True, default='')
+
     # Financial valuation - DecimalFields per essential rules
     base_price = models.DecimalField(max_digits=10, decimal_places=2)
     estimated_price = models.DecimalField(max_digits=10, decimal_places=2)
@@ -89,15 +99,19 @@ class PhoneSale(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.sale_code} - {self.variant.model.name} ({self.get_status_display()})"
+        device_name = self.custom_device_name if self.is_custom_device else (self.variant.model.name if self.variant else "Custom Device")
+        return f"{self.sale_code} - {device_name} ({self.get_status_display()})"
 
 class PhoneSaleConditionAnswer(models.Model):
     sale = models.ForeignKey(PhoneSale, on_delete=models.CASCADE, related_name='answers')
-    option = models.ForeignKey(ConditionOption, on_delete=models.PROTECT)
+    option = models.ForeignKey(ConditionOption, on_delete=models.PROTECT, null=True, blank=True)
+    step_name = models.CharField(max_length=150, blank=True, default='')
+    custom_text = models.CharField(max_length=500, blank=True, default='')
     deduction_applied = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     class Meta:
-        unique_together = ('sale', 'option')
+        ordering = ['id']
 
     def __str__(self):
-        return f"{self.sale.sale_code} - {self.option.title} (-₹{self.deduction_applied})"
+        title = self.option.title if self.option else (self.step_name or "Custom Note")
+        return f"{self.sale.sale_code} - {title} (-₹{self.deduction_applied})"

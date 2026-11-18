@@ -4,7 +4,7 @@ import {
   ArrowRight, UserCheck, MapPin, ChevronDown, CheckCircle2
 } from 'lucide-react';
 
-export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAuth, onLogout, selectedCity = 'Tirupur', onSelectCity }) {
+export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAuth, onLogout, selectedCity = '', onSelectCity }) {
   const categories = [
     { label: 'Sell Old Mobile', slug: 'mobile' },
     { label: 'Tablet', slug: 'tablet' },
@@ -33,10 +33,14 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             </div>
           </div>
           <div className="flex items-center gap-3 text-[11px] text-[#7B8980]">
-            <span className="flex items-center gap-1 text-[#17251C] font-bold">
-              <MapPin className="w-3.5 h-3.5 text-[#0BAA4B]" /> {selectedCity}
-            </span>
-            <span>|</span>
+            {selectedCity ? (
+              <>
+                <span className="flex items-center gap-1 text-[#17251C] font-bold">
+                  <MapPin className="w-3.5 h-3.5 text-[#0BAA4B]" /> {selectedCity}
+                </span>
+                <span>|</span>
+              </>
+            ) : null}
             <span className="text-[#0BAA4B] font-bold">Free Doorstep Pickup</span>
           </div>
         </div>

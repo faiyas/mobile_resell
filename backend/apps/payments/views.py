@@ -30,6 +30,11 @@ def get_payment_qr_view(request, sale_id):
     # Standard UPI URI Specification
     upi_uri = f"upi://pay?pa={upi_id}&pn={payee_name}&am={pay_amount:.2f}&cu=INR&tn={note}" if upi_id else None
 
+    if sale.is_custom_device or not sale.variant:
+        dev_summary = f"{sale.custom_device_category or 'Gadget'} {sale.custom_device_name or 'Custom Device'} ({sale.custom_device_specs or 'Spec'})"
+    else:
+        dev_summary = f"{sale.variant.model.brand.name} {sale.variant.model.name} ({sale.variant.storage})"
+
     return Response({
         'sale_id': str(sale.id),
         'sale_code': sale.sale_code,
@@ -42,7 +47,7 @@ def get_payment_qr_view(request, sale_id):
         'beneficiary_ifsc': sale.beneficiary_ifsc,
         'amount_to_pay': float(pay_amount),
         'upi_uri': upi_uri,
-        'device_summary': f"{sale.variant.model.brand.name} {sale.variant.model.name} ({sale.variant.storage})",
+        'device_summary': dev_summary,
     })
 
 @api_view(['POST'])
@@ -119,12 +124,19 @@ def payment_receipt_view(request, sale_code):
         return Response({'detail': 'Payment has not been completed yet for this sale'}, status=status.HTTP_400_BAD_REQUEST)
 
     payment = sale.payment
+    if sale.is_custom_device or not sale.variant:
+        dev_title = f"{sale.custom_device_category or 'Gadget'} {sale.custom_device_name or 'Custom Device'}"
+        dev_storage = sale.custom_device_specs or 'Standard'
+    else:
+        dev_title = f"{sale.variant.model.brand.name} {sale.variant.model.name}"
+        dev_storage = sale.variant.storage
+
     return Response({
         'receipt_number': f"REC-{payment.id:06d}",
         'sale_code': sale.sale_code,
         'date': payment.paid_at.strftime('%d-%b-%Y %I:%M %p'),
-        'device': f"{sale.variant.model.brand.name} {sale.variant.model.name}",
-        'storage': sale.variant.storage,
+        'device': dev_title,
+        'storage': dev_storage,
         'imei': sale.imei_number or 'Verified at handover',
         'customer_name': sale.customer_name,
         'customer_phone': sale.customer_phone,

@@ -10,7 +10,13 @@ from .authentication import generate_jwt_token
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_view(request):
-    serializer = RegisterSerializer(data=request.data)
+    data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+    # Security Rule: Only authenticated ADMIN can create COLLECTION_AGENT accounts.
+    # Public self-registration is strictly locked to CUSTOMER.
+    if not (request.user and request.user.is_authenticated and getattr(request.user, 'role', '') == 'ADMIN'):
+        data['role'] = 'CUSTOMER'
+
+    serializer = RegisterSerializer(data=data)
     if serializer.is_valid():
         user = serializer.save()
         token = generate_jwt_token(user)
@@ -49,9 +55,19 @@ def login_view(request):
         'user': UserSerializer(user).data
     })
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT', 'PATCH'])
 @permission_classes([IsAuthenticated])
 def me_view(request):
+    if request.method in ['PUT', 'PATCH']:
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({
+                'message': 'Profile updated successfully',
+                'user': UserSerializer(user).data
+            })
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
     return Response({
         'user': UserSerializer(request.user).data
     })
