@@ -508,143 +508,152 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
     }
 
-    return Scaffold(
-      backgroundColor: AppTheme.canvas,
-      extendBody: true,
-      appBar: (isAdmin || isAgent)
-          ? (_currentIndex == 2
-              ? PreferredSize(
-                  preferredSize: const Size.fromHeight(60),
-                  child: ClipRRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                      child: AppBar(
-                        backgroundColor: Colors.white.withOpacity(0.70),
-                        elevation: 0,
-                        title: Text(
-                          isAdmin ? '1103 RECELL · Admin Profile' : '1103 RECELL · Agent Profile',
-                          style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
-                        ),
-                        actions: [
-                          IconButton(
-                            icon: const Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen),
-                            onPressed: _showContactSupportModal,
-                          ),
-                        ],
-                      ),
+    PreferredSizeWidget? appBar;
+    if (isAdmin || isAgent) {
+      if (_currentIndex == 2) {
+        appBar = PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: AppBar(
+                backgroundColor: Colors.white.withOpacity(0.70),
+                elevation: 0,
+                title: Text(
+                  isAdmin ? '1103 RECELL · Admin Profile' : '1103 RECELL · Agent Profile',
+                  style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+                ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen),
+                    onPressed: _showContactSupportModal,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      } else {
+        appBar = null;
+      }
+    } else {
+      if (_currentIndex == 1 || _currentIndex == 2) {
+        appBar = null;
+      } else {
+        appBar = PreferredSize(
+          preferredSize: const Size.fromHeight(64),
+          child: ClipRRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.82),
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      width: 1.5,
                     ),
                   ),
-                )
-              : null)
-          : (_currentIndex == 1 || _currentIndex == 2
-              ? null
-              : PreferredSize(
-                  preferredSize: const Size.fromHeight(64),
-                  child: ClipRRect(
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                      child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.82),
-                border: Border(
-                  bottom: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    width: 1.5,
-                  ),
                 ),
-              ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [AppTheme.darkGreen, AppTheme.primaryGreen],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.primaryGreen.withValues(alpha: 0.35),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [AppTheme.darkGreen, AppTheme.primaryGreen],
                             ),
-                          ],
-                        ),
-                        child: const Text(
-                          '1103 RECELL',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
-                            letterSpacing: 0.5,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryGreen.withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        ),
-                      ),
-                      const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen, size: 20),
-                        tooltip: 'Support & Help Desk',
-                        onPressed: _showContactSupportModal,
-                      ),
-                      const SizedBox(width: 4),
-                      if (user == null)
-                        TextButton.icon(
-                          onPressed: _showAuth,
-                          icon: const Icon(Icons.login, size: 16, color: AppTheme.primaryGreen),
-                          label: const Text(
-                            'Login',
+                          child: const Text(
+                            '1103 RECELL',
                             style: TextStyle(
-                              color: AppTheme.primaryGreen,
+                              color: Colors.white,
                               fontWeight: FontWeight.w900,
                               fontSize: 13,
+                              letterSpacing: 0.5,
                             ),
                           ),
-                        )
-                      else
-                        PopupMenuButton<String>(
-                          icon: CircleAvatar(
-                            radius: 16,
-                            backgroundColor: AppTheme.lightGreen,
-                            child: Text(
-                              user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
-                              style: const TextStyle(
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen, size: 20),
+                          tooltip: 'Support & Help Desk',
+                          onPressed: _showContactSupportModal,
+                        ),
+                        const SizedBox(width: 4),
+                        if (user == null)
+                          TextButton.icon(
+                            onPressed: _showAuth,
+                            icon: const Icon(Icons.login, size: 16, color: AppTheme.primaryGreen),
+                            label: const Text(
+                              'Login',
+                              style: TextStyle(
                                 color: AppTheme.primaryGreen,
                                 fontWeight: FontWeight.w900,
                                 fontSize: 13,
                               ),
                             ),
-                          ),
-                          onSelected: (val) {
-                            if (val == 'logout') {
-                              _api.logout().then((_) => setState(() {}));
-                            }
-                          },
-                          itemBuilder: (_) => [
-                            PopupMenuItem(
-                              enabled: false,
+                          )
+                        else
+                          PopupMenuButton<String>(
+                            icon: CircleAvatar(
+                              radius: 16,
+                              backgroundColor: AppTheme.lightGreen,
                               child: Text(
-                                '${user.fullName} (${user.role})',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                user.fullName.isNotEmpty ? user.fullName[0].toUpperCase() : 'U',
+                                style: const TextStyle(
+                                  color: AppTheme.primaryGreen,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
-                            const PopupMenuDivider(),
-                            const PopupMenuItem(
-                              value: 'logout',
-                              child: Text('Logout', style: TextStyle(color: Colors.red, fontSize: 13)),
-                            ),
-                          ],
-                        ),
-                    ],
+                            onSelected: (val) {
+                              if (val == 'logout') {
+                                _api.logout().then((_) => setState(() {}));
+                              }
+                            },
+                            itemBuilder: (_) => [
+                              PopupMenuItem(
+                                enabled: false,
+                                child: Text(
+                                  '${user.fullName} (${user.role})',
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                              ),
+                              const PopupMenuDivider(),
+                              const PopupMenuItem(
+                                value: 'logout',
+                                child: Text('Logout', style: TextStyle(color: Colors.red, fontSize: 13)),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      }
+    }
+
+    return Scaffold(
+      backgroundColor: AppTheme.canvas,
+      extendBody: true,
+      appBar: appBar,
       body: GlassBackgroundMesh(child: body),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),

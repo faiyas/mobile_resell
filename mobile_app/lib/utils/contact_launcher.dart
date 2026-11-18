@@ -20,6 +20,20 @@ class ContactLauncher {
     }
   }
 
+  /// Automatically launches the phone dialer to call a customer directly
+  static Future<void> callCustomer(BuildContext context, String phone) async {
+    final cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    final uri = Uri.parse('tel:$cleaned');
+    try {
+      final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        _copyAndNotify(context, phone, 'Customer phone number copied to clipboard');
+      }
+    } catch (_) {
+      _copyAndNotify(context, phone, 'Customer phone number copied to clipboard');
+    }
+  }
+
   /// Automatically launches the default mail client with To: aiothamizha@gmail.com
   static Future<void> sendEmail(
     BuildContext context, {
