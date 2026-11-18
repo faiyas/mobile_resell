@@ -375,6 +375,8 @@ class SaleOrderModel {
   final String? beneficiaryUpiId;
   final String? imeiNumber;
   final String createdAt;
+  final InspectionData? inspection;
+  final PaymentData? payment;
 
   SaleOrderModel({
     required this.id,
@@ -406,6 +408,8 @@ class SaleOrderModel {
     this.beneficiaryUpiId,
     this.imeiNumber,
     required this.createdAt,
+    this.inspection,
+    this.payment,
   });
 
   factory SaleOrderModel.fromJson(Map<String, dynamic> json) {
@@ -418,6 +422,16 @@ class SaleOrderModel {
     final mName = isCust && cName.isNotEmpty ? cName : (json['model_name']?.toString() ?? '');
     final sName = isCust && cSpec.isNotEmpty ? cSpec : (json['storage']?.toString() ??
         (json['variant_details'] != null ? json['variant_details']['storage']?.toString() : null) ?? '');
+
+    InspectionData? insp;
+    if (json['inspection'] != null && json['inspection'] is Map<String, dynamic>) {
+      insp = InspectionData.fromJson(json['inspection']);
+    }
+
+    PaymentData? pay;
+    if (json['payment'] != null && json['payment'] is Map<String, dynamic>) {
+      pay = PaymentData.fromJson(json['payment']);
+    }
 
     return SaleOrderModel(
       id: json['id']?.toString() ?? '',
@@ -449,6 +463,93 @@ class SaleOrderModel {
       beneficiaryUpiId: json['beneficiary_upi_id']?.toString(),
       imeiNumber: json['imei_number']?.toString(),
       createdAt: json['created_at']?.toString() ?? '',
+      inspection: insp,
+      payment: pay,
+    );
+  }
+}
+
+class InspectionPhotoData {
+  final int? id;
+  final String label;
+  final String imageBase64;
+
+  InspectionPhotoData({this.id, required this.label, required this.imageBase64});
+
+  factory InspectionPhotoData.fromJson(Map<String, dynamic> json) {
+    return InspectionPhotoData(
+      id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? ''),
+      label: json['label']?.toString() ?? 'Inspection Photo',
+      imageBase64: json['image_base64']?.toString() ?? '',
+    );
+  }
+}
+
+class InspectionData {
+  final int? id;
+  final String? inspectorName;
+  final String? verifiedImei;
+  final double? suggestedFinalPrice;
+  final String? inspectorNotes;
+  final List<InspectionPhotoData> photos;
+
+  InspectionData({
+    this.id,
+    this.inspectorName,
+    this.verifiedImei,
+    this.suggestedFinalPrice,
+    this.inspectorNotes,
+    this.photos = const [],
+  });
+
+  factory InspectionData.fromJson(Map<String, dynamic> json) {
+    var pList = <InspectionPhotoData>[];
+    if (json['photos'] != null && json['photos'] is List) {
+      pList = (json['photos'] as List)
+          .map((p) => InspectionPhotoData.fromJson(p))
+          .toList();
+    }
+    return InspectionData(
+      id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? ''),
+      inspectorName: json['inspector_name']?.toString(),
+      verifiedImei: json['verified_imei']?.toString(),
+      suggestedFinalPrice: json['suggested_final_price'] != null
+          ? double.tryParse(json['suggested_final_price'].toString())
+          : null,
+      inspectorNotes: json['inspector_notes']?.toString(),
+      photos: pList,
+    );
+  }
+}
+
+class PaymentData {
+  final int? id;
+  final double amount;
+  final String paymentMethod;
+  final String utrNumber;
+  final String paymentProofBase64;
+  final String? paidByName;
+  final String? paidAt;
+
+  PaymentData({
+    this.id,
+    required this.amount,
+    required this.paymentMethod,
+    required this.utrNumber,
+    required this.paymentProofBase64,
+    this.paidByName,
+    this.paidAt,
+  });
+
+  factory PaymentData.fromJson(Map<String, dynamic> json) {
+    return PaymentData(
+      id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? ''),
+      amount: double.tryParse(json['amount']?.toString() ?? '') ?? 0.0,
+      paymentMethod: json['payment_method']?.toString() ?? 'UPI',
+      utrNumber: json['utr_number']?.toString() ?? '',
+      paymentProofBase64: json['payment_proof_base64']?.toString() ?? '',
+      paidByName: json['paid_by_name']?.toString(),
+      paidAt: json['paid_at']?.toString(),
     );
   }
 }

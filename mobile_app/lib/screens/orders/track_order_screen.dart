@@ -8,6 +8,7 @@ import '../../widgets/glass_container.dart';
 import '../auth/auth_modal_sheet.dart';
 import '../sell_wizard/category_selection_screen.dart';
 import '../../utils/contact_launcher.dart';
+import '../../utils/image_helper.dart';
 
 class TrackOrderScreen extends StatefulWidget {
   final String? initialSaleCode;
@@ -485,6 +486,137 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
             ],
           ),
         ),
+
+        // 4. Official Payment Proof & Confirmation Card (If Paid)
+        if (order.payment != null || order.status == 'PAYMENT_COMPLETED') ...[
+          const SizedBox(height: 16),
+          GlassContainer(
+            padding: const EdgeInsets.all(18),
+            borderRadius: BorderRadius.circular(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.verified_user_rounded, color: AppTheme.primaryGreen, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Payment Transferred & Verified',
+                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary),
+                          ),
+                          Text(
+                            order.payment?.utrNumber != null && order.payment!.utrNumber.isNotEmpty
+                                ? 'Bank UTR: ${order.payment!.utrNumber}'
+                                : 'Instant Disbursal Confirmed',
+                            style: const TextStyle(fontSize: 11, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                if (order.payment != null && order.payment!.paymentProofBase64.isNotEmpty) ...[
+                  Builder(builder: (ctx) {
+                    final bytes = ImageHelper.decodeBase64(order.payment!.paymentProofBase64);
+                    if (bytes != null) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 14),
+                          const Text(
+                            'Official Bank / UPI Payout Confirmation Receipt:',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                          ),
+                          const SizedBox(height: 8),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Image.memory(bytes, width: double.infinity, fit: BoxFit.contain),
+                          ),
+                        ],
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }),
+                ],
+              ],
+            ),
+          ),
+        ],
+
+        // 5. Agent Handover Inspection Photos (If captured)
+        if (order.inspection != null && order.inspection!.photos.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          GlassContainer(
+            padding: const EdgeInsets.all(18),
+            borderRadius: BorderRadius.circular(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.camera_alt_outlined, size: 18, color: AppTheme.primaryGreen),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Doorstep Inspection Photos (${order.inspection!.photos.length})',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 90,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: order.inspection!.photos.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 10),
+                    itemBuilder: (ctx, idx) {
+                      final p = order.inspection!.photos[idx];
+                      final bytes = ImageHelper.decodeBase64(p.imageBase64);
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 65,
+                            height: 65,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: bytes != null
+                                  ? Image.memory(bytes, fit: BoxFit.cover)
+                                  : const Icon(Icons.image, color: AppTheme.textSecondary),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          SizedBox(
+                            width: 65,
+                            child: Text(
+                              p.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
 
         const SizedBox(height: 16),
 

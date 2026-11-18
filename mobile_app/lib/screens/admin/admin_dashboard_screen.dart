@@ -402,114 +402,255 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   void _showRecordPayoutDialog(SaleOrderModel order) {
     final utrController = TextEditingController();
     final double amount = order.finalPrice ?? order.estimatedPrice;
+    String? paymentProofBase64;
 
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(20),
-        child: GlassContainer(
-          padding: const EdgeInsets.all(24),
-          borderRadius: BorderRadius.circular(28),
-          child: SingleChildScrollView(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(20),
+          child: GlassContainer(
+            padding: const EdgeInsets.all(24),
+            borderRadius: BorderRadius.circular(28),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryGreen.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(Icons.currency_rupee_rounded, color: AppTheme.primaryGreen, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Release Instant Payout', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppTheme.textPrimary)),
+                            Text('${order.saleCode} · ₹${amount.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: AppTheme.primaryGreen, fontWeight: FontWeight.w900)),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text('Beneficiary: ${order.customerName}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                  Text('Device: ${order.brandName} ${order.modelName} (${order.storage})', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  if (order.otherDefectsNotes != null && order.otherDefectsNotes!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('Custom Notes: ${order.otherDefectsNotes}', style: TextStyle(fontSize: 11, color: Colors.amber.shade900, fontWeight: FontWeight.bold)),
+                    ),
+                  Text('Payout Mode: ${order.beneficiaryType}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  if (order.beneficiaryUpiId != null)
+                    Text('UPI ID: ${order.beneficiaryUpiId}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: utrController,
+                    decoration: InputDecoration(
+                      labelText: 'Bank / UPI UTR Reference Number *',
+                      hintText: 'e.g. 429184920194',
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.85),
+                      prefixIcon: const Icon(Icons.receipt_long_rounded, color: AppTheme.primaryGreen),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text('Payment Proof Confirmation Screenshot:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.lightGreen,
+                          foregroundColor: AppTheme.darkGreen,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppTheme.primaryGreen),
+                        label: const Text('Pick Receipt (Gallery)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final b64 = await ImageHelper.pickImageAsBase64();
+                          if (b64 != null) {
+                            setDlgState(() => paymentProofBase64 = b64);
+                          }
+                        },
+                      ),
+                      if (paymentProofBase64 != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                          onPressed: () => setDlgState(() => paymentProofBase64 = null),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (paymentProofBase64 != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 70,
+                      width: 70,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.memory(ImageHelper.decodeBase64(paymentProofBase64)!, fit: BoxFit.cover),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 22),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryGreen,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                        ),
+                        onPressed: () async {
+                          final utr = utrController.text.trim();
+                          if (utr.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Please enter UTR reference number'), behavior: SnackBarBehavior.floating),
+                            );
+                            return;
+                          }
+                          Navigator.pop(ctx);
+                          try {
+                            String method = order.beneficiaryType.toUpperCase();
+                            if (!['GPAY', 'PHONEPE', 'PAYTM', 'BHIM', 'IMPS', 'CASH'].contains(method)) {
+                              method = 'GPAY';
+                            }
+                            await _api.recordPayment(order.id, {
+                              'amount': amount,
+                              'payment_method': method,
+                              'utr_number': utr,
+                              'payment_proof_base64': paymentProofBase64 ??
+                                  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+                              'admin_notes': 'Disbursed via 1103 RECELL Admin Desk',
+                            });
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('✓ Payout of ₹${amount.toStringAsFixed(0)} recorded successfully!'),
+                                backgroundColor: AppTheme.primaryGreen,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            _loadAdminData();
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+                            );
+                          }
+                        },
+                        child: const Text('Confirm Disbursal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showInspectionPhotosDialog(SaleOrderModel order) {
+    final photos = order.inspection?.photos ?? [];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            height: MediaQuery.of(ctx).size.height * 0.78,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.96),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryGreen.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.currency_rupee_rounded, color: AppTheme.primaryGreen, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Release Instant Payout', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppTheme.textPrimary)),
-                          Text('${order.saleCode} · ₹${amount.toStringAsFixed(0)}', style: const TextStyle(fontSize: 12, color: AppTheme.primaryGreen, fontWeight: FontWeight.w900)),
-                        ],
-                      ),
-                    ),
-                  ],
+                Center(
+                  child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(10))),
                 ),
-                const SizedBox(height: 18),
-                Text('Beneficiary: ${order.customerName}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
-                Text('Device: ${order.brandName} ${order.modelName} (${order.storage})', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                if (order.otherDefectsNotes != null && order.otherDefectsNotes!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text('Custom Notes: ${order.otherDefectsNotes}', style: TextStyle(fontSize: 11, color: Colors.amber.shade900, fontWeight: FontWeight.bold)),
-                  ),
-                Text('Payout Mode: ${order.beneficiaryType}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                if (order.beneficiaryUpiId != null)
-                  Text('UPI ID: ${order.beneficiaryUpiId}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
                 const SizedBox(height: 14),
-                TextField(
-                  controller: utrController,
-                  decoration: InputDecoration(
-                    labelText: 'Bank / UPI UTR Reference Number *',
-                    hintText: 'e.g. 429184920194',
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.85),
-                    prefixIcon: const Icon(Icons.receipt_long_rounded, color: AppTheme.primaryGreen),
-                  ),
-                ),
-                const SizedBox(height: 22),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Cancel', style: TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryGreen,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                      ),
-                      onPressed: () async {
-                        final utr = utrController.text.trim();
-                        if (utr.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter UTR reference number'), behavior: SnackBarBehavior.floating),
-                          );
-                          return;
-                        }
-                        Navigator.pop(ctx);
-                        try {
-                          await _api.recordPayment(order.id, {
-                            'amount': amount,
-                            'method': order.beneficiaryType,
-                            'transaction_reference': utr,
-                            'notes': 'Disbursed via 1103 RECELL Admin Desk',
-                          });
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('✓ Payout of ₹${amount.toStringAsFixed(0)} recorded successfully!'),
-                              backgroundColor: AppTheme.primaryGreen,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                          _loadAdminData();
-                        } catch (e) {
-                          if (!mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
-                          );
-                        }
-                      },
-                      child: const Text('Confirm Disbursal', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    ),
+                    Text('Agent Inspection Photos: ${order.saleCode}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                    IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
                   ],
+                ),
+                Text(
+                  'Inspector: ${order.inspection?.inspectorName ?? 'Field Agent'} · IMEI: ${order.inspection?.verifiedImei ?? 'Verified'}',
+                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: photos.isEmpty
+                      ? const Center(child: Text('No inspection photos uploaded for this order.'))
+                      : GridView.builder(
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                            childAspectRatio: 0.85,
+                          ),
+                          itemCount: photos.length,
+                          itemBuilder: (ctx, idx) {
+                            final p = photos[idx];
+                            final bytes = ImageHelper.decodeBase64(p.imageBase64);
+                            return GlassContainer(
+                              padding: const EdgeInsets.all(8),
+                              borderRadius: BorderRadius.circular(14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: bytes != null
+                                          ? Image.memory(bytes, width: double.infinity, fit: BoxFit.cover)
+                                          : const Center(child: Icon(Icons.broken_image)),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    p.label,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppTheme.textPrimary),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ],
             ),
@@ -793,7 +934,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   'UPI: ${order.beneficiaryUpiId}',
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
                 ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
+              if (order.inspection != null && order.inspection!.photos.isNotEmpty) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.darkGreen,
+                      side: BorderSide(color: AppTheme.primaryGreen.withOpacity(0.4)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppTheme.primaryGreen),
+                    label: Text(
+                      'Verify Agent Inspection Photos (${order.inspection!.photos.length})',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                    ),
+                    onPressed: () => _showInspectionPhotosDialog(order),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(

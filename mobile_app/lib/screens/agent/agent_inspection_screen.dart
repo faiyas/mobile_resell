@@ -1,12 +1,14 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
 import '../auth/auth_modal_sheet.dart';
 import '../../utils/contact_launcher.dart';
+import '../../utils/image_helper.dart';
 
 class AgentInspectionScreen extends StatefulWidget {
   const AgentInspectionScreen({super.key});
@@ -44,11 +46,6 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
   final Map<String, String> _capturedPhotos = {};
 
   void _capturePhotoForSlot(String label) {
-    // Generate valid inspection proof image (Base64)
-    final timestamp = DateTime.now().toIso8601String();
-    // 1x1 transparent/green pixel PNG base64 representation with QC stamp
-    final base64Image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -59,7 +56,7 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
           child: Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.95),
+              color: Colors.white.withOpacity(0.96),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: Column(
@@ -72,35 +69,58 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
                 const Text('Snap physical proof for Super Admin verification & payout approval.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                 const SizedBox(height: 20),
                 ListTile(
-                  leading: const Icon(Icons.camera_alt_rounded, color: AppTheme.primaryGreen),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.camera_alt_rounded, color: AppTheme.primaryGreen),
+                  ),
                   title: const Text('Take Live Camera Photo', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  subtitle: Text('Doorstep QC Stamp ($timestamp)', style: const TextStyle(fontSize: 11)),
-                  onTap: () {
+                  subtitle: const Text('Open device camera and take real photo', style: TextStyle(fontSize: 11)),
+                  onTap: () async {
                     Navigator.pop(ctx);
-                    setState(() {
-                      _capturedPhotos[label] = base64Image;
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('✓ $label live photo captured!'), backgroundColor: AppTheme.primaryGreen),
-                    );
+                    final b64 = await ImageHelper.pickImageAsBase64(source: ImageSource.camera);
+                    if (b64 != null) {
+                      setState(() {
+                        _capturedPhotos[label] = b64;
+                      });
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('✓ $label camera photo captured!'), backgroundColor: AppTheme.primaryGreen),
+                        );
+                      }
+                    }
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.photo_library_rounded, color: AppTheme.primaryGreen),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.photo_library_rounded, color: AppTheme.primaryGreen),
+                  ),
                   title: const Text('Choose from Gallery', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  onTap: () {
+                  subtitle: const Text('Select JPG/PNG photo from phone gallery', style: TextStyle(fontSize: 11)),
+                  onTap: () async {
                     Navigator.pop(ctx);
-                    setState(() {
-                      _capturedPhotos[label] = base64Image;
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('✓ $label proof selected!'), backgroundColor: AppTheme.primaryGreen),
-                    );
+                    final b64 = await ImageHelper.pickImageAsBase64(source: ImageSource.gallery);
+                    if (b64 != null) {
+                      setState(() {
+                        _capturedPhotos[label] = b64;
+                      });
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('✓ $label photo selected from gallery!'), backgroundColor: AppTheme.primaryGreen),
+                        );
+                      }
+                    }
                   },
                 ),
                 if (_capturedPhotos.containsKey(label))
                   ListTile(
-                    leading: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                    ),
                     title: const Text('Remove Photo', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13)),
                     onTap: () {
                       Navigator.pop(ctx);
@@ -119,6 +139,7 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
 
   Widget _buildPhotoSlot(String label, IconData icon) {
     final hasPhoto = _capturedPhotos.containsKey(label);
+    final photoBytes = hasPhoto ? ImageHelper.decodeBase64(_capturedPhotos[label]) : null;
 
     return InkWell(
       onTap: () => _capturePhotoForSlot(label),
@@ -132,35 +153,76 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
             width: hasPhoto ? 1.8 : 1,
           ),
         ),
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              hasPhoto ? Icons.check_circle_rounded : icon,
-              size: 28,
-              color: hasPhoto ? AppTheme.primaryGreen : AppTheme.textSecondary,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: hasPhoto ? AppTheme.darkGreen : AppTheme.textPrimary,
+        padding: const EdgeInsets.all(8),
+        child: photoBytes != null
+            ? Stack(
+                children: [
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(photoBytes, fit: BoxFit.cover),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 4,
+                    left: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.65),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(color: AppTheme.primaryGreen, shape: BoxShape.circle),
+                      child: const Icon(Icons.check, size: 12, color: Colors.white),
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    size: 26,
+                    color: AppTheme.textSecondary,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Tap to Snap',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: AppTheme.primaryGreen,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              hasPhoto ? '✓ Captured' : 'Tap to Snap',
-              style: TextStyle(
-                fontSize: 9,
-                color: hasPhoto ? AppTheme.primaryGreen : AppTheme.textSecondary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
