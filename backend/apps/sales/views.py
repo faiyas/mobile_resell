@@ -1,4 +1,6 @@
+import datetime
 from decimal import Decimal
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -10,6 +12,8 @@ from .serializers import PhoneSaleDetailSerializer, PhoneSaleListSerializer, Pho
 from apps.catalog.models import StorageVariant
 from apps.valuation.models import ConditionOption, ModelPricingOverride
 from apps.accounts.models import User
+
+IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
@@ -132,7 +136,7 @@ def sales_list_create_view(request):
                 pickup_address=data['pickup_address'],
                 pickup_city=data.get('pickup_city', 'City'),
                 pickup_pincode=data['pickup_pincode'],
-                pickup_date=data.get('pickup_date'),
+                pickup_date=data.get('pickup_date') or timezone.now().astimezone(IST).date(),
                 pickup_slot=data.get('pickup_slot', 'Morning (10:00 AM - 1:00 PM)'),
                 beneficiary_type=data.get('beneficiary_type', 'UPI'),
                 beneficiary_name=data['beneficiary_name'],
@@ -190,6 +194,14 @@ def sale_detail_view(request, pk):
         elif user.role == 'COLLECTION_AGENT':
             if sale.assigned_agent and sale.assigned_agent != user:
                 return Response({'detail': 'This order is assigned to another field agent'}, status=status.HTTP_403_FORBIDDEN)
+    else:
+        # Unauthenticated guest lookup: verify phone query param if provided
+        phone = request.GET.get('phone')
+        if phone:
+            clean_phone = phone.strip()[-10:]
+            clean_sale_phone = (sale.customer_phone or '').strip()[-10:]
+            if clean_phone and clean_sale_phone and clean_phone != clean_sale_phone:
+                return Response({'detail': 'Phone number does not match this order'}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = PhoneSaleDetailSerializer(sale)
     return Response(serializer.data)

@@ -1,10 +1,73 @@
+import datetime
 from decimal import Decimal
+from django.utils import timezone
 from rest_framework import serializers
 from .models import PhoneSale, PhoneSaleConditionAnswer
 from apps.catalog.serializers import StorageVariantSerializer
 from apps.valuation.models import ConditionOption
 from apps.inspections.models import DeviceInspection, InspectionPhoto
 from apps.payments.models import Payment
+
+IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+
+def _calculate_ist_schedule(obj):
+    if not obj.pickup_date:
+        return {
+            'is_overdue': False,
+            'schedule_status': 'UNSCHEDULED',
+            'schedule_alert_message': 'No pickup date selected',
+            'pickup_date_ist': None,
+        }
+
+    now_ist = timezone.now().astimezone(IST)
+    slot_str = (obj.pickup_slot or '').lower()
+    if 'morning' in slot_str or '1:00 pm' in slot_str or '1 pm' in slot_str:
+        end_time = datetime.time(13, 0)
+    elif 'afternoon' in slot_str or '5:00 pm' in slot_str or '5 pm' in slot_str:
+        end_time = datetime.time(17, 0)
+    elif 'evening' in slot_str or '8:00 pm' in slot_str or '8 pm' in slot_str:
+        end_time = datetime.time(20, 0)
+    else:
+        end_time = datetime.time(18, 0)
+
+    deadline_ist = datetime.datetime.combine(obj.pickup_date, end_time, tzinfo=IST)
+    is_terminal = obj.status in ['DEVICE_COLLECTED', 'CUSTOMER_ACCEPTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'CANCELLED']
+
+    if is_terminal:
+        return {
+            'is_overdue': False,
+            'schedule_status': 'COMPLETED',
+            'schedule_alert_message': f'Completed · {obj.pickup_date.strftime("%d %b %Y")}',
+            'pickup_date_ist': obj.pickup_date.strftime('%Y-%m-%d'),
+        }
+
+    if now_ist > deadline_ist:
+        diff = now_ist - deadline_ist
+        if diff.days > 0:
+            msg = f"Overdue by {diff.days} day(s)"
+        else:
+            hrs = max(1, diff.seconds // 3600)
+            msg = f"Overdue by {hrs} hr(s)"
+        return {
+            'is_overdue': True,
+            'schedule_status': 'OVERDUE',
+            'schedule_alert_message': msg,
+            'pickup_date_ist': obj.pickup_date.strftime('%Y-%m-%d'),
+        }
+    elif obj.pickup_date == now_ist.date():
+        return {
+            'is_overdue': False,
+            'schedule_status': 'DUE_TODAY',
+            'schedule_alert_message': f'Due Today: {obj.pickup_slot} (IST)',
+            'pickup_date_ist': obj.pickup_date.strftime('%Y-%m-%d'),
+        }
+    else:
+        return {
+            'is_overdue': False,
+            'schedule_status': 'UPCOMING',
+            'schedule_alert_message': f'Scheduled: {obj.pickup_date.strftime("%d %b %Y")} (IST)',
+            'pickup_date_ist': obj.pickup_date.strftime('%Y-%m-%d'),
+        }
 
 class PhoneSaleConditionAnswerSerializer(serializers.ModelSerializer):
     option_title = serializers.SerializerMethodField()
@@ -64,6 +127,10 @@ class PhoneSaleDetailSerializer(serializers.ModelSerializer):
     inspection = DeviceInspectionSerializer(read_only=True)
     payment = PaymentSimpleSerializer(read_only=True)
     assigned_agent_name = serializers.ReadOnlyField(source='assigned_agent.full_name')
+    is_overdue = serializers.SerializerMethodField()
+    schedule_status = serializers.SerializerMethodField()
+    schedule_alert_message = serializers.SerializerMethodField()
+    created_at_ist = serializers.SerializerMethodField()
 
     class Meta:
         model = PhoneSale
@@ -77,7 +144,9 @@ class PhoneSaleDetailSerializer(serializers.ModelSerializer):
             'beneficiary_type', 'beneficiary_name', 'beneficiary_upi_id',
             'beneficiary_account_no', 'beneficiary_ifsc',
             'imei_number', 'customer_handover_signed', 'admin_notes',
-            'created_at', 'updated_at', 'answers', 'inspection', 'payment'
+            'created_at', 'created_at_ist', 'updated_at',
+            'is_overdue', 'schedule_status', 'schedule_alert_message',
+            'answers', 'inspection', 'payment'
         ]
 
     def get_brand_name(self, obj):
@@ -100,6 +169,21 @@ class PhoneSaleDetailSerializer(serializers.ModelSerializer):
             return obj.variant.model.image_base64
         return None
 
+    def get_is_overdue(self, obj):
+        return _calculate_ist_schedule(obj)['is_overdue']
+
+    def get_schedule_status(self, obj):
+        return _calculate_ist_schedule(obj)['schedule_status']
+
+    def get_schedule_alert_message(self, obj):
+        return _calculate_ist_schedule(obj)['schedule_alert_message']
+
+    def get_created_at_ist(self, obj):
+        if obj.created_at:
+            ist_time = obj.created_at.astimezone(IST)
+            return ist_time.strftime('%d %b %Y, %I:%M %p IST')
+        return None
+
 class PhoneSaleListSerializer(serializers.ModelSerializer):
     """Ultra-lightweight serializer for listing orders"""
     brand_name = serializers.SerializerMethodField()
@@ -109,6 +193,10 @@ class PhoneSaleListSerializer(serializers.ModelSerializer):
     assigned_agent_name = serializers.ReadOnlyField(source='assigned_agent.full_name')
     has_inspection = serializers.SerializerMethodField()
     has_payment = serializers.SerializerMethodField()
+    is_overdue = serializers.SerializerMethodField()
+    schedule_status = serializers.SerializerMethodField()
+    schedule_alert_message = serializers.SerializerMethodField()
+    created_at_ist = serializers.SerializerMethodField()
 
     class Meta:
         model = PhoneSale
@@ -122,7 +210,8 @@ class PhoneSaleListSerializer(serializers.ModelSerializer):
             'beneficiary_type', 'beneficiary_name', 'beneficiary_upi_id',
             'beneficiary_account_no', 'beneficiary_ifsc',
             'imei_number', 'customer_handover_signed', 'admin_notes',
-            'has_inspection', 'has_payment', 'created_at', 'updated_at'
+            'has_inspection', 'has_payment', 'created_at', 'created_at_ist', 'updated_at',
+            'is_overdue', 'schedule_status', 'schedule_alert_message'
         ]
 
     def get_brand_name(self, obj):
@@ -150,6 +239,21 @@ class PhoneSaleListSerializer(serializers.ModelSerializer):
 
     def get_has_payment(self, obj):
         return hasattr(obj, 'payment')
+
+    def get_is_overdue(self, obj):
+        return _calculate_ist_schedule(obj)['is_overdue']
+
+    def get_schedule_status(self, obj):
+        return _calculate_ist_schedule(obj)['schedule_status']
+
+    def get_schedule_alert_message(self, obj):
+        return _calculate_ist_schedule(obj)['schedule_alert_message']
+
+    def get_created_at_ist(self, obj):
+        if obj.created_at:
+            ist_time = obj.created_at.astimezone(IST)
+            return ist_time.strftime('%d %b %Y, %I:%M %p IST')
+        return None
 
 class PhoneSaleCreateSerializer(serializers.Serializer):
     variant_id = serializers.IntegerField(required=False, allow_null=True)

@@ -5,7 +5,10 @@ import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
+import '../../widgets/brand_logo.dart';
 import '../../utils/image_helper.dart';
+import '../../utils/time_helper.dart';
+import '../splash_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -692,6 +695,36 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to log out from Central Admin Desk?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _api.logout();
+              if (mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const SplashScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text('Log Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -713,14 +746,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryGreen),
+            tooltip: 'Refresh Desk',
             onPressed: _loadAdminData,
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            tooltip: 'Log Out',
+            onPressed: _confirmLogout,
           ),
         ],
       ),
       body: GlassBackgroundMesh(
         child: SafeArea(
           child: _isLoading
-              ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+              ? const RecellBrandLoader(message: 'Loading 1103 Central Admin metrics...')
               : RefreshIndicator(
                   color: AppTheme.primaryGreen,
                   onRefresh: _loadAdminData,
@@ -916,7 +955,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
       itemCount: _payoutQueue.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
@@ -1057,7 +1096,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           child: _filteredSales.isEmpty
               ? const Center(child: Text('No matching orders found', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.textSecondary)))
               : ListView.separated(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
                   itemCount: _filteredSales.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, index) {
@@ -1085,6 +1124,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             '${order.customerName} · ${order.customerPhone}',
                             style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                           ),
+                          if (order.pickupSlot != null) ...[
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  order.isOverdue ? Icons.alarm_off_rounded : Icons.access_time_rounded,
+                                  size: 13,
+                                  color: order.isOverdue ? Colors.red : Colors.orange,
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    '${order.pickupDate ?? "Scheduled"} · ${order.pickupSlot} (IST)',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: order.isOverdue ? Colors.red : AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                if (order.isOverdue)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                    decoration: BoxDecoration(color: Colors.red.withOpacity(0.12), borderRadius: BorderRadius.circular(4)),
+                                    child: const Text('OVERDUE', style: TextStyle(color: Colors.red, fontSize: 8, fontWeight: FontWeight.w900)),
+                                  ),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 6),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,

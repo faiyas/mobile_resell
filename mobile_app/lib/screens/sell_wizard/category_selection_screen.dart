@@ -5,6 +5,7 @@ import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
+import '../../widgets/brand_logo.dart';
 import 'questionnaire_screen.dart';
 
 class CategorySelectionScreen extends StatefulWidget {
@@ -384,7 +385,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       ),
       body: GlassBackgroundMesh(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+            ? const RecellBrandLoader(message: 'Fetching guaranteed buyback catalog...')
             : _wizardStep == 0
                 ? _buildCategoryStep()
                 : _wizardStep == 1
@@ -565,6 +566,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 120),
         ],
       ),
     );
@@ -595,7 +597,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
         ),
         Expanded(
           child: GridView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
               crossAxisSpacing: 10,
@@ -728,7 +730,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
           child: _models.isEmpty
               ? const Center(child: Text('No models available for this selection'))
               : GridView.builder(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 130),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     crossAxisSpacing: 12,

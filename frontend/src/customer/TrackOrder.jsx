@@ -381,7 +381,15 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                 </h5>
                 <div className="space-y-1.5 text-[#7B8980]">
                   <p><span className="text-[#7B8980]/80">Address:</span> {selectedSale.pickup_address}, {selectedSale.pickup_city} - {selectedSale.pickup_pincode}</p>
-                  <p><span className="text-[#7B8980]/80">Time Slot:</span> {selectedSale.pickup_slot}</p>
+                  <p><span className="text-[#7B8980]/80">Pickup Slot:</span> {selectedSale.pickup_date ? `${selectedSale.pickup_date} · ` : ''}{selectedSale.pickup_slot} (IST)</p>
+                  {selectedSale.created_at_ist && (
+                    <p><span className="text-[#7B8980]/80">Booked On:</span> {selectedSale.created_at_ist}</p>
+                  )}
+                  {selectedSale.is_overdue && (
+                    <p className="text-rose-600 font-bold bg-rose-50 p-2 rounded-lg border border-rose-200">
+                      ⚠️ Pickup Window Passed · Rescheduling or agent is en route (IST)
+                    </p>
+                  )}
                   <p><span className="text-[#7B8980]/80">Assigned Agent:</span> <strong className="text-[#17251C]">{selectedSale.assigned_agent_name || 'Assigning field staff...'}</strong></p>
                 </div>
               </div>

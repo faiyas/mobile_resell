@@ -131,10 +131,14 @@ def payment_receipt_view(request, sale_code):
         dev_title = f"{sale.variant.model.brand.name} {sale.variant.model.name}"
         dev_storage = sale.variant.storage
 
+    import datetime
+    ist = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    paid_at_ist = payment.paid_at.astimezone(ist) if payment.paid_at else None
+
     return Response({
         'receipt_number': f"REC-{payment.id:06d}",
         'sale_code': sale.sale_code,
-        'date': payment.paid_at.strftime('%d-%b-%Y %I:%M %p'),
+        'date': paid_at_ist.strftime('%d-%b-%Y %I:%M %p IST') if paid_at_ist else '',
         'device': dev_title,
         'storage': dev_storage,
         'imei': sale.imei_number or 'Verified at handover',

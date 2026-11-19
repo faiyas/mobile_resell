@@ -4,7 +4,10 @@ import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
+import '../../widgets/brand_logo.dart';
 import '../../utils/contact_launcher.dart';
+import '../../utils/time_helper.dart';
+import '../splash_screen.dart';
 import 'agent_inspection_screen.dart';
 
 class AgentDashboardScreen extends StatefulWidget {
@@ -58,8 +61,9 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
   }
 
   // Active Pickup Queue: Orders assigned or pending inspection
+  // Auto-prioritized in Indian Standard Time (IST): Missed/Overdue -> Today Active -> Upcoming
   List<SaleOrderModel> get _queueOrders {
-    return _sales.where((s) {
+    final list = _sales.where((s) {
       final isPending = ['SUBMITTED', 'PICKUP_SCHEDULED', 'PICKED_UP', 'INSPECTION_PENDING', 'FINAL_OFFER_SENT'].contains(s.status);
       if (!isPending) return false;
       if (_searchQuery.isEmpty) return true;
@@ -68,6 +72,34 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
           s.customerPhone.contains(_searchQuery) ||
           s.modelName.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
+
+    list.sort((a, b) {
+      final evalA = TimeHelper.evaluateSchedule(
+        pickupDateStr: a.pickupDate,
+        pickupSlotStr: a.pickupSlot,
+        status: a.status,
+      );
+      final evalB = TimeHelper.evaluateSchedule(
+        pickupDateStr: b.pickupDate,
+        pickupSlotStr: b.pickupSlot,
+        status: b.status,
+      );
+
+      // 1. Overdue orders prioritized at the very top
+      if (evalA.isOverdue && !evalB.isOverdue) return -1;
+      if (!evalA.isOverdue && evalB.isOverdue) return 1;
+      if (evalA.isOverdue && evalB.isOverdue) {
+        return evalB.hoursOverdue.compareTo(evalA.hoursOverdue);
+      }
+
+      // 2. Today's pickups next
+      if (evalA.isDueToday && !evalB.isDueToday) return -1;
+      if (!evalA.isDueToday && evalB.isDueToday) return 1;
+
+      return 0;
+    });
+
+    return list;
   }
 
   // Completed Handover History: Orders where QC was finished / accepted / paid
@@ -127,6 +159,36 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
     }
   }
 
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to log out from Agent Desk?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _api.logout();
+              if (mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const SplashScreen()),
+                  (route) => false,
+                );
+              }
+            },
+            child: const Text('Log Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -156,12 +218,17 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
             tooltip: 'Refresh Queue',
             onPressed: _loadAgentData,
           ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            tooltip: 'Log Out',
+            onPressed: _confirmLogout,
+          ),
         ],
       ),
       body: GlassBackgroundMesh(
         child: SafeArea(
           child: _loading
-              ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+              ? const RecellBrandLoader(message: 'Syncing live agent queue...')
               : RefreshIndicator(
                   color: AppTheme.primaryGreen,
                   onRefresh: _loadAgentData,
@@ -271,19 +338,34 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
 
                               // Segmented Tabs: Queue vs History
                               Container(
+                                height: 46,
+                                padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.85),
+                                  color: Colors.white.withOpacity(0.92),
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: AppTheme.glassBorder),
+                                  border: Border.all(color: AppTheme.glassBorder, width: 1.2),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.03),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                                 ),
                                 child: TabBar(
                                   controller: _tabController,
+                                  indicatorSize: TabBarIndicatorSize.tab,
+                                  dividerColor: Colors.transparent,
                                   indicator: BoxDecoration(
-                                    color: AppTheme.primaryGreen,
-                                    borderRadius: BorderRadius.circular(14),
+                                    gradient: const LinearGradient(
+                                      colors: [AppTheme.primaryGreen, AppTheme.darkGreen],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppTheme.primaryGreen.withOpacity(0.3),
+                                        color: AppTheme.primaryGreen.withOpacity(0.32),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -292,7 +374,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
                                   labelColor: Colors.white,
                                   unselectedLabelColor: AppTheme.textSecondary,
                                   labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
-                                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                                   tabs: [
                                     Tab(text: 'Pickup Queue (${_queueOrders.length})'),
                                     Tab(text: 'Handover History (${_historyOrders.length})'),
@@ -375,19 +457,73 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
       itemCount: list.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final order = list[index];
         final statusColor = _getStatusColor(order.status);
+        final eval = TimeHelper.evaluateSchedule(
+          pickupDateStr: order.pickupDate,
+          pickupSlotStr: order.pickupSlot,
+          status: order.status,
+        );
 
         return GlassContainer(
           padding: const EdgeInsets.all(16),
           borderRadius: BorderRadius.circular(20),
+          border: eval.isOverdue
+              ? Border.all(color: Colors.redAccent.withOpacity(0.85), width: 1.6)
+              : (eval.isDueToday ? Border.all(color: Colors.orange.withOpacity(0.6), width: 1.4) : null),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Overdue Alert Banner
+              if (eval.isOverdue) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.red.withOpacity(0.35)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.alarm_off_rounded, color: Colors.red, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          eval.alertMessage,
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text(
+                          'HIGH PRIORITY',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -395,12 +531,12 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.12),
+                      color: (eval.isOverdue ? Colors.red : statusColor).withOpacity(0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      order.status.replaceAll('_', ' '),
-                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: statusColor),
+                      eval.isOverdue ? 'PICKUP OVERDUE' : order.status.replaceAll('_', ' '),
+                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: eval.isOverdue ? Colors.red : statusColor),
                     ),
                   ),
                 ],
@@ -456,34 +592,78 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
                   ),
                 ],
               ),
-              if (order.pickupSlot != null) ...[
-                const SizedBox(height: 6),
-                Row(
+              const SizedBox(height: 8),
+
+              // Indian Standard Time (IST) Pickup Slot Row
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: eval.color.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: eval.color.withOpacity(0.25)),
+                ),
+                child: Row(
                   children: [
-                    const Icon(Icons.access_time_rounded, size: 14, color: Colors.orange),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${order.pickupDate ?? "Scheduled"}: ${order.pickupSlot}',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.orange),
+                    Icon(eval.icon, size: 15, color: eval.color),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        eval.displaySlot,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                          color: eval.color,
+                        ),
+                      ),
                     ),
+                    if (eval.isOverdue)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('ACTION REQ', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                      ),
                   ],
                 ),
-              ],
+              ),
               const SizedBox(height: 14),
 
               // Action Button to Start QC Inspection
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryGreen,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [AppTheme.primaryGreen, AppTheme.darkGreen],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryGreen.withOpacity(0.35),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  icon: const Icon(Icons.fact_check_rounded, size: 18),
-                  label: const Text('Start Doorstep QC Inspection', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                  onPressed: () => _openInspectionForOrder(order),
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.fact_check_rounded, size: 18),
+                    label: const Text(
+                      'Start Doorstep QC Inspection',
+                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.3),
+                    ),
+                    onPressed: () => _openInspectionForOrder(order),
+                  ),
                 ),
               ),
             ],
@@ -514,7 +694,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
       itemCount: list.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {

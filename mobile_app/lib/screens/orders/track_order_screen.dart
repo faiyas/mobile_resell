@@ -9,6 +9,7 @@ import '../auth/auth_modal_sheet.dart';
 import '../sell_wizard/category_selection_screen.dart';
 import '../../utils/contact_launcher.dart';
 import '../../utils/image_helper.dart';
+import '../../widgets/brand_logo.dart';
 
 class TrackOrderScreen extends StatefulWidget {
   final String? initialSaleCode;
@@ -113,6 +114,13 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
           ),
         ),
         title: const Text('Track Order Status', style: TextStyle(fontWeight: FontWeight.w900)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen),
+            tooltip: 'Support Help Desk',
+            onPressed: () => ContactLauncher.callHotline(context),
+          ),
+        ],
       ),
       body: GlassBackgroundMesh(
         child: SafeArea(
@@ -157,11 +165,9 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                 const SizedBox(height: 18),
 
                 if (_loading)
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(40),
-                      child: CircularProgressIndicator(color: AppTheme.primaryGreen),
-                    ),
+                  const Padding(
+                    padding: EdgeInsets.all(40),
+                    child: RecellBrandLoader(message: 'Tracking real-time order status...'),
                   )
                 else if (_error.isNotEmpty)
                   GlassContainer(
@@ -341,7 +347,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                   ),
                 ],
 
-                const SizedBox(height: 30),
+                const SizedBox(height: 120),
               ],
             ),
           ),
@@ -481,6 +487,10 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               _buildDetailRow('Quoted Value', '₹${order.estimatedPrice.toStringAsFixed(0)}'),
               if (order.finalPrice != null)
                 _buildDetailRow('Final Agreed Price', '₹${order.finalPrice!.toStringAsFixed(0)}'),
+              if (order.pickupSlot != null)
+                _buildDetailRow('Scheduled Pickup', '${order.pickupDate ?? "Scheduled"} · ${order.pickupSlot!} (IST)'),
+              if (order.createdAtIst != null)
+                _buildDetailRow('Booked On', order.createdAtIst!),
               _buildDetailRow('Pickup Address', '${order.pickupAddress}, ${order.pickupCity} - ${order.pickupPincode}'),
               _buildDetailRow('Payout Method', '${order.beneficiaryType}: ${order.beneficiaryUpiId ?? 'Direct Account'}'),
             ],

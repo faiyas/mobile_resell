@@ -9,6 +9,7 @@ import '../../widgets/glass_container.dart';
 import '../auth/auth_modal_sheet.dart';
 import '../../utils/contact_launcher.dart';
 import '../../utils/image_helper.dart';
+import '../../widgets/brand_logo.dart';
 
 class AgentInspectionScreen extends StatefulWidget {
   final SaleOrderModel? initialSale;
@@ -471,7 +472,7 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
           child: !isStaff
               ? _buildStaffAuthRequiredView()
               : _loading
-                  ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen))
+                  ? const RecellBrandLoader(message: 'Loading active inspection order...')
                   : _sales.isEmpty
                       ? _buildEmptyQueueView()
                       : SingleChildScrollView(
@@ -578,7 +579,11 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
                                       _buildInfoRow(Icons.person_rounded, 'Customer', '${_selectedSale!.customerName} (${_selectedSale!.customerPhone})'),
                                       _buildInfoRow(Icons.location_on_rounded, 'Address', '${_selectedSale!.pickupAddress}, ${_selectedSale!.pickupCity}'),
                                       if (_selectedSale!.pickupSlot != null)
-                                        _buildInfoRow(Icons.access_time_rounded, 'Time Slot', _selectedSale!.pickupSlot!),
+                                        _buildInfoRow(
+                                          Icons.access_time_rounded,
+                                          'Scheduled (IST)',
+                                          '${_selectedSale!.pickupDate ?? "Today"} · ${_selectedSale!.pickupSlot!} (IST)',
+                                        ),
                                     ],
                                   ),
                                 ),

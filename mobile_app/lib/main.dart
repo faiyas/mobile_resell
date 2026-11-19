@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'config/theme.dart';
-import 'screens/home_screen.dart';
+import 'screens/splash_screen.dart';
 import 'services/api_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await ApiService().init();
   runApp(const RecellApp());
 }
 
@@ -18,7 +17,7 @@ class RecellApp extends StatelessWidget {
       title: '1103 RECELL',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
-      home: const HomeScreen(),
+      home: const SplashScreen(),
     );
   }
 }

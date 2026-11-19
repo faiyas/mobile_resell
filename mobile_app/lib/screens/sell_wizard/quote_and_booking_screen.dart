@@ -5,6 +5,7 @@ import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../services/draft_sell_service.dart';
 import '../../widgets/glass_container.dart';
+import '../../widgets/brand_logo.dart';
 import '../auth/auth_modal_sheet.dart';
 import '../orders/track_order_screen.dart';
 
@@ -253,28 +254,11 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
   @override
   Widget build(BuildContext context) {
     if (_calculating) {
-      return Scaffold(
+      return const Scaffold(
         body: GlassBackgroundMesh(
           child: Center(
-            child: GlassContainer(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 28),
-              borderRadius: BorderRadius.circular(24),
-              child: const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(color: AppTheme.primaryGreen, strokeWidth: 3),
-                  SizedBox(height: 16),
-                  Text(
-                    'Calculating Fair Market Offer...',
-                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    '1103 RECELL Dynamic Valuation Engine',
-                    style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                  ),
-                ],
-              ),
+            child: RecellBrandLoader(
+              message: 'Calculating highest fair market offer...\n1103 Dynamic Valuation Engine',
             ),
           ),
         ),

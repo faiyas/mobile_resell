@@ -35,18 +35,17 @@ class ContactLauncher {
   }
 
   /// Automatically launches the default mail client with To: aiothamizha@gmail.com
+  /// Uses RFC 3986 percent-encoding (%20) so email clients like Gmail show natural spaces without '+'
   static Future<void> sendEmail(
     BuildContext context, {
     String subject = '1103 RECELL Customer Support Request',
     String body = 'Hello 1103 RECELL Team,\n\nI need assistance with: ',
   }) async {
-    final uri = Uri(
-      scheme: 'mailto',
-      path: email,
-      queryParameters: {
-        'subject': subject,
-        'body': body,
-      },
+    String encodeComponent(String s) =>
+        Uri.encodeComponent(s).replaceAll('+', '%20');
+
+    final uri = Uri.parse(
+      'mailto:$email?subject=${encodeComponent(subject)}&body=${encodeComponent(body)}',
     );
 
     try {

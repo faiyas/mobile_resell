@@ -489,7 +489,7 @@ export default function AdminDashboard({ currentUser }) {
                     <td className="py-3.5 px-3 font-semibold text-slate-700">{p.payment_method}</td>
                     <td className="py-3.5 px-3 font-black text-emerald-600">₹{Number(p.amount).toLocaleString('en-IN')}</td>
                     <td className="py-3.5 px-3 font-mono font-bold text-slate-800">{p.utr_number}</td>
-                    <td className="py-3.5 px-3 text-slate-500">{new Date(p.paid_at).toLocaleDateString()}</td>
+                    <td className="py-3.5 px-3 text-slate-500">{new Date(p.paid_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' })} IST</td>
                     <td className="py-3.5 px-3 text-right">
                       <button
                         onClick={async () => {

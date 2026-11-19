@@ -16,6 +16,8 @@ import 'agent/agent_inspection_screen.dart';
 import 'admin/admin_dashboard_screen.dart';
 import 'auth/auth_modal_sheet.dart';
 import '../utils/contact_launcher.dart';
+import '../widgets/brand_logo.dart';
+import 'splash_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -526,7 +528,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen),
+                    tooltip: 'Support Help Desk',
                     onPressed: _showContactSupportModal,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+                    tooltip: 'Log Out',
+                    onPressed: _confirmLogout,
                   ),
                 ],
               ),
@@ -621,7 +629,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             onSelected: (val) {
                               if (val == 'logout') {
-                                _api.logout().then((_) => setState(() {}));
+                                _confirmLogout();
+                              } else if (val == 'profile') {
+                                setState(() => _currentIndex = 3);
                               }
                             },
                             itemBuilder: (_) => [
@@ -634,8 +644,24 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const PopupMenuDivider(),
                               const PopupMenuItem(
+                                value: 'profile',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.person_outline, size: 16, color: AppTheme.primaryGreen),
+                                    SizedBox(width: 8),
+                                    Text('My Profile', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
                                 value: 'logout',
-                                child: Text('Logout', style: TextStyle(color: Colors.red, fontSize: 13)),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.logout_rounded, size: 16, color: Colors.red),
+                                    SizedBox(width: 8),
+                                    Text('Log Out', style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -655,37 +681,40 @@ class _HomeScreenState extends State<HomeScreen> {
       extendBody: true,
       appBar: appBar,
       body: GlassBackgroundMesh(child: body),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        color: Colors.transparent,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(28),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF0BAA4B).withValues(alpha: 0.08),
-                    blurRadius: 24,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: BottomNavigationBar(
-                currentIndex: _currentIndex.clamp(0, navItems.length - 1),
-                onTap: (index) => setState(() => _currentIndex = index),
-                backgroundColor: Colors.transparent,
-                selectedItemColor: AppTheme.primaryGreen,
-                unselectedItemColor: AppTheme.textSecondary,
-                selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10),
-                unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 10),
-                type: BottomNavigationBarType.fixed,
-                elevation: 0,
-                items: navItems,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          color: Colors.transparent,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(28),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.88),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0BAA4B).withValues(alpha: 0.08),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: BottomNavigationBar(
+                  currentIndex: _currentIndex.clamp(0, navItems.length - 1),
+                  onTap: (index) => setState(() => _currentIndex = index),
+                  backgroundColor: Colors.transparent,
+                  selectedItemColor: AppTheme.primaryGreen,
+                  unselectedItemColor: AppTheme.textSecondary,
+                  selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10),
+                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 10),
+                  type: BottomNavigationBarType.fixed,
+                  elevation: 0,
+                  items: navItems,
+                ),
               ),
             ),
           ),
@@ -697,7 +726,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHomeContent(UserModel? user) {
     if (_isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 60),
+          child: RecellBrandLoader(message: 'Loading 1103 RECELL catalog...'),
+        ),
       );
     }
 
@@ -1102,7 +1134,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 110),
           ],
         ),
       ),
@@ -1342,14 +1374,62 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          GlassContainer(
-            padding: const EdgeInsets.all(6),
-            borderRadius: BorderRadius.circular(16),
-            child: ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Log Out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-              onTap: () => _api.logout().then((_) => setState(() {})),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.red.withOpacity(0.25), width: 1.2),
             ),
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.logout_rounded, color: Colors.red, size: 20),
+              ),
+              title: const Text(
+                'Log Out',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 14),
+              ),
+              subtitle: const Text(
+                'Safely disconnect this device from your 1103 session',
+                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded, color: Colors.red),
+              onTap: _confirmLogout,
+            ),
+          ),
+          const SizedBox(height: 110),
+        ],
+      ),
+    );
+  }
+
+  void _confirmLogout() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Are you sure you want to log out from 1103 RECELL?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _api.logout();
+              if (mounted) {
+                setState(() {
+                  _currentIndex = 0;
+                });
+              }
+            },
+            child: const Text('Log Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

@@ -6,6 +6,7 @@ import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../services/draft_sell_service.dart';
 import '../../widgets/glass_container.dart';
+import '../../widgets/brand_logo.dart';
 import 'quote_and_booking_screen.dart';
 
 class QuestionnaireScreen extends StatefulWidget {
@@ -319,7 +320,9 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
     if (_loading) {
       return const Scaffold(
         backgroundColor: AppTheme.canvas,
-        body: Center(child: CircularProgressIndicator(color: AppTheme.primaryGreen)),
+        body: Center(
+          child: RecellBrandLoader(message: 'Evaluating device condition checklist...'),
+        ),
       );
     }
 

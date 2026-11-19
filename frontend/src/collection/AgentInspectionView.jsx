@@ -48,11 +48,17 @@ export default function AgentInspectionView({ currentUser }) {
     setLoading(true);
     try {
       const data = await api.getSales();
-      setAssignedSales(data);
-      if (data.length > 0) {
+      // Auto-prioritize in Indian Standard Time (IST): Overdue missed pickups first
+      const sorted = [...data].sort((a, b) => {
+        if (a.is_overdue && !b.is_overdue) return -1;
+        if (!a.is_overdue && b.is_overdue) return 1;
+        return 0;
+      });
+      setAssignedSales(sorted);
+      if (sorted.length > 0) {
         const target = preserveSelectedId 
-          ? data.find(s => s.id === preserveSelectedId) || data[0]
-          : (selectedSale ? data.find(s => s.id === selectedSale.id) || data[0] : data[0]);
+          ? sorted.find(s => s.id === preserveSelectedId) || sorted[0]
+          : (selectedSale ? sorted.find(s => s.id === selectedSale.id) || sorted[0] : sorted[0]);
         selectOrderForInspection(target);
       } else {
         setSelectedSale(null);
@@ -347,19 +353,32 @@ export default function AgentInspectionView({ currentUser }) {
                   className={`cursor-pointer p-3 rounded-2xl border transition ${
                     isSelected
                       ? 'bg-[#E8F8ED]/90 border-2 border-[#0BAA4B] shadow-sm ring-2 ring-[#0BAA4B]/20'
+                      : s.is_overdue
+                      ? 'bg-rose-50/70 border-rose-300 hover:border-rose-400'
                       : 'glass-card glass-card-hover'
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-1">
+                  <div className="flex justify-between items-start mb-1 gap-1">
                     <span className="font-mono text-[10px] font-bold bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded">
                       {s.sale_code}
                     </span>
-                    {getStatusBadge(s.status)}
+                    {s.is_overdue ? (
+                      <span className="text-[9px] font-black uppercase tracking-wider bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full border border-rose-300 animate-pulse">
+                        ⚠️ Overdue (IST)
+                      </span>
+                    ) : (
+                      getStatusBadge(s.status)
+                    )}
                   </div>
                   <h5 className="font-bold text-slate-900 text-xs mt-1">
                     {s.brand_name} {s.model_name}
                   </h5>
                   <p className="text-[11px] text-slate-500 truncate mt-0.5">{s.customer_name} · {s.pickup_city}</p>
+                  {s.pickup_slot && (
+                    <p className={`text-[10px] font-bold mt-1 ${s.is_overdue ? 'text-rose-600' : 'text-slate-500'}`}>
+                      🕒 {s.pickup_date ? `${s.pickup_date} · ` : ''}{s.pickup_slot} (IST)
+                    </p>
+                  )}
                   <div className="flex justify-between items-center text-[11px] mt-1.5 pt-1.5 border-t border-slate-100">
                     <span className="text-slate-400">Offer:</span>
                     <span className="font-black text-emerald-700">

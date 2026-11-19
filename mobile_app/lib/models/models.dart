@@ -410,6 +410,10 @@ class SaleOrderModel {
   final String? beneficiaryUpiId;
   final String? imeiNumber;
   final String createdAt;
+  final String? createdAtIst;
+  final bool isOverdue;
+  final String? scheduleStatus;
+  final String? scheduleAlertMessage;
   final InspectionData? inspection;
   final PaymentData? payment;
 
@@ -443,6 +447,10 @@ class SaleOrderModel {
     this.beneficiaryUpiId,
     this.imeiNumber,
     required this.createdAt,
+    this.createdAtIst,
+    this.isOverdue = false,
+    this.scheduleStatus,
+    this.scheduleAlertMessage,
     this.inspection,
     this.payment,
   });
@@ -502,6 +510,10 @@ class SaleOrderModel {
       beneficiaryUpiId: json['beneficiary_upi_id']?.toString(),
       imeiNumber: json['imei_number']?.toString(),
       createdAt: json['created_at']?.toString() ?? '',
+      createdAtIst: json['created_at_ist']?.toString(),
+      isOverdue: json['is_overdue'] == true,
+      scheduleStatus: json['schedule_status']?.toString(),
+      scheduleAlertMessage: json['schedule_alert_message']?.toString(),
       inspection: insp,
       payment: pay,
     );
@@ -538,6 +550,10 @@ class SaleOrderModel {
       'beneficiary_upi_id': beneficiaryUpiId,
       'imei_number': imeiNumber,
       'created_at': createdAt,
+      'created_at_ist': createdAtIst,
+      'is_overdue': isOverdue,
+      'schedule_status': scheduleStatus,
+      'schedule_alert_message': scheduleAlertMessage,
       'inspection': inspection?.toJson(),
       'payment': payment?.toJson(),
     };
