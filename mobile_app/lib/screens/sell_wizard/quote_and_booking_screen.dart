@@ -366,7 +366,20 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
                           ),
-                          child: const Icon(Icons.phone_iphone_rounded, size: 28, color: AppTheme.primaryGreen),
+                          child: Builder(
+                            builder: (context) {
+                              if (widget.model.imageBase64 != null && widget.model.imageBase64!.trim().isNotEmpty) {
+                                final bytes = ImageHelper.decodeBase64(widget.model.imageBase64);
+                                if (bytes != null) {
+                                  return ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.memory(bytes, width: 32, height: 32, fit: BoxFit.contain),
+                                  );
+                                }
+                              }
+                              return const Icon(Icons.phone_iphone_rounded, size: 28, color: AppTheme.primaryGreen);
+                            },
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(

@@ -280,6 +280,7 @@ export default function CataloguePricingManager() {
       setEditingModel(model);
       setModelForm({
         brand: model.brand?.id || model.brand,
+        series: model.series?.id || model.series || '',
         name: model.name,
         release_year: model.release_year || 2024,
         image_base64: model.image_base64 || '',
@@ -289,6 +290,7 @@ export default function CataloguePricingManager() {
       setEditingModel(null);
       setModelForm({
         brand: filterBrandId || (brands[0]?.id || ''),
+        series: '',
         name: '',
         release_year: 2024,
         image_base64: '',
@@ -301,11 +303,17 @@ export default function CataloguePricingManager() {
   const handleSaveModel = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...modelForm,
+        brand: parseInt(modelForm.brand),
+        series: modelForm.series ? parseInt(modelForm.series) : null,
+        release_year: parseInt(modelForm.release_year) || 2024,
+      };
       if (editingModel) {
-        await api.updateModel(editingModel.id, modelForm);
+        await api.updateModel(editingModel.id, payload);
         showFeedback('success', `Model '${modelForm.name}' updated`);
       } else {
-        await api.createModel(modelForm);
+        await api.createModel(payload);
         showFeedback('success', `Model '${modelForm.name}' created`);
       }
       setModelModalOpen(false);
@@ -2187,6 +2195,22 @@ export default function CataloguePricingManager() {
               </div>
 
               <div>
+                <label className="block font-bold text-slate-700 mb-1">Brand Series (Optional)</label>
+                <select
+                  value={modelForm.series || ''}
+                  onChange={(e) => setModelForm({ ...modelForm, series: e.target.value ? parseInt(e.target.value) : '' })}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl font-medium bg-white"
+                >
+                  <option value="">No Series Grouping</option>
+                  {seriesList
+                    .filter(s => !modelForm.brand || s.brand === parseInt(modelForm.brand) || s.brand_id === parseInt(modelForm.brand))
+                    .map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="block font-bold text-slate-700 mb-1">Model Name *</label>
                 <input
                   type="text"
@@ -2209,19 +2233,41 @@ export default function CataloguePricingManager() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Upload Device Illustration / Photo (Base64)</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={async (e) => {
-                    const f = e.target.files[0];
-                    if (f) {
-                      const b64 = await fileToBase64(f, 600, 0.8);
-                      setModelForm({ ...modelForm, image_base64: b64 });
-                    }
-                  }}
-                  className="w-full p-2 border border-slate-300 rounded-xl"
-                />
+                <label className="block font-bold text-slate-700 mb-1">Device Illustration / Photo</label>
+                <div className="flex items-center gap-3">
+                  {modelForm.image_base64 && (
+                    <div className="w-16 h-16 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
+                      <img src={modelForm.image_base64} alt="" className="w-full h-full object-contain" />
+                      <button
+                        type="button"
+                        onClick={() => setModelForm(prev => ({ ...prev, image_base64: '' }))}
+                        className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
+                        title="Remove photo"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  )}
+                  <label className="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-3 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const f = e.target.files[0];
+                        if (f) {
+                          const b64 = await fileToBase64(f, 600, 0.8);
+                          setModelForm(prev => ({ ...prev, image_base64: b64 }));
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <Upload className="w-4 h-4 text-slate-400 mx-auto mb-1" />
+                    <span className="text-xs font-bold text-slate-700 block">
+                      {modelForm.image_base64 ? 'Change Device Photo' : 'Upload Device Photo (JPG/PNG)'}
+                    </span>
+                    <span className="text-[10px] text-slate-400">Stores directly as Base64 in DB and renders on mobile</span>
+                  </label>
+                </div>
               </div>
 
               <div className="flex items-center pt-2">
@@ -2432,6 +2478,44 @@ export default function CataloguePricingManager() {
                   ))}
                 </select>
                 <span className="text-[10px] text-slate-400 mt-0.5 block">Select specific brand or leave Universal to show for all devices.</span>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Category Photo / Icon (Base64)</label>
+                <div className="flex items-center gap-3">
+                  {deviceCategoryForm.image_base64 && (
+                    <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
+                      <img src={deviceCategoryForm.image_base64} alt="" className="w-full h-full object-contain" />
+                      <button
+                        type="button"
+                        onClick={() => setDeviceCategoryForm(prev => ({ ...prev, image_base64: '' }))}
+                        className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
+                        title="Remove photo"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  )}
+                  <label className="border-2 border-dashed border-slate-300 hover:border-[#0BAA4B] rounded-xl p-2.5 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const f = e.target.files[0];
+                        if (f) {
+                          const b64 = await fileToBase64(f, 400, 0.8);
+                          setDeviceCategoryForm(prev => ({ ...prev, image_base64: b64 }));
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <Upload className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
+                    <span className="text-xs font-bold text-slate-700 block">
+                      {deviceCategoryForm.image_base64 ? 'Change Category Image' : 'Upload Category Image (Base64)'}
+                    </span>
+                    <span className="text-[9px] text-slate-400">Rendered in Mobile App and Web Buyback Home</span>
+                  </label>
+                </div>
               </div>
 
               <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
@@ -2748,6 +2832,44 @@ export default function CataloguePricingManager() {
                   placeholder="Smartphone, Tablet, Gamepad..."
                   className="w-full p-2 border border-slate-300 rounded-xl font-mono"
                 />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Category Photo / Icon (Base64)</label>
+                <div className="flex items-center gap-3">
+                  {deviceCategoryForm.image_base64 && (
+                    <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
+                      <img src={deviceCategoryForm.image_base64} alt="" className="w-full h-full object-contain" />
+                      <button
+                        type="button"
+                        onClick={() => setDeviceCategoryForm(prev => ({ ...prev, image_base64: '' }))}
+                        className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
+                        title="Remove photo"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  )}
+                  <label className="border-2 border-dashed border-slate-300 hover:border-[#0BAA4B] rounded-xl p-2.5 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const f = e.target.files[0];
+                        if (f) {
+                          const b64 = await fileToBase64(f, 400, 0.8);
+                          setDeviceCategoryForm(prev => ({ ...prev, image_base64: b64 }));
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <Upload className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
+                    <span className="text-xs font-bold text-slate-700 block">
+                      {deviceCategoryForm.image_base64 ? 'Change Category Image' : 'Upload Category Image (Base64)'}
+                    </span>
+                    <span className="text-[9px] text-slate-400">Rendered in Mobile App and Web Buyback Home</span>
+                  </label>
+                </div>
               </div>
 
               <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">

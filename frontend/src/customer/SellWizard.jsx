@@ -276,8 +276,12 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 }}
                 className="cursor-pointer glass-card glass-card-hover rounded-3xl p-5 text-center transition flex flex-col items-center justify-between min-h-[170px] group"
               >
-                <div className="w-14 h-14 rounded-2xl bg-[#E8F8ED] text-[#0BAA4B] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform border border-[#0BAA4B]/20">
-                  {cat.name === 'Mobile' ? '📱' : cat.name === 'Tablet' ? '📟' : cat.name === 'Laptop' ? '💻' : cat.name === 'Smartwatch' ? '⌚' : cat.name === 'Dead Phone' ? '⚠️' : '🔌'}
+                <div className="w-14 h-14 rounded-2xl bg-[#E8F8ED] text-[#0BAA4B] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform border border-[#0BAA4B]/20 overflow-hidden p-1.5">
+                  {cat.image_base64 ? (
+                    <img src={cat.image_base64} alt={cat.name} className="w-full h-full object-contain" />
+                  ) : (
+                    <span>{cat.name === 'Mobile' ? '📱' : cat.name === 'Tablet' ? '📟' : cat.name === 'Laptop' ? '💻' : cat.name === 'Smartwatch' ? '⌚' : cat.name === 'Dead Phone' ? '⚠️' : '🔌'}</span>
+                  )}
                 </div>
                 <div>
                   <h4 className="font-black text-[#17251C] text-base group-hover:text-[#0BAA4B] transition">{cat.name}</h4>

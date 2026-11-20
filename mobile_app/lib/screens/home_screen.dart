@@ -941,14 +941,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         return n == 'mobile' || n == 'tablet' || n == 'gaming console';
                       }).toList();
 
+                final isThree = displayCats.length <= 3;
                 return GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.35,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: isThree ? displayCats.length : 2,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: isThree ? 0.95 : 1.35,
                   ),
                   itemCount: displayCats.length,
                   itemBuilder: (context, idx) {
@@ -956,8 +957,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     final isOther = cat.name.toLowerCase() == 'other' || cat.name.toLowerCase() == 'others';
 
                     return GlassContainer(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      borderRadius: 22,
+                      padding: const EdgeInsets.all(10),
+                      borderRadius: 20,
                       onTap: () {
                         if (isOther) {
                           _showOtherCategoryGadgetModal(context);
@@ -970,62 +971,107 @@ class _HomeScreenState extends State<HomeScreen> {
                           );
                         }
                       },
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: AppTheme.lightGreen.withValues(alpha: 0.85),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.primaryGreen.withValues(alpha: 0.20),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: _buildCategoryGraphic(cat, isOther),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
+                      child: isThree
+                          ? Column(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.lightGreen.withValues(alpha: 0.85),
+                                    borderRadius: BorderRadius.circular(14),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppTheme.primaryGreen.withValues(alpha: 0.18),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: _buildCategoryGraphic(cat, isOther),
+                                ),
+                                const SizedBox(height: 8),
                                 Text(
                                   cat.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     color: AppTheme.textPrimary,
-                                    fontSize: 14,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w900,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  isOther ? 'Custom Gadget' : 'Instant Offer',
+                                  isOther ? 'Custom' : 'Instant Offer',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
                                     color: isOther ? AppTheme.darkGreen : AppTheme.textSecondary,
-                                    fontSize: 10,
+                                    fontSize: 9,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ],
+                            )
+                          : Row(
+                              children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.lightGreen.withValues(alpha: 0.85),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppTheme.primaryGreen.withValues(alpha: 0.20),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: _buildCategoryGraphic(cat, isOther),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        cat.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: AppTheme.textPrimary,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        isOther ? 'Custom Gadget' : 'Instant Offer',
+                                        style: TextStyle(
+                                          color: isOther ? AppTheme.darkGreen : AppTheme.textSecondary,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
                     );
                   },
                 );
               },
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 14),
 
             // 4. Top Brands (Scrollable showcase only, not clickable)
             const Text(

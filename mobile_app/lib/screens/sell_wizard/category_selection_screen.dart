@@ -517,7 +517,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                           ),
                         ],
                       ),
-                      child: const Icon(Icons.phone_android, color: AppTheme.primaryGreen, size: 30),
+                      child: _buildCategoryIcon(cat),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -707,6 +707,58 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     }
   }
 
+  Widget _buildCategoryIcon(DeviceCategoryModel cat) {
+    if (cat.imageBase64 != null && cat.imageBase64!.trim().isNotEmpty) {
+      final bytes = ImageHelper.decodeBase64(cat.imageBase64);
+      if (bytes != null) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.memory(
+            bytes,
+            width: 32,
+            height: 32,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => _getCategoryFallbackIcon(cat.name),
+          ),
+        );
+      }
+    }
+    return _getCategoryFallbackIcon(cat.name);
+  }
+
+  Widget _getCategoryFallbackIcon(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('tablet') || lower.contains('ipad')) {
+      return const Icon(Icons.tablet_mac_rounded, color: AppTheme.primaryGreen, size: 30);
+    } else if (lower.contains('gaming') || lower.contains('console')) {
+      return const Icon(Icons.sports_esports_rounded, color: AppTheme.primaryGreen, size: 30);
+    } else if (lower.contains('laptop') || lower.contains('macbook')) {
+      return const Icon(Icons.laptop_mac_rounded, color: AppTheme.primaryGreen, size: 30);
+    } else if (lower.contains('watch')) {
+      return const Icon(Icons.watch_rounded, color: AppTheme.primaryGreen, size: 30);
+    }
+    return const Icon(Icons.phone_android, color: AppTheme.primaryGreen, size: 30);
+  }
+
+  Widget _buildModelIcon(PhoneModelItem item) {
+    if (item.imageBase64 != null && item.imageBase64!.trim().isNotEmpty) {
+      final bytes = ImageHelper.decodeBase64(item.imageBase64);
+      if (bytes != null) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.memory(
+            bytes,
+            width: 34,
+            height: 34,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const Icon(Icons.smartphone, size: 28, color: AppTheme.primaryGreen),
+          ),
+        );
+      }
+    }
+    return const Icon(Icons.smartphone, size: 28, color: AppTheme.primaryGreen);
+  }
+
   Widget _buildModelStep() {
     return Column(
       children: [
@@ -761,7 +813,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                                   : AppTheme.lightGreen.withValues(alpha: 0.7),
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            child: const Icon(Icons.smartphone, size: 28, color: AppTheme.primaryGreen),
+                            child: _buildModelIcon(item),
                           ),
                           const SizedBox(height: 8),
                           Text(
