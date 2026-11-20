@@ -608,6 +608,24 @@ class ApiService {
     }
   }
 
+  Future<void> deleteConditionCategory(dynamic categoryId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/conditions/$categoryId/');
+    final res = await http.delete(url, headers: _headers);
+    if (res.statusCode != 204 && res.statusCode != 200) {
+      throw Exception('Failed to delete condition category');
+    }
+    _cachedConditions = null;
+  }
+
+  Future<void> deleteConditionOption(dynamic optionId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/options/$optionId/');
+    final res = await http.delete(url, headers: _headers);
+    if (res.statusCode != 204 && res.statusCode != 200) {
+      throw Exception('Failed to delete condition option');
+    }
+    _cachedConditions = null;
+  }
+
   void clearCatalogCache() {
     _cachedCMSSections = null;
     _cachedCategories = null;

@@ -73,6 +73,9 @@ export const api = {
   deleteBrand: (id) => request(`/catalog/brands/${id}/`, { method: 'DELETE' }),
 
   getSeries: (brandId) => request(`/catalog/series/?${brandId ? `brand=${brandId}` : ''}`),
+  createSeries: (data) => request('/catalog/series/', { method: 'POST', body: JSON.stringify(data) }),
+  updateSeries: (id, data) => request(`/catalog/series/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSeries: (id) => request(`/catalog/series/${id}/`, { method: 'DELETE' }),
 
   getModels: (brandId, all = false, seriesId = null) => 
     request(`/catalog/models/?${brandId ? `brand=${brandId}&` : ''}${seriesId ? `series=${seriesId}&` : ''}all=${all}`),

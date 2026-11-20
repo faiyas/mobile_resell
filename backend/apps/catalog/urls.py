@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     categories_list_view, category_detail_view,
     brands_list_view, brand_detail_view, 
-    series_list_view,
+    series_list_view, series_detail_view,
     models_list_view, model_detail_view, 
     variants_list_create_view, variant_detail_view,
     cms_sections_view
@@ -19,6 +19,7 @@ urlpatterns = [
 
     # Series
     path('series/', series_list_view, name='catalog-series'),
+    path('series/<int:pk>/', series_detail_view, name='catalog-series-detail'),
 
     # Models
     path('models/', models_list_view, name='catalog-models'),

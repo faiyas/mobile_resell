@@ -61,6 +61,18 @@ export default function CataloguePricingManager() {
   const [copyMandatory, setCopyMandatory] = useState(true);
   const [copyLoading, setCopyLoading] = useState(false);
 
+  // Device Category & Series Modal States
+  const [deviceCategoryModalOpen, setDeviceCategoryModalOpen] = useState(false);
+  const [editingDeviceCategory, setEditingDeviceCategory] = useState(null);
+  const [deviceCategoryForm, setDeviceCategoryForm] = useState({ name: '', subtitle: '', icon_name: 'Smartphone', image_base64: '', is_active: true });
+
+  const [seriesModalOpen, setSeriesModalOpen] = useState(false);
+  const [editingSeries, setEditingSeries] = useState(null);
+  const [seriesForm, setSeriesForm] = useState({ name: '', brand: '', display_order: 0, is_active: true });
+
+  // Selected Brand for Question Mapping
+  const [selectedBrandQuestionMapping, setSelectedBrandQuestionMapping] = useState('');
+
   const [deviceCategories, setDeviceCategories] = useState([]);
   const [seriesList, setSeriesList] = useState([]);
   const [cmsSections, setCmsSections] = useState([]);
@@ -445,11 +457,129 @@ export default function CataloguePricingManager() {
     }
   };
 
+  const handleDeleteCategory = async (cat) => {
+    if (!window.confirm(`Are you sure you want to delete question step '${cat.name}' and all its options?`)) return;
+    try {
+      await api.deleteConditionCategory(cat.id);
+      showFeedback('success', `Question '${cat.name}' deleted`);
+      loadAllData();
+    } catch (err) {
+      alert(err.message || 'Error deleting question');
+    }
+  };
+
+  // Device Category Handlers
+  const handleToggleDeviceCategoryActive = async (dc) => {
+    try {
+      await api.updateCategory(dc.id, { is_active: !dc.is_active });
+      showFeedback('success', `Category '${dc.name}' ${dc.is_active ? 'deactivated' : 'activated'}`);
+      loadAllData();
+    } catch (err) {
+      alert(err.message || 'Error updating category');
+    }
+  };
+
+  const handleDeleteDeviceCategory = async (dc) => {
+    if (!window.confirm(`Are you sure you want to delete device category '${dc.name}'?`)) return;
+    try {
+      await api.deleteCategory(dc.id);
+      showFeedback('success', `Category '${dc.name}' deleted`);
+      loadAllData();
+    } catch (err) {
+      alert(err.message || 'Error deleting category');
+    }
+  };
+
+  const handleOpenDeviceCategoryModal = (dc = null) => {
+    if (dc) {
+      setEditingDeviceCategory(dc);
+      setDeviceCategoryForm({
+        name: dc.name,
+        subtitle: dc.subtitle || '',
+        icon_name: dc.icon_name || 'Smartphone',
+        image_base64: dc.image_base64 || '',
+        is_active: dc.is_active ?? true
+      });
+    } else {
+      setEditingDeviceCategory(null);
+      setDeviceCategoryForm({ name: '', subtitle: '', icon_name: 'Smartphone', image_base64: '', is_active: true });
+    }
+    setDeviceCategoryModalOpen(true);
+  };
+
+  const handleSaveDeviceCategory = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingDeviceCategory) {
+        await api.updateCategory(editingDeviceCategory.id, deviceCategoryForm);
+        showFeedback('success', `Category '${deviceCategoryForm.name}' updated`);
+      } else {
+        await api.createCategory(deviceCategoryForm);
+        showFeedback('success', `Category '${deviceCategoryForm.name}' created`);
+      }
+      setDeviceCategoryModalOpen(false);
+      loadAllData();
+    } catch (err) {
+      alert(err.message || 'Error saving category');
+    }
+  };
+
+  // Series Handlers
+  const handleDeleteSeries = async (s) => {
+    if (!window.confirm(`Are you sure you want to delete series '${s.name}'?`)) return;
+    try {
+      await api.deleteSeries(s.id);
+      showFeedback('success', `Series '${s.name}' deleted`);
+      loadAllData();
+    } catch (err) {
+      alert(err.message || 'Error deleting series');
+    }
+  };
+
+  const handleOpenSeriesModal = (s = null) => {
+    if (s) {
+      setEditingSeries(s);
+      setSeriesForm({
+        name: s.name,
+        brand: s.brand || (s.brand_id ? s.brand_id : (brands[0]?.id || '')),
+        display_order: s.display_order || 0,
+        is_active: s.is_active ?? true
+      });
+    } else {
+      setEditingSeries(null);
+      setSeriesForm({
+        name: '',
+        brand: brands[0]?.id || '',
+        display_order: seriesList.length + 1,
+        is_active: true
+      });
+    }
+    setSeriesModalOpen(true);
+  };
+
+  const handleSaveSeries = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingSeries) {
+        await api.updateSeries(editingSeries.id, seriesForm);
+        showFeedback('success', `Series '${seriesForm.name}' updated`);
+      } else {
+        await api.createSeries(seriesForm);
+        showFeedback('success', `Series '${seriesForm.name}' created`);
+      }
+      setSeriesModalOpen(false);
+      loadAllData();
+    } catch (err) {
+      alert(err.message || 'Error saving series');
+    }
+  };
+
   const handleSaveCategory = async (e) => {
     e.preventDefault();
     try {
-      if (editingCategory) {
-        await api.updateConditionCategory(editingCategory.id, categoryForm);
+      const targetId = editingCategory ? editingCategory.id : (selectedQuestionStep ? selectedQuestionStep.id : null);
+      if (targetId) {
+        await api.updateConditionCategory(targetId, categoryForm);
         showFeedback('success', `Questionnaire Step '${categoryForm.name}' updated`);
       } else {
         await api.createConditionCategory(categoryForm);
@@ -782,10 +912,10 @@ export default function CataloguePricingManager() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <span>📋 Questionnaire Evaluation Builder (11 Steps)</span>
-                <span className="text-[10px] bg-[#E8F8ED] text-[#087C38] px-2 py-0.5 rounded-full font-bold">11 Steps Complete</span>
+                <span>📋 Questionnaire Evaluation Builder ({categories.length} Steps)</span>
+                <span className="text-[10px] bg-[#E8F8ED] text-[#087C38] px-2 py-0.5 rounded-full font-bold">Configured in DB</span>
               </h3>
-              <p className="text-xs text-slate-500">Every step in the customer evaluation wizard is dynamically fetched from this database table.</p>
+              <p className="text-xs text-slate-500">Every step and defect question is dynamically fetched from the database, customizable per brand (e.g. Apple iCloud & Battery Health vs Android FRP).</p>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -804,51 +934,141 @@ export default function CataloguePricingManager() {
             </div>
           </div>
 
+          {/* Brand-Specific Question Filter Bar */}
+          <div className="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm flex items-center gap-2 overflow-x-auto">
+            <span className="text-xs font-black text-slate-500 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5 text-[#0BAA4B]" /> Brand Questions:
+            </span>
+            <button
+              type="button"
+              onClick={() => setSelectedBrandQuestionMapping('')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
+                selectedBrandQuestionMapping === ''
+                  ? 'bg-[#0BAA4B] text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <span>🌐 All Questions</span>
+              <span className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded-full">{categories.length}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedBrandQuestionMapping('universal')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
+                selectedBrandQuestionMapping === 'universal'
+                  ? 'bg-[#0BAA4B] text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              <span>🌐 Universal Only</span>
+              <span className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded-full">
+                {categories.filter(c => !c.brand).length}
+              </span>
+            </button>
+            {brands.map(b => {
+              const brandCatCount = categories.filter(c => !c.brand || c.brand === b.id).length;
+              const exclusiveCount = categories.filter(c => c.brand === b.id).length;
+              const isSelected = selectedBrandQuestionMapping === String(b.id);
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => setSelectedBrandQuestionMapping(String(b.id))}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-[#0BAA4B] text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>{b.name}</span>
+                  <span className="text-[10px] bg-black/10 px-1.5 py-0.5 rounded-full">
+                    {brandCatCount} {exclusiveCount > 0 && `(${exclusiveCount} exclusive)`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* Left Column: 11 Steps List */}
+            {/* Left Column: Filtered Steps List */}
             <div className="space-y-2">
-              <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">Evaluation Steps</h4>
+              <div className="flex justify-between items-center">
+                <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">Evaluation Steps</h4>
+                <span className="text-[10px] text-slate-400 font-bold">
+                  {categories.filter(cat => {
+                    if (!selectedBrandQuestionMapping) return true;
+                    if (selectedBrandQuestionMapping === 'universal') return !cat.brand;
+                    return !cat.brand || String(cat.brand) === selectedBrandQuestionMapping;
+                  }).length} steps
+                </span>
+              </div>
               <div className="space-y-2 max-h-[700px] overflow-y-auto pr-1">
-                {categories.map((cat, idx) => {
-                  const isSelected = selectedQuestionStep?.id === cat.id;
-                  const catOpts = options.filter(o => o.category === cat.id);
-                  return (
-                    <div
-                      key={cat.id}
-                      onClick={() => {
-                        setSelectedQuestionStep(cat);
-                        setCategoryForm({
-                          name: cat.name,
-                          subtitle: cat.subtitle || '',
-                          step_number: cat.step_number || (idx + 1),
-                          selection_type: cat.selection_type || 'SINGLE',
-                          pro_tip: cat.pro_tip || '',
-                          icon_name: cat.icon_name || 'Smartphone',
-                          display_order: cat.display_order || idx,
-                          is_active: cat.is_active
-                        });
-                      }}
-                      className={`p-3 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
-                        isSelected
-                          ? 'bg-[#E8F8ED] border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20 shadow-sm'
-                          : 'bg-white border-slate-200 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="min-w-0 pr-2">
-                        <span className="text-[9px] font-mono font-black text-[#087C38] uppercase">
-                          Step {cat.step_number || (idx + 1)} of {categories.length}
+                {categories
+                  .filter(cat => {
+                    if (!selectedBrandQuestionMapping) return true;
+                    if (selectedBrandQuestionMapping === 'universal') return !cat.brand;
+                    return !cat.brand || String(cat.brand) === selectedBrandQuestionMapping;
+                  })
+                  .map((cat, idx) => {
+                    const isSelected = selectedQuestionStep?.id === cat.id;
+                    const catOpts = options.filter(o => o.category === cat.id);
+                    return (
+                      <div
+                        key={cat.id}
+                        onClick={() => {
+                          setSelectedQuestionStep(cat);
+                          setCategoryForm({
+                            name: cat.name,
+                            subtitle: cat.subtitle || '',
+                            step_number: cat.step_number || (idx + 1),
+                            selection_type: cat.selection_type || 'SINGLE',
+                            pro_tip: cat.pro_tip || '',
+                            description: cat.description || '',
+                            icon_name: cat.icon_name || 'Smartphone',
+                            image_base64: cat.image_base64 || '',
+                            brand: cat.brand || null,
+                            is_mandatory: cat.is_mandatory ?? true,
+                            display_order: cat.display_order || idx,
+                            is_active: cat.is_active
+                          });
+                        }}
+                        className={`p-3 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
+                          isSelected
+                            ? 'bg-[#E8F8ED] border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20 shadow-sm'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[9px] font-mono font-black text-[#087C38] uppercase">
+                              Step {cat.step_number || (idx + 1)}
+                            </span>
+                            {cat.brand_name ? (
+                              <span className="text-[8px] bg-indigo-100 text-indigo-800 font-bold px-1.5 py-0.2 rounded">
+                                {cat.brand_name} Exclusive
+                              </span>
+                            ) : (
+                              <span className="text-[8px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.2 rounded">
+                                🌐 Universal
+                              </span>
+                            )}
+                            <span className={`text-[8px] font-bold px-1.5 py-0.2 rounded ${
+                              cat.is_mandatory ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {cat.is_mandatory ? 'Mandatory' : 'Optional'}
+                            </span>
+                          </div>
+                          <h5 className="font-extrabold text-slate-900 text-xs truncate mt-0.5">{cat.name}</h5>
+                          <span className="text-[10px] text-slate-400">{catOpts.length} Options Attached</span>
+                        </div>
+                        <span className={`text-[10px] font-black shrink-0 px-2 py-0.5 rounded-full ${
+                          cat.selection_type === 'MULTIPLE' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {cat.selection_type}
                         </span>
-                        <h5 className="font-extrabold text-slate-900 text-xs truncate mt-0.5">{cat.name}</h5>
-                        <span className="text-[10px] text-slate-400">{catOpts.length} Options Attached</span>
                       </div>
-                      <span className={`text-[10px] font-black shrink-0 px-2 py-0.5 rounded-full ${
-                        cat.selection_type === 'MULTIPLE' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {cat.selection_type}
-                      </span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </div>
 
@@ -860,12 +1080,21 @@ export default function CataloguePricingManager() {
                     <span className="text-[10px] font-black uppercase text-[#0BAA4B]">Step {categoryForm.step_number} Configuration</span>
                     <h4 className="font-black text-slate-900 text-base">{categoryForm.name}</h4>
                   </div>
-                  <button
-                    onClick={() => handleOpenOptionModal()}
-                    className="text-xs bg-[#E8F8ED] text-[#087C38] hover:bg-[#0BAA4B] hover:text-white font-extrabold px-3 py-1.5 rounded-xl transition flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Add Option Card
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCategory(selectedQuestionStep)}
+                      className="text-xs bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white font-extrabold px-3 py-1.5 rounded-xl transition flex items-center gap-1 border border-rose-200"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Delete Step
+                    </button>
+                    <button
+                      onClick={() => handleOpenOptionModal()}
+                      className="text-xs bg-[#E8F8ED] text-[#087C38] hover:bg-[#0BAA4B] hover:text-white font-extrabold px-3 py-1.5 rounded-xl transition flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Option Card
+                    </button>
+                  </div>
                 </div>
 
                 {/* Question Properties Form */}
@@ -905,6 +1134,76 @@ export default function CataloguePricingManager() {
                       placeholder="e.g. Choose the display glass condition of your device"
                       className="w-full p-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0BAA4B]"
                     />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Brand-Specific Questionnaire *</label>
+                      <select
+                        value={categoryForm.brand || ''}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, brand: e.target.value ? parseInt(e.target.value) : null })}
+                        className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white focus:ring-2 focus:ring-[#0BAA4B]"
+                      >
+                        <option value="">🌐 Universal (All Brands)</option>
+                        {brands.map(b => (
+                          <option key={b.id} value={b.id}>{b.name} Exclusive</option>
+                        ))}
+                      </select>
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">Applies only to selected brand, or to all devices if Universal.</span>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Step Mandatory / Optional</label>
+                      <div className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl mt-0.5">
+                        <input
+                          type="checkbox"
+                          id="panel_mandatory_check"
+                          checked={categoryForm.is_mandatory ?? true}
+                          onChange={(e) => setCategoryForm({ ...categoryForm, is_mandatory: e.target.checked })}
+                          className="w-4 h-4 text-[#0BAA4B] rounded"
+                        />
+                        <label htmlFor="panel_mandatory_check" className="font-bold text-slate-800 text-xs cursor-pointer">
+                          Mandatory (Customer must complete)
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Question Banner / Visual Illustration</label>
+                    <div className="flex items-center gap-3">
+                      {categoryForm.image_base64 && (
+                        <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1">
+                          <img src={categoryForm.image_base64} alt="" className="w-full h-full object-contain" />
+                          <button
+                            type="button"
+                            onClick={() => setCategoryForm({ ...categoryForm, image_base64: '' })}
+                            className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
+                          >
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      )}
+                      <label className="border-2 border-dashed border-slate-300 hover:border-[#0BAA4B] rounded-xl p-2.5 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                              const b64 = await fileToBase64(file, 400, 0.75);
+                              setCategoryForm(prev => ({ ...prev, image_base64: b64 }));
+                            }
+                          }}
+                          className="hidden"
+                        />
+                        <Upload className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
+                        <span className="text-xs font-bold text-slate-700 block">
+                          {categoryForm.image_base64 ? 'Change Question Image' : 'Upload Question Image / Diagram (Base64)'}
+                        </span>
+                        <span className="text-[9px] text-slate-400">Stored as Base64 in database & shown in questionnaire</span>
+                      </label>
+                    </div>
                   </div>
 
                   <div>
@@ -974,25 +1273,76 @@ export default function CataloguePricingManager() {
       {/* ================= DEVICE CATEGORIES & SERIES ================= */}
       {subTab === 'device_categories' && (
         <div className="space-y-6 animate-fade-in">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
               <h3 className="text-base font-extrabold text-slate-900">Device Categories & Brand Series</h3>
-              <p className="text-xs text-slate-500">Categories (Mobile, Tablet, Laptop, etc.) and series (iPhone 11, S21 Series) managed in DB.</p>
+              <p className="text-xs text-slate-500">Categories (Mobile, Tablet, Gaming Console, etc.) and series (Galaxy S, iPhone 13 Series) with full Add, Edit, Delete and Active controls.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleOpenDeviceCategoryModal()}
+                className="bg-[#0BAA4B] hover:bg-[#087C38] text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-md transition flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" /> Add Device Category
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenSeriesModal()}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-md transition flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" /> Add Brand Series
+              </button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Device Categories */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
-              <h4 className="font-extrabold text-slate-900 text-sm">1. Device Categories ({deviceCategories.length})</h4>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                <h4 className="font-extrabold text-slate-900 text-sm">1. Device Categories ({deviceCategories.length})</h4>
+                <span className="text-[10px] text-slate-400">Only Active categories appear on App/Web</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[500px] overflow-y-auto pr-1">
                 {deviceCategories.map((dc) => (
-                  <div key={dc.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
-                    <div>
-                      <span className="font-bold text-xs text-slate-900">{dc.name}</span>
-                      <span className="text-[10px] text-slate-400 block font-mono">{dc.slug}</span>
+                  <div key={dc.id} className={`p-3 rounded-xl border transition flex flex-col justify-between ${
+                    dc.is_active ? 'border-slate-200 bg-slate-50/70' : 'border-rose-200 bg-rose-50/30 opacity-70'
+                  }`}>
+                    <div className="flex items-start justify-between gap-1">
+                      <div>
+                        <span className="font-bold text-xs text-slate-900 block">{dc.name}</span>
+                        <span className="text-[10px] text-slate-400 block font-mono">{dc.slug}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleDeviceCategoryActive(dc)}
+                        className={`text-[9px] font-bold px-2 py-0.5 rounded cursor-pointer transition ${
+                          dc.is_active 
+                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
+                            : 'bg-rose-100 text-rose-800 hover:bg-rose-200'
+                        }`}
+                        title="Click to toggle active status"
+                      >
+                        {dc.is_active ? 'Active' : 'Disabled'}
+                      </button>
                     </div>
-                    <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">Active</span>
+
+                    <div className="mt-3 pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDeviceCategoryModal(dc)}
+                        className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1"
+                      >
+                        <Edit2 className="w-3 h-3" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDeviceCategory(dc)}
+                        className="text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1000,12 +1350,33 @@ export default function CataloguePricingManager() {
 
             {/* Brand Series */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-3">
-              <h4 className="font-extrabold text-slate-900 text-sm">2. Configured Series ({seriesList.length})</h4>
-              <div className="grid grid-cols-2 gap-2 max-h-[360px] overflow-y-auto pr-1">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                <h4 className="font-extrabold text-slate-900 text-sm">2. Configured Series ({seriesList.length})</h4>
+                <span className="text-[10px] text-slate-400">Model series grouping</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-[500px] overflow-y-auto pr-1">
                 {seriesList.map((s) => (
-                  <div key={s.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50">
-                    <span className="font-bold text-xs text-slate-900">{s.name}</span>
-                    <span className="text-[10px] text-indigo-600 block">{s.brand_name || 'Brand Series'}</span>
+                  <div key={s.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex flex-col justify-between">
+                    <div>
+                      <span className="font-bold text-xs text-slate-900 block">{s.name}</span>
+                      <span className="text-[10px] text-indigo-600 font-semibold block">{s.brand_name || 'Brand Series'}</span>
+                    </div>
+                    <div className="mt-3 pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenSeriesModal(s)}
+                        className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1"
+                      >
+                        <Edit2 className="w-3 h-3" /> Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSeries(s)}
+                        className="text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -2329,6 +2700,148 @@ export default function CataloguePricingManager() {
                   className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
                 >
                   Save Deduction Rule
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: ADD / EDIT DEVICE CATEGORY ================= */}
+      {deviceCategoryModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
+            <h3 className="font-extrabold text-base text-slate-900">
+              {editingDeviceCategory ? `Edit Category: ${editingDeviceCategory.name}` : 'Add Device Category'}
+            </h3>
+
+            <form onSubmit={handleSaveDeviceCategory} className="space-y-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Category Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={deviceCategoryForm.name}
+                  onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, name: e.target.value })}
+                  placeholder="e.g. Mobile, Tablet, Gaming Console"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Subtitle</label>
+                <input
+                  type="text"
+                  value={deviceCategoryForm.subtitle}
+                  onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, subtitle: e.target.value })}
+                  placeholder="e.g. Sell used smartphones with instant valuation"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Icon Name</label>
+                <input
+                  type="text"
+                  value={deviceCategoryForm.icon_name}
+                  onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, icon_name: e.target.value })}
+                  placeholder="Smartphone, Tablet, Gamepad..."
+                  className="w-full p-2 border border-slate-300 rounded-xl font-mono"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                <input
+                  type="checkbox"
+                  id="dc_is_active_check"
+                  checked={deviceCategoryForm.is_active}
+                  onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, is_active: e.target.checked })}
+                  className="w-4 h-4 text-emerald-600 rounded"
+                />
+                <label htmlFor="dc_is_active_check" className="font-bold text-slate-700 text-xs cursor-pointer">
+                  Category is Active (Visible on Customer App & Web)
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setDeviceCategoryModalOpen(false)}
+                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 bg-[#0BAA4B] hover:bg-[#087C38] text-white py-2.5 rounded-xl font-bold shadow-md"
+                >
+                  Save Category
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: ADD / EDIT SERIES ================= */}
+      {seriesModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
+            <h3 className="font-extrabold text-base text-slate-900">
+              {editingSeries ? `Edit Series: ${editingSeries.name}` : 'Add Brand Series'}
+            </h3>
+
+            <form onSubmit={handleSaveSeries} className="space-y-3">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Brand *</label>
+                <select
+                  required
+                  value={seriesForm.brand}
+                  onChange={(e) => setSeriesForm({ ...seriesForm, brand: parseInt(e.target.value) })}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white"
+                >
+                  <option value="">Select Brand</option>
+                  {brands.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Series Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={seriesForm.name}
+                  onChange={(e) => setSeriesForm({ ...seriesForm, name: e.target.value })}
+                  placeholder="e.g. Galaxy S Series, iPhone 15 Series"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Display Order</label>
+                <input
+                  type="number"
+                  value={seriesForm.display_order}
+                  onChange={(e) => setSeriesForm({ ...seriesForm, display_order: parseInt(e.target.value) || 0 })}
+                  className="w-full p-2 border border-slate-300 rounded-xl"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setSeriesModalOpen(false)}
+                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
+                >
+                  Save Series
                 </button>
               </div>
             </form>

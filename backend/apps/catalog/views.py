@@ -139,6 +139,31 @@ def series_list_view(request):
             return Response(DeviceSeriesSerializer(series).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([AllowAny])
+def series_detail_view(request, pk):
+    try:
+        series = DeviceSeries.objects.get(pk=pk)
+    except DeviceSeries.DoesNotExist:
+        return Response({'detail': 'Series not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(DeviceSeriesSerializer(series).data)
+
+    if not request.user.is_authenticated or request.user.role != 'ADMIN':
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'PUT':
+        serializer = DeviceSeriesSerializer(series, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        series.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 # ================= 4. MODELS =================
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])

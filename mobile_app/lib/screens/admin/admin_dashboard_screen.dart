@@ -26,6 +26,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   PaymentSummaryModel _paymentSummary = PaymentSummaryModel(totalCount: 0, totalDisbursed: 0.0, payments: []);
   List<AgentUserModel> _agents = [];
   List<ConditionCategoryModel> _conditionCategories = [];
+  List<BrandModel> _pricingBrands = [];
+  int? _selectedPricingBrandId;
   String _searchQuery = '';
   String _statusFilter = 'ALL';
 
@@ -83,6 +85,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       }
     } catch (e) {
       debugPrint('AdminDashboard: Conditions loading error: $e');
+    }
+
+    // 5. Fetch Brands for Pricing Filter
+    try {
+      final bList = await _api.getBrands();
+      if (mounted) {
+        setState(() => _pricingBrands = bList);
+      }
+    } catch (e) {
+      debugPrint('AdminDashboard: Brands loading error: $e');
     }
 
     if (mounted) {
@@ -1368,6 +1380,46 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   const SizedBox(height: 20),
                   Row(
                     children: [
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        tooltip: 'Delete Option',
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (c) => AlertDialog(
+                              title: const Text('Delete Option', style: TextStyle(fontWeight: FontWeight.bold)),
+                              content: Text('Delete "${opt.title}" option permanently?'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                  onPressed: () => Navigator.pop(c, true),
+                                  child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            Navigator.pop(ctx);
+                            try {
+                              await _api.deleteConditionOption(opt.id);
+                              _loadAdminData();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('✓ Option "${opt.title}" deleted!'), backgroundColor: AppTheme.primaryGreen),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 4),
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(ctx),
@@ -2788,7 +2840,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
+  void _confirmDeleteConditionCategory(ConditionCategoryModel cat) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Delete Condition Step', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Text('Are you sure you want to delete "${cat.name}" and all attached defect options?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _api.deleteConditionCategory(cat.id);
+                _loadAdminData();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('✓ Step "${cat.name}" deleted successfully!'), backgroundColor: AppTheme.primaryGreen),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildPricingTab() {
+    final filteredCategories = _conditionCategories.where((c) {
+      if (_selectedPricingBrandId == null) return true;
+      if (_selectedPricingBrandId == -1) return c.brand == null;
+      return c.brand == _selectedPricingBrandId || c.brand == null;
+    }).toList();
+
     return Column(
       children: [
         // Quick Action Bar for Catalog Suite
@@ -2811,7 +2905,57 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             ),
           ),
         ),
-        _conditionCategories.isEmpty
+
+        // Brand Questionnaire Mapping Filter Bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ChoiceChip(
+                  label: Text('All (${_conditionCategories.length})', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  selected: _selectedPricingBrandId == null,
+                  selectedColor: AppTheme.primaryGreen.withOpacity(0.2),
+                  onSelected: (selected) {
+                    if (selected) setState(() => _selectedPricingBrandId = null);
+                  },
+                ),
+                const SizedBox(width: 6),
+                ChoiceChip(
+                  label: Text('🌐 Universal (${_conditionCategories.where((c) => c.brand == null).length})',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  selected: _selectedPricingBrandId == -1,
+                  selectedColor: AppTheme.primaryGreen.withOpacity(0.2),
+                  onSelected: (selected) {
+                    if (selected) setState(() => _selectedPricingBrandId = -1);
+                  },
+                ),
+                const SizedBox(width: 6),
+                ..._pricingBrands.map((b) {
+                  final brandCount = _conditionCategories.where((c) => c.brand == b.id || c.brand == null).length;
+                  final exclusiveCount = _conditionCategories.where((c) => c.brand == b.id).length;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      label: Text(
+                        '${b.name} ($brandCount${exclusiveCount > 0 ? ' • $exclusiveCount exclusive' : ''})',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                      selected: _selectedPricingBrandId == b.id,
+                      selectedColor: AppTheme.primaryGreen.withOpacity(0.2),
+                      onSelected: (selected) {
+                        if (selected) setState(() => _selectedPricingBrandId = b.id);
+                      },
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ),
+
+        filteredCategories.isEmpty
             ? Expanded(
                 child: Center(
                   child: Padding(
@@ -2822,7 +2966,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                         const Icon(Icons.rule_folder_outlined, size: 48, color: AppTheme.textSecondary),
                         const SizedBox(height: 12),
                         const Text(
-                          'No condition rules loaded yet',
+                          'No condition rules matched for this filter',
                           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.textPrimary),
                         ),
                         const SizedBox(height: 6),
@@ -2850,10 +2994,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             : Expanded(
                 child: ListView.separated(
                   padding: const EdgeInsets.all(16),
-                  itemCount: _conditionCategories.length,
+                  itemCount: filteredCategories.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
-              final cat = _conditionCategories[index];
+              final cat = filteredCategories[index];
               return GlassContainer(
                 padding: const EdgeInsets.all(16),
                 borderRadius: BorderRadius.circular(18),
@@ -2905,6 +3049,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text('${cat.options.length} options', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.primaryGreen)),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                              tooltip: 'Delete Question Step',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => _confirmDeleteConditionCategory(cat),
                             ),
                           ],
                         ),
