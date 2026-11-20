@@ -90,10 +90,19 @@ export const api = {
   deleteVariant: (id) => request(`/catalog/variants/${id}/`, { method: 'DELETE' }),
 
   // Valuation & Dynamic Pricing
-  getConditionCategories: (all = false) => request(`/valuation/conditions/?all=${all}`),
+  getConditionCategories: (all = false, brandId = '') => request(`/valuation/conditions/?all=${all}${brandId ? `&brand=${brandId}` : ''}`),
   createConditionCategory: (data) => request('/valuation/conditions/', { method: 'POST', body: JSON.stringify(data) }),
   updateConditionCategory: (id, data) => request(`/valuation/conditions/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteConditionCategory: (id) => request(`/valuation/conditions/${id}/`, { method: 'DELETE' }),
+  copyQuestionsFromBrand: (sourceBrandId, targetBrandId, markMandatory = true) =>
+    request('/valuation/conditions/copy-from-brand/', {
+      method: 'POST',
+      body: JSON.stringify({
+        source_brand_id: sourceBrandId ? Number(sourceBrandId) : null,
+        target_brand_id: Number(targetBrandId),
+        mark_mandatory: markMandatory
+      })
+    }),
 
   getConditionOptions: (categoryId, all = false) => request(`/valuation/options/?${categoryId ? `category=${categoryId}&` : ''}all=${all}`),
   createConditionOption: (data) => request('/valuation/options/', { method: 'POST', body: JSON.stringify(data) }),

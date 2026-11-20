@@ -2,13 +2,15 @@ from django.urls import path
 from .views import (
     condition_categories_view, condition_category_detail_view,
     condition_options_view, condition_option_detail_view,
-    calculate_estimate_view, price_history_list_view
+    calculate_estimate_view, price_history_list_view,
+    copy_questions_from_brand_view
 )
 
 urlpatterns = [
     # Categories
     path('conditions/', condition_categories_view, name='valuation-conditions'),
     path('conditions/<int:pk>/', condition_category_detail_view, name='valuation-category-detail'),
+    path('conditions/copy-from-brand/', copy_questions_from_brand_view, name='valuation-copy-questions'),
     
     # Options & Deduction Rules
     path('options/', condition_options_view, name='valuation-options'),

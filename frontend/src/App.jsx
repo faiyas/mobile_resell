@@ -158,14 +158,14 @@ export default function App() {
                             <Smartphone className="w-6 h-6 text-white" />
                           </div>
                           <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 backdrop-blur px-2.5 py-1 rounded-full border border-white/20">
-                            Sell Device
+                            Instant Value
                           </span>
                         </div>
                         <div>
-                          <h3 className="text-lg sm:text-xl font-black mt-3">Sell Old Mobile</h3>
+                          <h3 className="text-lg sm:text-xl font-black mt-3">Check Resale Value</h3>
                           <p className="text-xs text-emerald-100 mt-0.5">Instant price estimate & free home pickup</p>
                           <span className="inline-flex items-center gap-1 font-black text-xs mt-2 text-white">
-                            Start Selling <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                            Get Instant Quote <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                           </span>
                         </div>
                       </div>

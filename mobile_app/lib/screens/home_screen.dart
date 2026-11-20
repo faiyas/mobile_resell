@@ -833,7 +833,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '📱 SELL MY PHONE',
+                          'CHECK RESALE VALUE',
                           style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                         ),
                         SizedBox(width: 6),
@@ -855,8 +855,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: _buildActionTile(
                     icon: Icons.smartphone,
-                    title: 'Sell Device',
-                    subtitle: 'Instant Quote',
+                    title: 'Instant Valuation',
+                    subtitle: 'Get 60s Quote',
                     bgColor: AppTheme.lightGreen,
                     iconColor: AppTheme.primaryGreen,
                     onTap: () {
@@ -932,14 +932,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
             Builder(
               builder: (context) {
-                // Strictly 4 Core Categories: Mobile, Tablet, Dead Phone, Other
-                final coreCategories = _categories.where((c) {
-                  final n = c.name.toLowerCase();
-                  return n == 'mobile' || n == 'tablet' || n == 'dead phone' || n == 'other' || n == 'others';
-                }).toList();
-
-                // If not yet loaded or empty, provide standard fallback 4
-                final displayCats = coreCategories.isNotEmpty ? coreCategories : _categories;
+                // Only show active categories (defaults: Mobile, Tablet, Gaming Console)
+                final activeCats = _categories.where((c) => c.isActive).toList();
+                final displayCats = activeCats.isNotEmpty
+                    ? activeCats
+                    : _categories.where((c) {
+                        final n = c.name.toLowerCase();
+                        return n == 'mobile' || n == 'tablet' || n == 'gaming console';
+                      }).toList();
 
                 return GridView.builder(
                   shrinkWrap: true,
@@ -1027,7 +1027,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 24),
 
-            // 4. Top Brands
+            // 4. Top Brands (Scrollable showcase only, not clickable)
             const Text(
               'Top Phone Brands',
               style: TextStyle(
@@ -1042,6 +1042,7 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 84,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
                 itemCount: _brands.length,
                 itemBuilder: (context, idx) {
                   final brand = _brands[idx];
@@ -1051,16 +1052,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 95,
                       borderRadius: 18,
                       padding: const EdgeInsets.all(8),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CategorySelectionScreen(
-                              initialBrandId: brand.id,
-                            ),
-                          ),
-                        );
-                      },
+                      onTap: null, // Display only, not clickable
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

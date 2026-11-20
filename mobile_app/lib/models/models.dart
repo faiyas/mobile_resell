@@ -293,6 +293,10 @@ class ConditionCategoryModel {
   final String selectionType; // 'SINGLE' | 'MULTIPLE' | 'ACCESSORY' | 'WARRANTY'
   final String proTip;
   final String iconName;
+  final String? imageBase64;
+  final int? brand;
+  final String? brandName;
+  final bool isMandatory;
   final int displayOrder;
   final List<ConditionOptionModel> options;
 
@@ -304,6 +308,10 @@ class ConditionCategoryModel {
     required this.selectionType,
     required this.proTip,
     required this.iconName,
+    this.imageBase64,
+    this.brand,
+    this.brandName,
+    this.isMandatory = true,
     required this.displayOrder,
     this.options = const [],
   });
@@ -328,6 +336,10 @@ class ConditionCategoryModel {
       selectionType: json['selection_type']?.toString() ?? 'SINGLE',
       proTip: json['pro_tip']?.toString() ?? '',
       iconName: json['icon_name']?.toString() ?? 'Smartphone',
+      imageBase64: json['image_base64']?.toString(),
+      brand: json['brand'] is int ? json['brand'] : int.tryParse(json['brand']?.toString() ?? ''),
+      brandName: json['brand_name']?.toString(),
+      isMandatory: json['is_mandatory'] == true || json['is_mandatory']?.toString().toLowerCase() == 'true',
       displayOrder: int.tryParse(json['display_order']?.toString() ?? '') ?? (json['display_order'] is int ? json['display_order'] : 0),
       options: opts,
     );
@@ -342,6 +354,10 @@ class ConditionCategoryModel {
       'selection_type': selectionType,
       'pro_tip': proTip,
       'icon_name': iconName,
+      'image_base64': imageBase64,
+      'brand': brand,
+      'brand_name': brandName,
+      'is_mandatory': isMandatory,
       'display_order': displayOrder,
       'options': options.map((o) => o.toJson()).toList(),
     };

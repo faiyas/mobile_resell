@@ -71,7 +71,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   Future<void> _loadQuestionnaire() async {
     setState(() => _loading = true);
     try {
-      final data = await _api.getConditionCategories();
+      final data = await _api.getConditionCategories(brandId: widget.brand.id);
       setState(() {
         _steps = data;
         _loading = false;
@@ -265,13 +265,28 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
 
   void _nextStep() {
     final currentStep = _steps[_currentStepIndex];
-    final isSingle = currentStep.selectionType == 'SINGLE';
 
-    if (isSingle) {
+    if (currentStep.isMandatory && currentStep.options.isNotEmpty) {
       final hasSelected = currentStep.options.any((o) => _selectedOptionCodes.contains(o.code));
-      if (!hasSelected && currentStep.options.isNotEmpty) {
+      if (!hasSelected) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select an option before continuing')),
+          SnackBar(
+            backgroundColor: Colors.red.shade700,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Please complete: "${currentStep.name}" before proceeding.',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
         return;
       }
@@ -451,7 +466,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                   crossAxisCount: 2,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 1.12,
+                  childAspectRatio: 0.96,
                 ),
                 itemCount: currentStep.options.length,
                 itemBuilder: (context, idx) {
@@ -460,7 +475,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
 
                   return GlassContainer(
                     borderRadius: 20,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    padding: const EdgeInsets.all(12),
                     border: Border.all(
                       color: isSelected
                           ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen)
@@ -469,104 +484,71 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                     ),
                     color: isSelected
                         ? (opt.isRejection
-                            ? Colors.red.shade50.withValues(alpha: 0.8)
-                            : AppTheme.lightGreen.withValues(alpha: 0.75))
-                        : Colors.white.withValues(alpha: 0.8),
+                            ? Colors.red.shade50.withValues(alpha: 0.85)
+                            : AppTheme.lightGreen.withValues(alpha: 0.85))
+                        : Colors.white.withValues(alpha: 0.85),
                     onTap: () => _toggleOption(opt, isMultiple),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                    child: Stack(
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            if (opt.imageBase64 != null && opt.imageBase64!.trim().isNotEmpty)
-                              GestureDetector(
-                                onTap: () => _showDefectPreviewDialog(opt),
-                                child: Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.4)),
-                                    borderRadius: BorderRadius.circular(10),
-                                    boxShadow: [
-                                      BoxShadow(color: AppTheme.primaryGreen.withOpacity(0.12), blurRadius: 4),
-                                    ],
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.memory(
-                                      base64Decode(opt.imageBase64!.contains(',') ? opt.imageBase64!.split(',').last : opt.imageBase64!),
-                                      width: 28,
-                                      height: 28,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Icon(
-                                        _getOptionIcon(opt.code),
-                                        size: 24,
-                                        color: isSelected ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen) : AppTheme.textSecondary,
-                                      ),
-                                    ),
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Icon(
+                            isSelected ? Icons.check_circle_rounded : Icons.circle_outlined,
+                            size: 20,
+                            color: isSelected
+                                ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen)
+                                : AppTheme.border,
+                          ),
+                        ),
+                        Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildOptionVisual(opt, isSelected),
+                              const SizedBox(height: 10),
+                              Text(
+                                opt.title,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w900,
+                                  color: isSelected
+                                      ? (opt.isRejection ? Colors.red.shade900 : AppTheme.darkGreen)
+                                      : AppTheme.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: opt.defaultDeductionValue == 0
+                                      ? AppTheme.lightGreen
+                                      : opt.isRejection
+                                          ? Colors.red.shade50
+                                          : AppTheme.canvas,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  opt.defaultDeductionValue == 0
+                                      ? (opt.isAccessoryBonus ? 'Included (+₹0)' : 'No Defect (₹0)')
+                                      : opt.deductionType == 'PERCENTAGE'
+                                          ? '-${opt.defaultDeductionValue.toStringAsFixed(0)}%'
+                                          : '-₹${opt.defaultDeductionValue.toStringAsFixed(0)}',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: opt.defaultDeductionValue == 0
+                                        ? AppTheme.darkGreen
+                                        : opt.isRejection
+                                            ? Colors.red.shade900
+                                            : AppTheme.textSecondary,
                                   ),
                                 ),
-                              )
-                            else ...[
-                              const SizedBox(width: 18),
-                              Icon(
-                                _getOptionIcon(opt.code),
-                                size: 26,
-                                color: isSelected
-                                    ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen)
-                                    : AppTheme.textSecondary,
                               ),
                             ],
-                            Icon(
-                              isSelected ? Icons.check_circle : Icons.circle_outlined,
-                              size: 18,
-                              color: isSelected
-                                  ? (opt.isRejection ? Colors.red : AppTheme.primaryGreen)
-                                  : AppTheme.border,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          opt.title,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w900,
-                            color: isSelected
-                                ? (opt.isRejection ? Colors.red.shade900 : AppTheme.darkGreen)
-                                : AppTheme.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: opt.defaultDeductionValue == 0
-                                ? AppTheme.lightGreen
-                                : opt.isRejection
-                                    ? Colors.red.shade50
-                                    : AppTheme.canvas,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            opt.defaultDeductionValue == 0
-                                ? 'No Defect (₹0)'
-                                : opt.deductionType == 'PERCENTAGE'
-                                    ? '-${opt.defaultDeductionValue.toStringAsFixed(0)}%'
-                                    : '-₹${opt.defaultDeductionValue.toStringAsFixed(0)}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                              color: opt.defaultDeductionValue == 0
-                                  ? AppTheme.darkGreen
-                                  : opt.isRejection
-                                      ? Colors.red.shade900
-                                      : AppTheme.textSecondary,
-                            ),
                           ),
                         ),
                       ],
@@ -574,6 +556,36 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                   );
                 },
               ),
+
+              // Smart Warning Banner if Invoice Bill is not selected in accessories step
+              if (currentStep.options.any((o) => o.code.toLowerCase().contains('bill')) &&
+                  !_selectedOptionCodes.any((c) => c.toLowerCase().contains('bill'))) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFFBEB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFFDE68A)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 18),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Invoice Bill not selected. Warranty is set to "No Warranty".',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF92400E),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 14),
 
@@ -748,6 +760,122 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildOptionVisual(ConditionOptionModel opt, bool isSelected) {
+    if (opt.imageBase64 != null && opt.imageBase64!.trim().isNotEmpty && !opt.imageBase64!.contains('svg')) {
+      try {
+        final clean = opt.imageBase64!.contains(',') ? opt.imageBase64!.split(',').last : opt.imageBase64!;
+        final bytes = base64Decode(clean);
+        return Image.memory(
+          bytes,
+          height: 44,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => _buildVectorIllustration(opt.code, isSelected),
+        );
+      } catch (_) {
+        return _buildVectorIllustration(opt.code, isSelected);
+      }
+    }
+    return _buildVectorIllustration(opt.code, isSelected);
+  }
+
+  Widget _buildVectorIllustration(String code, bool isSelected) {
+    final c = code.toLowerCase();
+
+    // Battery Health visualization cards matching demo screenshots
+    if (c.contains('batt_85') || (c.contains('battery') && c.contains('85'))) {
+      return Container(
+        width: 76,
+        height: 38,
+        decoration: BoxDecoration(
+          color: const Color(0xFF0BAA4B),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(color: const Color(0xFF0BAA4B).withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: const Center(
+          child: Text(
+            '85%+',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14),
+          ),
+        ),
+      );
+    }
+    if (c.contains('batt_81') || (c.contains('battery') && c.contains('81'))) {
+      return Container(
+        width: 76,
+        height: 38,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF59E0B),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(color: const Color(0xFFF59E0B).withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: const Center(
+          child: Text(
+            '81-85%',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
+          ),
+        ),
+      );
+    }
+    if (c.contains('batt_80') || (c.contains('battery') && (c.contains('80') || c.contains('below')))) {
+      return Container(
+        width: 76,
+        height: 38,
+        decoration: BoxDecoration(
+          color: const Color(0xFFEF4444),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(color: const Color(0xFFEF4444).withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2)),
+          ],
+        ),
+        child: const Center(
+          child: Text(
+            '≤80%',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
+          ),
+        ),
+      );
+    }
+
+    // Accessories
+    if (c.contains('box')) {
+      return const Icon(Icons.inventory_2_outlined, size: 44, color: AppTheme.primaryGreen);
+    }
+    if (c.contains('charger') && !c.contains('cable')) {
+      return const Icon(Icons.power_outlined, size: 44, color: AppTheme.primaryGreen);
+    }
+    if (c.contains('cable')) {
+      return const Icon(Icons.cable_rounded, size: 44, color: AppTheme.primaryGreen);
+    }
+    if (c.contains('bill') || c.contains('invoice')) {
+      return const Icon(Icons.receipt_long_rounded, size: 44, color: AppTheme.primaryGreen);
+    }
+    if (c.contains('icloud')) {
+      return const Icon(Icons.cloud_lock_outlined, size: 44, color: Color(0xFF3B82F6));
+    }
+    if (c.contains('cam')) {
+      return const Icon(Icons.camera_alt_outlined, size: 42, color: AppTheme.primaryGreen);
+    }
+    if (c.contains('crack') || c.contains('shatter')) {
+      return const Icon(Icons.broken_image_outlined, size: 44, color: Colors.redAccent);
+    }
+    if (c.contains('scratch') || c.contains('dent')) {
+      return const Icon(Icons.phonelink_erase_rounded, size: 44, color: Color(0xFFF59E0B));
+    }
+    if (c.contains('flawless') || c.contains('perfect') || c.contains('switch_on')) {
+      return const Icon(Icons.verified_rounded, size: 44, color: AppTheme.primaryGreen);
+    }
+
+    return Icon(
+      _getOptionIcon(code),
+      size: 42,
+      color: isSelected ? AppTheme.primaryGreen : AppTheme.textSecondary,
     );
   }
 

@@ -1,4 +1,5 @@
-from django.db.models import Prefetch
+from django.db import models
+from django.db.models import Prefetch, Q
 from decimal import Decimal
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -9,7 +10,7 @@ from .serializers import (
     ConditionCategorySerializer, ConditionOptionSerializer, 
     EstimateCalculationSerializer, PriceHistorySerializer
 )
-from apps.catalog.models import StorageVariant
+from apps.catalog.models import StorageVariant, Brand
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
@@ -17,6 +18,7 @@ def condition_categories_view(request):
     if request.method == 'GET':
         show_all = request.GET.get('all', 'false').lower() == 'true'
         device_cat = request.GET.get('device_category')
+        brand_param = request.GET.get('brand')
         
         if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
             categories = ConditionCategory.objects.all()
@@ -28,6 +30,12 @@ def condition_categories_view(request):
                 categories = categories.filter(device_category_id=int(device_cat))
             else:
                 categories = categories.filter(device_category__slug=device_cat)
+
+        if brand_param:
+            if str(brand_param).isdigit():
+                categories = categories.filter(Q(brand_id=int(brand_param)) | Q(brand__isnull=True))
+            else:
+                categories = categories.filter(Q(brand__slug=brand_param) | Q(brand__name__iexact=brand_param) | Q(brand__isnull=True))
 
         categories = categories.prefetch_related(
             Prefetch('options', queryset=ConditionOption.objects.filter(is_active=True).order_by('display_order'))
@@ -278,4 +286,92 @@ def price_history_list_view(request):
     
     serializer = PriceHistorySerializer(queryset, many=True)
     return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def copy_questions_from_brand_view(request):
+    """
+    Clones all condition questions, visual Base64 illustrations, and deduction values
+    from a source brand to a target brand, with optional mandatory toggle.
+    """
+    if request.user.role != 'ADMIN':
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+    
+    source_brand_id = request.data.get('source_brand_id')
+    target_brand_id = request.data.get('target_brand_id')
+    mark_mandatory = request.data.get('mark_mandatory', True)
+    
+    if not target_brand_id:
+        return Response({'detail': 'target_brand_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        target_brand = Brand.objects.get(id=target_brand_id)
+    except Brand.DoesNotExist:
+        return Response({'detail': 'Target brand not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+    if source_brand_id:
+        try:
+            source_brand = Brand.objects.get(id=source_brand_id)
+            source_cats = ConditionCategory.objects.filter(brand=source_brand, is_active=True).prefetch_related('options')
+            if not source_cats.exists():
+                # Fallback to universal questions if brand has none configured specifically
+                source_cats = ConditionCategory.objects.filter(brand__isnull=True, is_active=True).prefetch_related('options')
+        except Brand.DoesNotExist:
+            return Response({'detail': 'Source brand not found'}, status=status.HTTP_404_NOT_FOUND)
+    else:
+        source_cats = ConditionCategory.objects.filter(brand__isnull=True, is_active=True).prefetch_related('options')
+    
+    if not source_cats.exists():
+        return Response({'detail': 'No condition questions found to copy from.'}, status=status.HTTP_404_NOT_FOUND)
+    
+    copied_cats = 0
+    copied_opts = 0
+    
+    for src_cat in source_cats:
+        new_cat = ConditionCategory.objects.create(
+            device_category=src_cat.device_category,
+            brand=target_brand,
+            step_number=src_cat.step_number,
+            name=src_cat.name,
+            subtitle=src_cat.subtitle,
+            selection_type=src_cat.selection_type,
+            pro_tip=src_cat.pro_tip,
+            icon_name=src_cat.icon_name,
+            image_base64=src_cat.image_base64,
+            is_mandatory=mark_mandatory if mark_mandatory is not None else src_cat.is_mandatory,
+            display_order=src_cat.display_order,
+            is_active=True
+        )
+        copied_cats += 1
+        
+        for src_opt in src_cat.options.filter(is_active=True):
+            clean_code = src_opt.code.split('_', 1)[-1] if '_' in src_opt.code else src_opt.code
+            unique_code = f"{target_brand.slug.upper()}_{clean_code}"
+            if ConditionOption.objects.filter(code=unique_code).exists():
+                unique_code = f"{unique_code}_{new_cat.id}"
+            
+            ConditionOption.objects.create(
+                category=new_cat,
+                code=unique_code,
+                title=src_opt.title,
+                description=src_opt.description,
+                image_base64=src_opt.image_base64,
+                is_defect=src_opt.is_defect,
+                is_accessory_bonus=src_opt.is_accessory_bonus,
+                is_warranty=src_opt.is_warranty,
+                deduction_type=src_opt.deduction_type,
+                default_deduction_value=src_opt.default_deduction_value,
+                exclusive_group=src_opt.exclusive_group,
+                is_rejection=src_opt.is_rejection,
+                display_order=src_opt.display_order,
+                is_active=True
+            )
+            copied_opts += 1
+            
+    return Response({
+        'detail': f'Successfully cloned {copied_cats} question categories and {copied_opts} options to {target_brand.name}.',
+        'target_brand': target_brand.name,
+        'copied_categories': copied_cats,
+        'copied_options': copied_opts
+    }, status=status.HTTP_201_CREATED)
 

@@ -2607,22 +2607,208 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
+  void _showCopyQuestionsModal() async {
+    List<BrandModel> brands = [];
+    try {
+      brands = await _api.getBrands();
+    } catch (_) {}
+
+    if (!mounted || brands.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No brands available to copy questions.')),
+      );
+      return;
+    }
+
+    int? selectedSourceBrandId;
+    int? selectedTargetBrandId = brands.first.id;
+    bool markMandatory = true;
+    bool isCloning = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassContainer(
+            padding: const EdgeInsets.all(22),
+            borderRadius: BorderRadius.circular(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryGreen.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.copy_all_rounded, color: AppTheme.primaryGreen, size: 22),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Text(
+                          'Copy Questions from Brand',
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Clone all diagnostic steps, condition options, Base64 illustrations, and deduction rules from one brand to another.',
+                    style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                  ),
+                  const SizedBox(height: 16),
+
+                  const Text('Source Brand (Copy From):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppTheme.border),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int?>(
+                        value: selectedSourceBrandId,
+                        isExpanded: true,
+                        items: [
+                          const DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('🌐 Universal / All Brands Questions'),
+                          ),
+                          ...brands.map((b) => DropdownMenuItem<int?>(
+                                value: b.id,
+                                child: Text(b.name),
+                              )),
+                        ],
+                        onChanged: (val) => setDlgState(() => selectedSourceBrandId = val),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text('Target Brand (Clone To):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppTheme.border),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        value: selectedTargetBrandId,
+                        isExpanded: true,
+                        items: brands.map((b) => DropdownMenuItem<int>(
+                              value: b.id,
+                              child: Text(b.name),
+                            )).toList(),
+                        onChanged: (val) => setDlgState(() => selectedTargetBrandId = val),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  Row(
+                    children: [
+                      Switch.adaptive(
+                        value: markMandatory,
+                        activeColor: AppTheme.primaryGreen,
+                        onChanged: (val) => setDlgState(() => markMandatory = val),
+                      ),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Mark Copied Questions as Mandatory',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryGreen,
+                      minimumSize: const Size.fromHeight(48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: isCloning
+                        ? null
+                        : () async {
+                            if (selectedTargetBrandId == null) return;
+                            setDlgState(() => isCloning = true);
+                            try {
+                              final res = await _api.copyQuestionsFromBrand(
+                                sourceBrandId: selectedSourceBrandId,
+                                targetBrandId: selectedTargetBrandId!,
+                                markMandatory: markMandatory,
+                              );
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: AppTheme.primaryGreen,
+                                  content: Text(res['detail'] ?? 'Questions copied successfully!'),
+                                ),
+                              );
+                              _loadAdminData();
+                            } catch (e) {
+                              setDlgState(() => isCloning = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error copying questions: $e')),
+                              );
+                            }
+                          },
+                    child: isCloning
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.copy_all_rounded, size: 18),
+                              SizedBox(width: 8),
+                              Text('Clone Questions Now', style: TextStyle(fontWeight: FontWeight.w900)),
+                            ],
+                          ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPricingTab() {
     return Column(
       children: [
         // Quick Action Bar for Catalog Suite
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Row(
-            children: [
-              _buildCatalogQuickBtn('Categories', Icons.category_rounded, _showCategoryManager),
-              const SizedBox(width: 6),
-              _buildCatalogQuickBtn('Brands', Icons.verified_rounded, _showBrandManager),
-              const SizedBox(width: 6),
-              _buildCatalogQuickBtn('Models', Icons.phone_android_rounded, _showModelManager),
-              const SizedBox(width: 6),
-              _buildCatalogQuickBtn('Variants', Icons.storage_rounded, _showVariantManager),
-            ],
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildCatalogQuickBtn('Copy from Brand', Icons.copy_all_rounded, _showCopyQuestionsModal),
+                const SizedBox(width: 6),
+                _buildCatalogQuickBtn('Categories', Icons.category_rounded, _showCategoryManager),
+                const SizedBox(width: 6),
+                _buildCatalogQuickBtn('Brands', Icons.verified_rounded, _showBrandManager),
+                const SizedBox(width: 6),
+                _buildCatalogQuickBtn('Models', Icons.phone_android_rounded, _showModelManager),
+                const SizedBox(width: 6),
+                _buildCatalogQuickBtn('Variants', Icons.storage_rounded, _showVariantManager),
+              ],
+            ),
           ),
         ),
         _conditionCategories.isEmpty
@@ -2677,14 +2863,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('Step ${cat.stepNumber}: ${cat.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryGreen.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(8),
+                        Expanded(
+                          child: Text(
+                            'Step ${cat.stepNumber}: ${cat.name}',
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
                           ),
-                          child: Text('${cat.options.length} options', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.primaryGreen)),
+                        ),
+                        Row(
+                          children: [
+                            if (cat.brandName != null && cat.brandName!.isNotEmpty)
+                              Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.shade50,
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: Colors.blue.shade200),
+                                ),
+                                child: Text(cat.brandName!, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blue.shade800)),
+                              ),
+                            Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: cat.isMandatory ? AppTheme.primaryGreen.withOpacity(0.12) : Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                cat.isMandatory ? 'Mandatory' : 'Optional',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  color: cat.isMandatory ? AppTheme.primaryGreen : Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryGreen.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text('${cat.options.length} options', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.primaryGreen)),
+                            ),
+                          ],
                         ),
                       ],
                     ),

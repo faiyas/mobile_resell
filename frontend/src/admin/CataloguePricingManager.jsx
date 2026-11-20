@@ -47,9 +47,19 @@ export default function CataloguePricingManager() {
     selection_type: 'SINGLE', 
     pro_tip: '', 
     icon_name: 'Smartphone', 
+    image_base64: '',
+    brand: null,
+    is_mandatory: true,
     display_order: 0, 
     is_active: true 
   });
+
+  // Copy Questions from Brand Modal
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [copySourceBrand, setCopySourceBrand] = useState('');
+  const [copyTargetBrand, setCopyTargetBrand] = useState('');
+  const [copyMandatory, setCopyMandatory] = useState(true);
+  const [copyLoading, setCopyLoading] = useState(false);
 
   const [deviceCategories, setDeviceCategories] = useState([]);
   const [seriesList, setSeriesList] = useState([]);
@@ -390,6 +400,9 @@ export default function CataloguePricingManager() {
         pro_tip: cat.pro_tip || '',
         description: cat.description || '',
         icon_name: cat.icon_name || 'Smartphone',
+        image_base64: cat.image_base64 || '',
+        brand: cat.brand || null,
+        is_mandatory: cat.is_mandatory ?? true,
         display_order: cat.display_order || 0,
         is_active: cat.is_active
       });
@@ -403,11 +416,33 @@ export default function CataloguePricingManager() {
         pro_tip: '',
         description: '',
         icon_name: 'Smartphone',
+        image_base64: '',
+        brand: null,
+        is_mandatory: true,
         display_order: categories.length + 1,
         is_active: true
       });
     }
     setCategoryModalOpen(true);
+  };
+
+  const handleCopyQuestions = async (e) => {
+    e.preventDefault();
+    if (!copyTargetBrand) {
+      alert('Please select a target brand');
+      return;
+    }
+    setCopyLoading(true);
+    try {
+      const res = await api.copyQuestionsFromBrand(copySourceBrand, copyTargetBrand, copyMandatory);
+      showFeedback('success', res.detail || 'Condition questions copied successfully!');
+      setCopyModalOpen(false);
+      loadAllData();
+    } catch (err) {
+      alert(err.message || 'Failed to clone questions');
+    } finally {
+      setCopyLoading(false);
+    }
   };
 
   const handleSaveCategory = async (e) => {
@@ -752,12 +787,21 @@ export default function CataloguePricingManager() {
               </h3>
               <p className="text-xs text-slate-500">Every step in the customer evaluation wizard is dynamically fetched from this database table.</p>
             </div>
-            <button
-              onClick={() => handleOpenCategoryModal()}
-              className="bg-[#0BAA4B] hover:bg-[#087C38] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Add Questionnaire Step
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCopyModalOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" /> Copy Questions from Brand
+              </button>
+              <button
+                onClick={() => handleOpenCategoryModal()}
+                className="bg-[#0BAA4B] hover:bg-[#087C38] text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" /> Add Questionnaire Step
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -1233,12 +1277,21 @@ export default function CataloguePricingManager() {
               <p className="text-xs text-slate-500">Categories organize defects shown to customers and inspection agents.</p>
             </div>
 
-            <button
-              onClick={() => handleOpenCategoryModal()}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Add Category
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCopyModalOpen(true)}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" /> Copy from Brand
+              </button>
+              <button
+                onClick={() => handleOpenCategoryModal()}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" /> Add Category
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1995,6 +2048,34 @@ export default function CataloguePricingManager() {
                 </div>
               </div>
 
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Brand-Specific Assignment</label>
+                <select
+                  value={categoryForm.brand || ''}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, brand: e.target.value ? parseInt(e.target.value) : null })}
+                  className="w-full p-2 border border-slate-300 rounded-xl bg-white"
+                >
+                  <option value="">🌐 Universal (All Brands)</option>
+                  {brands.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">Select specific brand or leave Universal to show for all devices.</span>
+              </div>
+
+              <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                <input
+                  type="checkbox"
+                  id="is_mandatory_check"
+                  checked={categoryForm.is_mandatory ?? true}
+                  onChange={(e) => setCategoryForm({ ...categoryForm, is_mandatory: e.target.checked })}
+                  className="w-4 h-4 text-emerald-600 rounded"
+                />
+                <label htmlFor="is_mandatory_check" className="font-bold text-slate-700 text-xs cursor-pointer">
+                  Mandatory Step (Customer must answer to proceed)
+                </label>
+              </div>
+
               <div className="flex gap-2 pt-3">
                 <button
                   type="button"
@@ -2008,6 +2089,84 @@ export default function CataloguePricingManager() {
                   className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
                 >
                   Save Category
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL: COPY QUESTIONS FROM BRAND ================= */}
+      {copyModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-base text-slate-900">Copy Questions from Brand</h3>
+                <p className="text-[11px] text-slate-500">Clone all diagnostic questions, options, Base64 images and rules to another brand.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCopyQuestions} className="space-y-3 pt-2">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Source Brand (Copy From)</label>
+                <select
+                  value={copySourceBrand}
+                  onChange={(e) => setCopySourceBrand(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl bg-white font-medium"
+                >
+                  <option value="">🌐 Universal / Default Questions</option>
+                  {brands.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Target Brand (Clone To) *</label>
+                <select
+                  required
+                  value={copyTargetBrand}
+                  onChange={(e) => setCopyTargetBrand(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl bg-white font-bold text-emerald-900"
+                >
+                  <option value="">Select Target Brand...</option>
+                  {brands.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
+                <input
+                  type="checkbox"
+                  id="copy_mand_check"
+                  checked={copyMandatory}
+                  onChange={(e) => setCopyMandatory(e.target.checked)}
+                  className="w-4 h-4 text-emerald-600 rounded"
+                />
+                <label htmlFor="copy_mand_check" className="font-bold text-slate-700 text-xs cursor-pointer">
+                  Mark Copied Questions as Mandatory
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setCopyModalOpen(false)}
+                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={copyLoading}
+                  className="w-1/2 bg-[#0BAA4B] hover:bg-[#087C38] text-white py-2.5 rounded-xl font-bold shadow-md transition"
+                >
+                  {copyLoading ? 'Cloning...' : 'Clone Questions'}
                 </button>
               </div>
             </form>

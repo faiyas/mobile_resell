@@ -110,12 +110,16 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
     setSelectedModel(null);
     setSelectedVariant(null);
     try {
-      const [modelsData, seriesData] = await Promise.all([
+      const [modelsData, seriesData, brandSteps] = await Promise.all([
         api.getModels(brand.id),
         api.getSeries(brand.id),
+        api.getConditionCategories(false, brand.id).catch(() => []),
       ]);
       setModels(modelsData);
       setSeriesList(seriesData);
+      if (brandSteps && brandSteps.length > 0) {
+        setQuestionSteps(brandSteps);
+      }
       setCurrentScreen(3);
     } catch (e) {
       console.error(e);
@@ -603,6 +607,15 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   />
                 </div>
 
+                {/* Smart Warning Banner if Invoice Bill not selected in accessories step */}
+                {currentCat.options?.some(o => o.code.toLowerCase().includes('bill')) &&
+                  !selectedOptionCodes.some(c => c.toLowerCase().includes('bill')) && (
+                    <div className="bg-[#FFFBEB] border border-[#F59E0B]/40 rounded-2xl p-3 flex items-center gap-2 text-xs text-[#92400E]">
+                      <AlertTriangle className="w-4 h-4 text-[#F59E0B] shrink-0" />
+                      <span>Invoice Bill not selected. Warranty is set to &quot;No Warranty / Expired&quot;.</span>
+                    </div>
+                  )}
+
                 {/* Navigation Buttons: Previous & Continue */}
                 <div className="flex items-center justify-between pt-4 border-t border-white/80">
                   <button
@@ -620,6 +633,13 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
 
                   <button
                     onClick={() => {
+                      if (currentCat.is_mandatory && currentCat.options?.length > 0) {
+                        const hasSelection = currentCat.options.some(o => selectedOptionCodes.includes(o.code));
+                        if (!hasSelection) {
+                          alert(`Please complete step: "${currentCat.name}" before proceeding.`);
+                          return;
+                        }
+                      }
                       if (questionStepIndex < questionSteps.length - 1) {
                         setQuestionStepIndex(questionStepIndex + 1);
                       } else {

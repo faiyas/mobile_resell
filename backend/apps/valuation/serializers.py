@@ -20,13 +20,14 @@ class ConditionOptionSerializer(serializers.ModelSerializer):
 class ConditionCategorySerializer(serializers.ModelSerializer):
     options = serializers.SerializerMethodField()
     device_category_name = serializers.ReadOnlyField(source='device_category.name')
+    brand_name = serializers.ReadOnlyField(source='brand.name')
 
     class Meta:
         model = ConditionCategory
         fields = [
-            'id', 'device_category', 'device_category_name', 'step_number',
-            'name', 'subtitle', 'selection_type', 'pro_tip',
-            'icon_name', 'display_order', 'is_active', 'options'
+            'id', 'device_category', 'device_category_name', 'brand', 'brand_name',
+            'step_number', 'name', 'subtitle', 'selection_type', 'pro_tip',
+            'icon_name', 'image_base64', 'is_mandatory', 'display_order', 'is_active', 'options'
         ]
 
     def get_options(self, obj):

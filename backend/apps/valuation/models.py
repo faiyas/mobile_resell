@@ -9,12 +9,15 @@ class ConditionCategory(models.Model):
         ('RADIO', 'Radio List'),
     )
     device_category = models.ForeignKey(DeviceCategory, on_delete=models.CASCADE, related_name='question_steps', null=True, blank=True)
+    brand = models.ForeignKey('catalog.Brand', on_delete=models.CASCADE, related_name='brand_condition_steps', null=True, blank=True, help_text="Specific brand (e.g. Apple) or null for all brands")
     step_number = models.PositiveIntegerField(default=1, help_text="Step number in the questionnaire (e.g. 1 to 11)")
     name = models.CharField(max_length=100) # e.g. Display Glass Condition, Functional Faults
     subtitle = models.CharField(max_length=255, blank=True, default='') # e.g. "Choose the display glass condition of your device"
     selection_type = models.CharField(max_length=20, choices=SELECTION_CHOICES, default='SINGLE')
     pro_tip = models.CharField(max_length=255, blank=True, default='') # e.g. "Check your screen under bright light and from different angles"
     icon_name = models.CharField(max_length=50, default='Smartphone', help_text="Lucide icon name")
+    image_base64 = models.TextField(blank=True, default='', help_text="Base64 encoded icon or illustration for category")
+    is_mandatory = models.BooleanField(default=True, help_text="If True, customer cannot proceed without selecting an option in this step")
     display_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 
@@ -22,7 +25,8 @@ class ConditionCategory(models.Model):
         ordering = ['step_number', 'display_order']
 
     def __str__(self):
-        return f"Step {self.step_number}: {self.name}"
+        brand_prefix = f"[{self.brand.name}] " if self.brand else "[Universal] "
+        return f"{brand_prefix}Step {self.step_number}: {self.name}"
 
 class ConditionOption(models.Model):
     DEDUCTION_TYPE_CHOICES = (

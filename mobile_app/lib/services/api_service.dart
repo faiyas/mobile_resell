@@ -229,11 +229,12 @@ class ApiService {
   }
 
   // ================= 4. DYNAMIC QUESTIONNAIRE =================
-  Future<List<ConditionCategoryModel>> getConditionCategories({bool forceRefresh = false}) async {
-    if (!forceRefresh && _cachedConditions != null && _cachedConditions!.isNotEmpty) {
+  Future<List<ConditionCategoryModel>> getConditionCategories({int? brandId, bool forceRefresh = false}) async {
+    final query = brandId != null ? '?brand=$brandId' : '';
+    if (!forceRefresh && brandId == null && _cachedConditions != null && _cachedConditions!.isNotEmpty) {
       return _cachedConditions!;
     }
-    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/conditions/');
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/conditions/$query');
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       final dynamic raw = jsonDecode(res.body);
@@ -248,11 +249,36 @@ class ApiService {
             debugPrint('Error parsing condition category: $e');
           }
         }
-        _cachedConditions = items;
+        if (brandId == null) {
+          _cachedConditions = items;
+        }
         return items;
       }
     }
-    return _cachedConditions ?? [];
+    return (brandId == null ? _cachedConditions : null) ?? [];
+  }
+
+  Future<Map<String, dynamic>> copyQuestionsFromBrand({
+    int? sourceBrandId,
+    required int targetBrandId,
+    bool markMandatory = true,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/conditions/copy-from-brand/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode({
+        'source_brand_id': sourceBrandId,
+        'target_brand_id': targetBrandId,
+        'mark_mandatory': markMandatory,
+      }),
+    );
+    if (res.statusCode == 201 || res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to copy questions from brand');
+    }
   }
 
   Future<Map<String, dynamic>> calculateEstimate(int variantId, List<String> selectedOptionCodes) async {
