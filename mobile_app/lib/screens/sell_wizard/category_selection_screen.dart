@@ -6,6 +6,7 @@ import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/brand_logo.dart';
+import '../../utils/image_helper.dart';
 import 'questionnaire_screen.dart';
 
 class CategorySelectionScreen extends StatefulWidget {

@@ -6,6 +6,7 @@ import '../../services/api_service.dart';
 import '../../services/draft_sell_service.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/brand_logo.dart';
+import '../../utils/image_helper.dart';
 import '../auth/auth_modal_sheet.dart';
 import '../orders/track_order_screen.dart';
 
