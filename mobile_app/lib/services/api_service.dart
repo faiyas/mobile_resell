@@ -417,6 +417,35 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> shiftPickupToNextDay(dynamic saleId, [Map<String, dynamic>? payload]) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/shift-next-day/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload ?? {}),
+    );
+
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to shift pickup');
+    }
+  }
+
+  Future<Map<String, dynamic>?> lookupPincode(String pincode) async {
+    final clean = pincode.trim().replaceAll(RegExp(r'\D'), '');
+    if (clean.length != 6) return null;
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/sales/pincode-lookup/?pincode=$clean');
+      final res = await http.get(url, headers: _headers);
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<Map<String, dynamic>> recordPayout(Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/payments/record-payout/');
     final res = await http.post(

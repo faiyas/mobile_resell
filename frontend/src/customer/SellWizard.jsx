@@ -42,11 +42,24 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
   const [valuing, setValuing] = useState(false);
 
   // Customer Contact & Pickup Form
-  // Earliest available pickup date is strictly tomorrow
-  const getTomorrowDateStr = () => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString().split('T')[0];
+  // Pickup Cutoff Rule:
+  // Same-day is strictly prohibited.
+  // After 8:00 PM IST (20:00), earliest pickup is Day After Tomorrow (+2 days).
+  // Before 8:00 PM IST, earliest pickup is Tomorrow (+1 day).
+  const getEarliestPickupDateStr = () => {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
+    const isLate = istDate.getHours() >= 20;
+    istDate.setDate(istDate.getDate() + (isLate ? 2 : 1));
+    return istDate.toISOString().split('T')[0];
+  };
+
+  const isAfter8PMCutoff = () => {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
+    return istDate.getHours() >= 20;
   };
 
   const [customerName, setCustomerName] = useState(currentUser?.full_name || '');
@@ -55,8 +68,77 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
   const [pickupAddress, setPickupAddress] = useState(currentUser?.default_address || '');
   const [pickupCity, setPickupCity] = useState(currentUser?.city || '');
   const [pickupPincode, setPickupPincode] = useState(currentUser?.pincode || '');
-  const [pickupDate, setPickupDate] = useState(getTomorrowDateStr());
+  const [pickupDate, setPickupDate] = useState(getEarliestPickupDateStr());
   const [pickupSlot, setPickupSlot] = useState('Afternoon (1:00 PM - 5:00 PM)');
+
+  // Live Location & Pincode Lookup States
+  const [detectingLocation, setDetectingLocation] = useState(false);
+  const [pincodeLoading, setPincodeLoading] = useState(false);
+  const [pincodeInfo, setPincodeInfo] = useState(null);
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          if (res.ok) {
+            const data = await res.json();
+            const addr = data.address || {};
+            const city = addr.city || addr.town || addr.municipality || addr.state_district || addr.suburb || 'City';
+            const postcode = addr.postcode ? addr.postcode.replace(/\D/g, '').slice(0, 6) : '';
+            const roadParts = [addr.house_number, addr.road, addr.neighbourhood, addr.suburb].filter(Boolean);
+            const fullStreet = roadParts.length > 0 ? roadParts.join(', ') : (data.display_name?.split(',').slice(0, 3).join(',') || '');
+            
+            if (fullStreet) setPickupAddress(fullStreet);
+            if (city) setPickupCity(city);
+            if (postcode && postcode.length === 6) {
+              setPickupPincode(postcode);
+              verifyPincode(postcode);
+            }
+          }
+        } catch (err) {
+          console.warn('Reverse geocode failed:', err);
+        } finally {
+          setDetectingLocation(false);
+        }
+      },
+      () => {
+        setDetectingLocation(false);
+        alert('Could not detect location. Please enter address manually.');
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
+  const verifyPincode = async (pin) => {
+    const clean = String(pin || '').trim().replace(/\D/g, '');
+    if (clean.length !== 6) {
+      setPincodeInfo(null);
+      return;
+    }
+    setPincodeLoading(true);
+    try {
+      const res = await api.lookupPincode(clean);
+      if (res && res.valid) {
+        setPincodeInfo(res);
+        if (res.city) {
+          setPickupCity(res.city);
+        }
+      } else {
+        setPincodeInfo({ valid: false, message: 'Invalid PIN code' });
+      }
+    } catch {
+      setPincodeInfo(null);
+    } finally {
+      setPincodeLoading(false);
+    }
+  };
 
   // Payout Method
   const [beneficiaryType, setBeneficiaryType] = useState('UPI');
@@ -782,39 +864,90 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
 
           {/* Address */}
           <div className="space-y-3">
-            <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-[#0BAA4B]" /> 2. Pickup Address
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-[#0BAA4B]" /> 2. Pickup Address
+              </h4>
+              <button
+                type="button"
+                onClick={handleDetectLocation}
+                disabled={detectingLocation}
+                className="text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded-lg border border-emerald-300/80 transition flex items-center gap-1"
+              >
+                {detectingLocation ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin"></span>
+                    Detecting GPS...
+                  </>
+                ) : (
+                  <>📍 Use Current Location</>
+                )}
+              </button>
+            </div>
             <textarea
               required
               rows={2}
               value={pickupAddress}
               onChange={(e) => setPickupAddress(e.target.value)}
-              placeholder="Door No, Street Name, Area / Landmark"
+              placeholder="Door No, Flat/House Name, Street Name, Landmark"
               className="w-full p-2.5 glass-input rounded-xl font-medium"
             />
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block font-bold text-[#17251C] mb-1">City</label>
+                <label className="block font-bold text-[#17251C] mb-1">City / Region</label>
                 <input
                   type="text"
                   required
                   value={pickupCity}
                   onChange={(e) => setPickupCity(e.target.value)}
+                  placeholder="e.g. Chennai"
                   className="w-full p-2.5 glass-input rounded-xl font-bold"
                 />
               </div>
               <div>
-                <label className="block font-bold text-[#17251C] mb-1">Pincode</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-[#17251C]">PIN Code</label>
+                  {pincodeLoading && <span className="text-[10px] text-emerald-600 animate-pulse font-bold">Checking...</span>}
+                </div>
                 <input
                   type="text"
                   required
+                  maxLength={6}
                   value={pickupPincode}
-                  onChange={(e) => setPickupPincode(e.target.value)}
-                  className="w-full p-2.5 glass-input rounded-xl font-bold"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setPickupPincode(val);
+                    if (val.length === 6) {
+                      verifyPincode(val);
+                    } else {
+                      setPincodeInfo(null);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (pickupPincode && pickupPincode.length === 6) verifyPincode(pickupPincode);
+                  }}
+                  placeholder="e.g. 600028"
+                  className="w-full p-2.5 glass-input rounded-xl font-bold font-mono tracking-wider"
                 />
               </div>
             </div>
+
+            {/* Pincode Resolution Status Banner */}
+            {pincodeInfo && (
+              <div className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${pincodeInfo.valid ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'}`}>
+                {pincodeInfo.valid ? (
+                  <>
+                    <span>✓</span>
+                    <span>Verified: {pincodeInfo.city}, {pincodeInfo.state} &middot; Doorstep Service Active</span>
+                  </>
+                ) : (
+                  <>
+                    <span>⚠️</span>
+                    <span>{pincodeInfo.message || 'Invalid PIN code'}</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Date & Slot */}
@@ -824,7 +957,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 <Calendar className="w-4 h-4 text-[#0BAA4B]" /> 3. Preferred Date & Time
               </h4>
               <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300/60">
-                Earliest: Tomorrow
+                {isAfter8PMCutoff() ? 'Late Night: +2 Days Lead' : 'Earliest: Tomorrow'}
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -832,11 +965,11 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                 <input
                   type="date"
                   required
-                  min={getTomorrowDateStr()}
+                  min={getEarliestPickupDateStr()}
                   value={pickupDate}
                   onChange={(e) => {
                     const val = e.target.value;
-                    const minDate = getTomorrowDateStr();
+                    const minDate = getEarliestPickupDateStr();
                     if (val < minDate) {
                       setPickupDate(minDate);
                     } else {
@@ -846,7 +979,9 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                   className="w-full p-2.5 glass-input rounded-xl font-bold"
                 />
                 <p className="text-[10px] text-emerald-700 font-semibold mt-1">
-                  ⚡ Same-day slots are closed for logistics dispatch.
+                  {isAfter8PMCutoff()
+                    ? '⚡ Booked after 8:00 PM: Dispatched for day after tomorrow.'
+                    : '⚡ Same-day slots closed for dispatch. Earliest: Tomorrow.'}
                 </p>
               </div>
               <div>

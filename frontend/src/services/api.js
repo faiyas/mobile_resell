@@ -134,6 +134,8 @@ export const api = {
   acceptOffer: (id) => request(`/sales/${id}/accept-offer/`, { method: 'POST' }),
   rejectOffer: (id) => request(`/sales/${id}/reject-offer/`, { method: 'POST' }),
   assignPickup: (id, payload) => request(`/sales/${id}/schedule-pickup/`, { method: 'POST', body: JSON.stringify(payload) }),
+  shiftPickupToNextDay: (id, payload = {}) => request(`/sales/${id}/shift-next-day/`, { method: 'POST', body: JSON.stringify(payload) }),
+  lookupPincode: (pincode) => request(`/sales/pincode-lookup/?pincode=${pincode}`),
   transferOwnership: (id, payload) => request(`/sales/${id}/transfer-ownership/`, { method: 'POST', body: JSON.stringify(payload) }),
   adminApproveFinalOffer: (id, payload) => request(`/sales/${id}/approve-final-offer/`, { method: 'POST', body: JSON.stringify(payload) }),
 

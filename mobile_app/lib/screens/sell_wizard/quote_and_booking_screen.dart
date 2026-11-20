@@ -64,7 +64,34 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
 
   String _payoutType = 'UPI';
   String _pickupSlot = 'Morning (10:00 AM - 1:00 PM)';
-  DateTime _pickupDate = DateTime.now().add(const Duration(days: 1));
+  late DateTime _pickupDate;
+  bool _pincodeLoading = false;
+  Map<String, dynamic>? _pincodeInfo;
+
+  static DateTime _getEarliestPickupDate() {
+    final now = DateTime.now();
+    // 8:00 PM (20:00) cutoff rule:
+    final leadDays = now.hour >= 20 ? 2 : 1;
+    return now.add(Duration(days: leadDays));
+  }
+
+  void _verifyPincode(String pin) async {
+    final clean = pin.trim().replaceAll(RegExp(r'\D'), '');
+    if (clean.length != 6) {
+      if (mounted) setState(() => _pincodeInfo = null);
+      return;
+    }
+    setState(() => _pincodeLoading = true);
+    final res = await _api.lookupPincode(clean);
+    if (!mounted) return;
+    setState(() {
+      _pincodeLoading = false;
+      _pincodeInfo = res;
+      if (res != null && res['city'] != null) {
+        _cityController.text = res['city'].toString();
+      }
+    });
+  }
 
   String _formatPickupDate(DateTime dt) {
     final tomorrow = DateTime.now().add(const Duration(days: 1));
@@ -82,8 +109,12 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
   @override
   void initState() {
     super.initState();
+    _pickupDate = _getEarliestPickupDate();
     _prefillFromUser();
     _fetchCalculation();
+    if (_pincodeController.text.trim().length == 6) {
+      _verifyPincode(_pincodeController.text);
+    }
   }
 
   void _prefillFromUser() {
@@ -712,17 +743,59 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                               child: TextFormField(
                                 controller: _pincodeController,
                                 keyboardType: TextInputType.number,
+                                maxLength: 6,
+                                onChanged: (val) {
+                                  if (val.trim().length == 6) {
+                                    _verifyPincode(val);
+                                  } else if (_pincodeInfo != null) {
+                                    setState(() => _pincodeInfo = null);
+                                  }
+                                },
                                 decoration: InputDecoration(
                                   labelText: 'Pincode *',
+                                  counterText: '',
                                   prefixIcon: const Icon(Icons.pin_drop_outlined, color: AppTheme.primaryGreen),
                                   filled: true,
                                   fillColor: Colors.white.withOpacity(0.85),
                                 ),
-                                validator: (val) => val == null || val.trim().length < 6 ? 'Enter pincode' : null,
+                                validator: (val) => val == null || val.trim().length < 6 ? 'Enter 6-digit pincode' : null,
                               ),
                             ),
                           ],
                         ),
+
+                        if (_pincodeLoading) ...[
+                          const SizedBox(height: 6),
+                          const Row(
+                            children: [
+                              SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryGreen)),
+                              SizedBox(width: 8),
+                              Text('Verifying postal coverage...', style: TextStyle(fontSize: 11, color: AppTheme.darkGreen, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ] else if (_pincodeInfo != null) ...[
+                          const SizedBox(height: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryGreen.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.4)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 16),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    '✓ Verified: ${_pincodeInfo!['city']}, ${_pincodeInfo!['state']} · Doorstep Service Active',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.darkGreen),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 12),
 
                         TextFormField(
@@ -737,7 +810,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                         ),
                         const SizedBox(height: 12),
 
-                        // Doorstep Pickup Date Selector (Restricted to Tomorrow Onwards)
+                        // Doorstep Pickup Date Selector (Restricted to Tomorrow Onwards / Cutoff Aware)
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
@@ -747,11 +820,11 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                           ),
                           child: InkWell(
                             onTap: () async {
-                              final tomorrow = DateTime.now().add(const Duration(days: 1));
+                              final earliest = _getEarliestPickupDate();
                               final picked = await showDatePicker(
                                 context: context,
-                                initialDate: _pickupDate.isBefore(tomorrow) ? tomorrow : _pickupDate,
-                                firstDate: tomorrow,
+                                initialDate: _pickupDate.isBefore(earliest) ? earliest : _pickupDate,
+                                firstDate: earliest,
                                 lastDate: DateTime.now().add(const Duration(days: 30)),
                                 builder: (context, child) {
                                   return Theme(
@@ -789,9 +862,9 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                                         color: AppTheme.primaryGreen.withOpacity(0.12),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: const Text(
-                                        'From Tomorrow',
-                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.darkGreen),
+                                      child: Text(
+                                        DateTime.now().hour >= 20 ? '+2 Days Lead' : 'From Tomorrow',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.darkGreen),
                                       ),
                                     ),
                                   ],
@@ -811,9 +884,11 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 4),
-                                const Text(
-                                  '⚡ Same-day slots are closed. Earliest pickup is tomorrow.',
-                                  style: TextStyle(fontSize: 10, color: AppTheme.darkGreen, fontWeight: FontWeight.w600),
+                                Text(
+                                  DateTime.now().hour >= 20
+                                      ? '⚡ Booked after 8:00 PM: Earliest doorstep pickup is Day After Tomorrow.'
+                                      : '⚡ Same-day slots are closed. Earliest doorstep pickup is tomorrow.',
+                                  style: const TextStyle(fontSize: 10, color: AppTheme.darkGreen, fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),

@@ -481,6 +481,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
+  Future<void> _handleShiftToTomorrow(SaleOrderModel order) async {
+    try {
+      await _api.shiftPickupToNextDay(order.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✓ Pickup for ${order.saleCode} shifted to tomorrow morning!'),
+          backgroundColor: AppTheme.primaryGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _loadAdminData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   void _showRecordPayoutDialog(SaleOrderModel order) {
     final utrController = TextEditingController();
     final double amount = order.finalPrice ?? order.estimatedPrice;
@@ -1231,6 +1255,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                   icon: const Icon(Icons.person_add_alt_1_rounded, size: 16, color: AppTheme.primaryGreen),
                                   label: const Text('Assign Agent', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 12)),
                                   onPressed: () => _showAssignAgentDialog(order),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              InkWell(
+                                onTap: () => _handleShiftToTomorrow(order),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.withOpacity(0.12),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: Colors.amber.shade600.withOpacity(0.5)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.forward_rounded, size: 14, color: Colors.amber.shade900),
+                                      const SizedBox(width: 4),
+                                      Text('Next Day', style: TextStyle(color: Colors.amber.shade900, fontWeight: FontWeight.bold, fontSize: 11)),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ],

@@ -119,6 +119,17 @@ export default function AdminDashboard({ currentUser }) {
     }
   };
 
+  const handleShiftToTomorrow = async (saleId) => {
+    try {
+      await api.shiftPickupToNextDay(saleId);
+      setSuccessToast('✓ Pickup successfully shifted to tomorrow!');
+      setTimeout(() => setSuccessToast(''), 3500);
+      loadDashboardData();
+    } catch (err) {
+      alert(err.message || 'Failed to shift pickup');
+    }
+  };
+
   const handleUpdateDeduction = async (e) => {
     e.preventDefault();
     if (!editingOption) return;
@@ -422,12 +433,21 @@ export default function AdminDashboard({ currentUser }) {
                     </td>
                     <td className="py-3.5 px-3 text-right space-x-1">
                       {['SUBMITTED', 'PICKUP_SCHEDULED'].includes(s.status) && (
-                        <button
-                          onClick={() => handleOpenAssignModal(s)}
-                          className="px-2.5 py-1 bg-slate-900 hover:bg-black text-white rounded-lg text-[11px] font-bold transition"
-                        >
-                          Schedule
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleOpenAssignModal(s)}
+                            className="px-2.5 py-1 bg-slate-900 hover:bg-black text-white rounded-lg text-[11px] font-bold transition"
+                          >
+                            Schedule
+                          </button>
+                          <button
+                            onClick={() => handleShiftToTomorrow(s.id || s.sale_code)}
+                            className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-lg text-[11px] font-bold transition"
+                            title="Shift this pickup to tomorrow"
+                          >
+                            ⏩ Next Day
+                          </button>
+                        </>
                       )}
                       {['OWNERSHIP_TRANSFERRED', 'CUSTOMER_ACCEPTED'].includes(s.status) && (
                         <button

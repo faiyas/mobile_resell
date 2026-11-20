@@ -9,16 +9,40 @@ from django.db import transaction
 from django.shortcuts import get_object_or_404
 from .models import PhoneSale, PhoneSaleConditionAnswer
 from .serializers import PhoneSaleDetailSerializer, PhoneSaleListSerializer, PhoneSaleCreateSerializer
+from .pincode_helper import resolve_pincode
 from apps.catalog.models import StorageVariant
 from apps.valuation.models import ConditionOption, ModelPricingOverride
 from apps.accounts.models import User
 
 IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
 
+def _auto_shift_overdue_pickups():
+    """Automatically shifts uncollected/missed pickups from past dates to tomorrow morning queue."""
+    try:
+        now_ist = timezone.now().astimezone(IST)
+        today_ist = now_ist.date()
+        tomorrow_ist = today_ist + datetime.timedelta(days=1)
+
+        overdue_orders = PhoneSale.objects.filter(
+            status__in=['SUBMITTED', 'PICKUP_SCHEDULED'],
+            pickup_date__lt=today_ist
+        )
+        for s in overdue_orders:
+            orig = s.pickup_date.strftime('%d %b %Y') if s.pickup_date else 'Past Date'
+            s.pickup_date = tomorrow_ist
+            s.pickup_slot = 'Morning (10:00 AM - 1:00 PM)'
+            note = f"[Auto-Shift] Missed pickup on {orig}. Shifted to {tomorrow_ist.strftime('%d %b %Y')} (Morning Slot)."
+            if note not in (s.admin_notes or ''):
+                s.admin_notes = (s.admin_notes + '\n' + note).strip() if s.admin_notes else note
+            s.save(update_fields=['pickup_date', 'pickup_slot', 'admin_notes'])
+    except Exception:
+        pass
+
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def sales_list_create_view(request):
     if request.method == 'GET':
+        _auto_shift_overdue_pickups()
         user = request.user
         queryset = PhoneSale.objects.all().select_related('variant__model__brand', 'assigned_agent')
 
@@ -111,11 +135,17 @@ def sales_list_create_view(request):
 
         estimated_price = max(base_price - total_deduction, min_price)
 
-        # Pickup date enforcement: If customer books today, earliest pickup is TOMORROW!
-        tomorrow_date = (timezone.now().astimezone(IST) + datetime.timedelta(days=1)).date()
+        # Pickup lead-time & cutoff enforcement:
+        # Same-day pickup is never permitted.
+        # If booking after 8:00 PM (20:00 IST), next-day morning slots cannot be dispatched, so earliest is +2 days.
+        # If booking before 8:00 PM, earliest is tomorrow (+1 day).
+        now_ist = timezone.now().astimezone(IST)
+        lead_days = 2 if now_ist.hour >= 20 else 1
+        earliest_pickup_date = (now_ist + datetime.timedelta(days=lead_days)).date()
+
         req_pickup_date = data.get('pickup_date')
-        if not req_pickup_date or req_pickup_date < tomorrow_date:
-            final_pickup_date = tomorrow_date
+        if not req_pickup_date or req_pickup_date < earliest_pickup_date:
+            final_pickup_date = earliest_pickup_date
         else:
             final_pickup_date = req_pickup_date
 
@@ -355,3 +385,46 @@ def admin_approve_final_offer_view(request, pk):
     
     sale.save()
     return Response({'message': 'Final offer updated', 'sale': PhoneSaleDetailSerializer(sale).data})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def shift_pickup_to_next_day_view(request, pk):
+    """Admin or Collection Agent manually shifts an order to tomorrow (or next available day)"""
+    if request.user.role not in ['ADMIN', 'COLLECTION_AGENT']:
+        return Response({'detail': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    sale = _get_sale_instance(pk)
+    if not sale:
+        return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
+
+    now_ist = timezone.now().astimezone(IST)
+    tomorrow_ist = (now_ist + datetime.timedelta(days=1)).date()
+
+    cur_date = sale.pickup_date or now_ist.date()
+    # Shift either to tomorrow or cur_date + 1 day
+    new_date = max(tomorrow_ist, cur_date + datetime.timedelta(days=1))
+    orig_str = sale.pickup_date.strftime('%d %b %Y') if sale.pickup_date else 'Unscheduled'
+
+    sale.pickup_date = new_date
+    sale.pickup_slot = request.data.get('pickup_slot') or 'Morning (10:00 AM - 1:00 PM)'
+    if sale.status in ['SUBMITTED', 'INSPECTION_PENDING']:
+        sale.status = 'PICKUP_SCHEDULED'
+
+    actor = getattr(request.user, 'full_name', '') or request.user.username
+    audit = f"[{now_ist.strftime('%d %b, %I:%M %p')}] Rescheduled from {orig_str} to {new_date.strftime('%d %b %Y')} by {actor}."
+    sale.admin_notes = (sale.admin_notes + '\n' + audit).strip() if sale.admin_notes else audit
+    sale.save()
+
+    return Response({
+        'message': f'Pickup successfully shifted to {new_date.strftime("%d %b %Y")}',
+        'sale': PhoneSaleDetailSerializer(sale).data
+    })
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def pincode_lookup_view(request):
+    """Validates 6-digit PIN code and resolves city/state/serviceability"""
+    pincode = request.GET.get('pincode', '')
+    res = resolve_pincode(pincode)
+    return Response(res, status=status.HTTP_200_OK if res.get('valid') else status.HTTP_400_BAD_REQUEST)
+
