@@ -446,6 +446,39 @@ class ApiService {
     return null;
   }
 
+  Future<Map<String, dynamic>> markDeviceCollected(dynamic saleId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/mark-collected/');
+    final res = await http.post(url, headers: _headers);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to mark device as collected');
+    }
+  }
+
+  Future<Map<String, dynamic>> acceptFinalOffer(dynamic saleId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/accept-offer/');
+    final res = await http.post(url, headers: _headers);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to accept offer');
+    }
+  }
+
+  Future<Map<String, dynamic>> rejectFinalOffer(dynamic saleId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/reject-offer/');
+    final res = await http.post(url, headers: _headers);
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to reject offer');
+    }
+  }
+
   Future<Map<String, dynamic>> recordPayout(Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/payments/record-payout/');
     final res = await http.post(

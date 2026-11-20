@@ -9,6 +9,7 @@ from .views import (
     admin_approve_final_offer_view,
     shift_pickup_to_next_day_view,
     pincode_lookup_view,
+    mark_device_collected_view,
 )
 
 urlpatterns = [
@@ -21,6 +22,8 @@ urlpatterns = [
     path('<str:pk>/schedule_pickup/', assign_pickup_view, name='sales-schedule-pickup-under'),
     path('<str:pk>/assign-pickup/', assign_pickup_view, name='sales-assign-pickup'),
     path('<str:pk>/assign_pickup/', assign_pickup_view, name='sales-assign-pickup-under'),
+    path('<str:pk>/mark-collected/', mark_device_collected_view, name='sales-mark-collected'),
+    path('<str:pk>/mark_collected/', mark_device_collected_view, name='sales-mark-collected-under'),
     path('<str:pk>/shift-next-day/', shift_pickup_to_next_day_view, name='sales-shift-next-day'),
     path('<str:pk>/shift_next_day/', shift_pickup_to_next_day_view, name='sales-shift-next-day-under'),
     path('<str:pk>/transfer-ownership/', transfer_ownership_view, name='sales-transfer-ownership'),

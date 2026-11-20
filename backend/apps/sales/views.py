@@ -270,8 +270,39 @@ def accept_final_offer_view(request, pk):
         return Response({'detail': f'Cannot accept offer in state: {sale.status}'}, status=status.HTTP_400_BAD_REQUEST)
 
     sale.status = 'CUSTOMER_ACCEPTED'
+    now_ist = timezone.now().astimezone(IST)
+    audit = f"[{now_ist.strftime('%d %b, %I:%M %p')}] Customer confirmed & accepted final buyback price of ₹{sale.final_price}. Awaiting agent physical device collection."
+    sale.admin_notes = (sale.admin_notes + '\n' + audit).strip() if sale.admin_notes else audit
     sale.save()
     return Response({'message': 'Offer accepted successfully', 'status': sale.status, 'sale': PhoneSaleDetailSerializer(sale).data})
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def mark_device_collected_view(request, pk):
+    """Agent records physical device collection after customer confirmed offer"""
+    if request.user.role not in ['ADMIN', 'COLLECTION_AGENT']:
+        return Response({'detail': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    sale = _get_sale_instance(pk)
+    if not sale:
+        return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
+
+    if sale.status not in ['CUSTOMER_ACCEPTED', 'FINAL_OFFER_SENT']:
+        return Response({'detail': f'Device cannot be marked collected in status: {sale.status}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    now_ist = timezone.now().astimezone(IST)
+    agent_name = getattr(request.user, 'full_name', '') or request.user.username
+    sale.status = 'OWNERSHIP_TRANSFERRED'
+    sale.customer_handover_signed = True
+    audit = f"[{now_ist.strftime('%d %b, %I:%M %p')}] Physical device collected by agent {agent_name}. Device in company custody. Unlocked for Super Admin payout release."
+    sale.admin_notes = (sale.admin_notes + '\n' + audit).strip() if sale.admin_notes else audit
+    sale.save()
+
+    return Response({
+        'message': 'Device successfully collected! Ready for Super Admin payout release.',
+        'status': sale.status,
+        'sale': PhoneSaleDetailSerializer(sale).data
+    })
 
 @api_view(['POST'])
 @permission_classes([AllowAny])

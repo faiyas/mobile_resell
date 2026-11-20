@@ -252,16 +252,18 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
     setState(() => _loading = true);
     try {
       final list = await _api.getSales();
+      // Filter strictly to pending orders needing inspection (inspected orders are NOT shown in QC)
+      final pendingQC = list.where((s) => ['SUBMITTED', 'PICKUP_SCHEDULED', 'INSPECTION_PENDING'].contains(s.status)).toList();
       if (mounted) {
         setState(() {
-          _sales = list;
+          _sales = pendingQC;
           if (widget.initialSale != null && _selectedSale != null) {
-            final matching = list.where((s) => s.id == _selectedSale!.id).firstOrNull;
+            final matching = pendingQC.where((s) => s.id == _selectedSale!.id).firstOrNull;
             if (matching != null) {
               _selectSale(matching);
             }
-          } else if (list.isNotEmpty) {
-            _selectSale(list.first);
+          } else if (pendingQC.isNotEmpty) {
+            _selectSale(pendingQC.first);
           } else {
             _selectedSale = null;
           }
@@ -338,16 +340,33 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
         }).toList(),
       };
 
-      final res = await _api.recordInspection(payload);
+      await _api.recordInspection(payload);
 
       if (!mounted) return;
+      final completedCode = _selectedSale?.saleCode ?? 'Device';
+      final completedId = _selectedSale?.id;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✓ QC Inspection Completed for $completedCode!\nFinal price ₹${price.toStringAsFixed(0)} sent to Customer for confirmation.'),
+          backgroundColor: AppTheme.primaryGreen,
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
       setState(() {
         _isSuccess = true;
-        _feedbackMessage = '✓ Inspection Recorded! Status: ${res['sale_status'] ?? 'OWNERSHIP_TRANSFERRED'} · Ready for Payout.';
+        _feedbackMessage = '✓ Inspected! Final offer ₹${price.toStringAsFixed(0)} sent to Customer for confirmation.';
         _submitting = false;
+        // Immediately remove inspected order from QC section
+        _sales.removeWhere((s) => s.id == completedId);
+        if (_sales.isNotEmpty) {
+          _selectSale(_sales.first);
+        } else {
+          _selectedSale = null;
+        }
       });
-
-      _loadSales();
     } catch (err) {
       if (!mounted) return;
       setState(() {

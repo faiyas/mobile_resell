@@ -25,7 +25,10 @@ def record_inspection_view(request):
 
     data = serializer.validated_data
     sale_id = data['sale_id']
-    sale = get_object_or_404(PhoneSale, id=sale_id)
+    from apps.sales.views import _get_sale_instance
+    sale = _get_sale_instance(sale_id)
+    if not sale:
+        return Response({'detail': f'Sale order not found for identifier: {sale_id}'}, status=status.HTTP_404_NOT_FOUND)
 
     with transaction.atomic():
         # Check if already inspected, update or create
@@ -49,7 +52,10 @@ def record_inspection_view(request):
             }
         )
 
-        # Save Base64 photos
+        # Clear existing photos if re-inspecting and attach Base64 photos
+        if not created:
+            inspection.photos.all().delete()
+
         photos_data = data.get('photos', [])
         for photo_item in photos_data:
             InspectionPhoto.objects.create(
@@ -58,16 +64,14 @@ def record_inspection_view(request):
                 image_base64=photo_item['image_base64']
             )
 
-        # Update sale
+        # Update sale: set verified IMEI, final recommended price, and advance to FINAL_OFFER_SENT
         sale.imei_number = data['verified_imei']
         sale.final_price = data['suggested_final_price']
+        sale.status = 'FINAL_OFFER_SENT'
         
-        # If suggested price == estimated price, advance smoothly, otherwise notify customer
-        if sale.suggested_final_price_matches_estimate():
-            sale.status = 'OWNERSHIP_TRANSFERRED'
-        else:
-            sale.status = 'FINAL_OFFER_SENT'
-        
+        inspector_name = getattr(request.user, 'full_name', '') or request.user.username
+        audit = f"[Doorstep QC] Inspected by {inspector_name}. Verified IMEI: {sale.imei_number}. Final Buyback Offer: ₹{sale.final_price}. Sent to customer for confirmation."
+        sale.admin_notes = (sale.admin_notes + '\n' + audit).strip() if sale.admin_notes else audit
         sale.save()
 
     return Response({

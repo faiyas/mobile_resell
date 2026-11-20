@@ -31,6 +31,10 @@ export default function AdminDashboard({ currentUser }) {
   // Receipt view modal
   const [receiptData, setReceiptData] = useState(null);
 
+  // End-to-End Tracing Modal
+  const [traceSale, setTraceSale] = useState(null);
+  const [traceLoading, setTraceLoading] = useState(false);
+
   // Edit condition option modal
   const [editingOption, setEditingOption] = useState(null);
   const [newDeductionValue, setNewDeductionValue] = useState('');
@@ -63,10 +67,23 @@ export default function AdminDashboard({ currentUser }) {
     }
   };
 
-  // Metrics
+  // Metrics: Payout is strictly available ONLY after device is physically collected (OWNERSHIP_TRANSFERRED)
   const pendingInspectionsCount = sales.filter(s => ['SUBMITTED', 'PICKUP_SCHEDULED', 'PICKED_UP', 'INSPECTION_PENDING'].includes(s.status)).length;
-  const awaitingPayoutsCount = sales.filter(s => ['OWNERSHIP_TRANSFERRED', 'CUSTOMER_ACCEPTED'].includes(s.status)).length;
+  const awaitingPayoutsCount = sales.filter(s => s.status === 'OWNERSHIP_TRANSFERRED').length;
   const completedCount = sales.filter(s => s.status === 'PAYMENT_COMPLETED').length;
+
+  const handleOpenTraceModal = async (s) => {
+    setTraceSale(s);
+    setTraceLoading(true);
+    try {
+      const fullDetail = await api.getSaleDetail(s.id || s.sale_code);
+      setTraceSale(fullDetail);
+    } catch {
+      // retain basic data
+    } finally {
+      setTraceLoading(false);
+    }
+  };
 
   const getTomorrowDateStr = () => {
     const d = new Date();
@@ -431,7 +448,14 @@ export default function AdminDashboard({ currentUser }) {
                         {s.status.replace(/_/g, ' ')}
                       </span>
                     </td>
-                    <td className="py-3.5 px-3 text-right space-x-1">
+                    <td className="py-3.5 px-3 text-right space-x-1 whitespace-nowrap">
+                      <button
+                        onClick={() => handleOpenTraceModal(s)}
+                        className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-[11px] font-bold transition"
+                        title="View Complete End-to-End Tracing"
+                      >
+                        🔍 Trace
+                      </button>
                       {['SUBMITTED', 'PICKUP_SCHEDULED'].includes(s.status) && (
                         <>
                           <button
@@ -449,10 +473,20 @@ export default function AdminDashboard({ currentUser }) {
                           </button>
                         </>
                       )}
-                      {['OWNERSHIP_TRANSFERRED', 'CUSTOMER_ACCEPTED'].includes(s.status) && (
+                      {s.status === 'FINAL_OFFER_SENT' && (
+                        <span className="inline-block px-2 py-0.5 bg-amber-100 text-amber-900 font-bold rounded-lg text-[10px]">
+                          Awaiting Customer
+                        </span>
+                      )}
+                      {s.status === 'CUSTOMER_ACCEPTED' && (
+                        <span className="inline-block px-2 py-0.5 bg-blue-100 text-blue-900 font-bold rounded-lg text-[10px]">
+                          Confirmed · Awaiting Collection
+                        </span>
+                      )}
+                      {s.status === 'OWNERSHIP_TRANSFERRED' && (
                         <button
                           onClick={() => setPayoutSale(s)}
-                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition"
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition shadow-sm"
                         >
                           Payout
                         </button>
@@ -670,6 +704,190 @@ export default function AdminDashboard({ currentUser }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* End-to-End Buyback Lifecycle Trace Modal */}
+      {traceSale && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">Super Admin Lifecycle Audit Trace</span>
+                <h3 className="font-black text-lg text-slate-900 flex items-center gap-2">
+                  Order {traceSale.sale_code}
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    traceSale.status === 'PAYMENT_COMPLETED' ? 'bg-emerald-100 text-emerald-800' :
+                    traceSale.status === 'OWNERSHIP_TRANSFERRED' ? 'bg-blue-100 text-blue-800' :
+                    traceSale.status === 'CUSTOMER_ACCEPTED' ? 'bg-indigo-100 text-indigo-800' :
+                    traceSale.status === 'FINAL_OFFER_SENT' ? 'bg-amber-100 text-amber-800' :
+                    'bg-slate-100 text-slate-700'
+                  }`}>
+                    {traceSale.status.replace(/_/g, ' ')}
+                  </span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setTraceSale(null)}
+                className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* 6-Stage Visual Stepper */}
+            <div className="space-y-4">
+              {/* STAGE 1: Order Placement */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between mb-1.5">
+                  <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">1</span>
+                    Order Placed & Initial Valuation
+                  </h4>
+                  <span className="text-[10px] text-slate-500">{traceSale.created_at_ist || 'Placed'}</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px] text-slate-600 mt-2">
+                  <div><strong>Customer:</strong> {traceSale.customer_name} ({traceSale.customer_phone})</div>
+                  <div><strong>Device:</strong> {traceSale.brand_name} {traceSale.model_name}</div>
+                  <div><strong>Address:</strong> {traceSale.pickup_address}, {traceSale.pickup_city} - {traceSale.pickup_pincode}</div>
+                  <div><strong>Quoted Estimate:</strong> ₹{Number(traceSale.estimated_price).toLocaleString('en-IN')}</div>
+                  <div><strong>Payout Method:</strong> {traceSale.beneficiary_type}: {traceSale.beneficiary_upi_id || traceSale.beneficiary_account_no}</div>
+                </div>
+              </div>
+
+              {/* STAGE 2: Pickup Scheduled */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between mb-1.5">
+                  <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">2</span>
+                    Doorstep Pickup Scheduled
+                  </h4>
+                  <span className="text-[10px] text-slate-500">{traceSale.pickup_date || 'Not Scheduled'}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 mt-2">
+                  <div><strong>Assigned Agent:</strong> {traceSale.assigned_agent_name || 'Awaiting Agent'}</div>
+                  <div><strong>Time Slot:</strong> {traceSale.pickup_slot || 'Morning Slot'}</div>
+                </div>
+              </div>
+
+              {/* STAGE 3: Doorstep QC Inspection & Photos */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between mb-1.5">
+                  <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">3</span>
+                    Doorstep QC Inspection & IMEI Verification
+                  </h4>
+                  <span className="text-[10px] text-slate-500">{traceSale.inspection ? 'Completed' : 'Pending'}</span>
+                </div>
+                {traceSale.inspection ? (
+                  <div className="space-y-2 mt-2 text-[11px]">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-slate-700">
+                      <div><strong>Inspected By:</strong> {traceSale.inspection.inspector_name || 'Field Specialist'}</div>
+                      <div><strong>Verified IMEI:</strong> <span className="font-mono font-bold text-indigo-700">{traceSale.inspection.verified_imei || traceSale.imei_number}</span></div>
+                      <div><strong>QC Final Price:</strong> <span className="font-bold text-emerald-700">₹{Number(traceSale.inspection.suggested_final_price || traceSale.final_price).toLocaleString('en-IN')}</span></div>
+                    </div>
+                    {traceSale.inspection.inspector_notes && (
+                      <p className="p-2 bg-white rounded-lg border border-slate-200 text-slate-600 italic">
+                        "{traceSale.inspection.inspector_notes}"
+                      </p>
+                    )}
+                    {/* QC Proof Photos */}
+                    {traceSale.inspection.photos && traceSale.inspection.photos.length > 0 && (
+                      <div>
+                        <span className="block font-bold text-slate-700 mb-1">Physical Device Photos (Proof):</span>
+                        <div className="grid grid-cols-4 gap-2">
+                          {traceSale.inspection.photos.map((ph, idx) => (
+                            <div key={idx} className="border border-slate-200 rounded-lg overflow-hidden bg-white p-1 text-center">
+                              <img src={ph.image_base64} alt={ph.label} className="w-full h-16 object-contain rounded" />
+                              <span className="text-[9px] text-slate-500 block truncate">{ph.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 italic text-[11px] mt-1">QC inspection has not yet been conducted by agent.</p>
+                )}
+              </div>
+
+              {/* STAGE 4: Customer Confirmation */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between mb-1.5">
+                  <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">4</span>
+                    Customer Price Confirmation
+                  </h4>
+                  <span className={`text-[10px] font-bold ${['CUSTOMER_ACCEPTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED'].includes(traceSale.status) ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {['CUSTOMER_ACCEPTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED'].includes(traceSale.status) ? 'Confirmed ✓' : 'Awaiting Confirmation'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 mt-1">
+                  {['CUSTOMER_ACCEPTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED'].includes(traceSale.status)
+                    ? `Customer accepted the final buyback price of ₹${Number(traceSale.final_price || traceSale.estimated_price).toLocaleString('en-IN')}.`
+                    : 'Customer has not yet reviewed / accepted the final offer price.'}
+                </p>
+              </div>
+
+              {/* STAGE 5: Physical Device Collection */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between mb-1.5">
+                  <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">5</span>
+                    Physical Device Collection & Handover
+                  </h4>
+                  <span className={`text-[10px] font-bold ${['OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED'].includes(traceSale.status) ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {['OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED'].includes(traceSale.status) ? 'Collected ✓' : 'Pending Collection'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 mt-1">
+                  {['OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED'].includes(traceSale.status)
+                    ? 'Device collected by agent. Physical phone is in company custody. Super Admin payout authorized.'
+                    : 'Device has not been collected yet. Agent must physically collect device after customer confirmation.'}
+                </p>
+              </div>
+
+              {/* STAGE 6: Super Admin Payout */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between mb-1.5">
+                  <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px]">6</span>
+                    Super Admin Instant Payout
+                  </h4>
+                  <span className={`text-[10px] font-bold ${traceSale.status === 'PAYMENT_COMPLETED' ? 'text-emerald-700' : 'text-slate-400'}`}>
+                    {traceSale.status === 'PAYMENT_COMPLETED' ? 'Paid ✓' : 'Pending'}
+                  </span>
+                </div>
+                {traceSale.payment || traceSale.status === 'PAYMENT_COMPLETED' ? (
+                  <div className="mt-2 text-[11px] text-slate-700 space-y-1">
+                    <div><strong>Paid Amount:</strong> ₹{Number(traceSale.final_price || traceSale.estimated_price).toLocaleString('en-IN')}</div>
+                    {traceSale.payment && (
+                      <>
+                        <div><strong>UTR Number:</strong> <span className="font-mono font-bold text-emerald-800">{traceSale.payment.utr_number}</span></div>
+                        <div><strong>Paid At:</strong> {traceSale.payment.paid_at}</div>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 italic text-[11px] mt-1">
+                    {traceSale.status === 'OWNERSHIP_TRANSFERRED'
+                      ? 'Device collected! Super Admin can now disburse instant payout.'
+                      : 'Payout will unlock once the physical device is marked as collected.'}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setTraceSale(null)}
+                className="px-4 py-2 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition"
+              >
+                Close Trace
+              </button>
+            </div>
           </div>
         </div>
       )}

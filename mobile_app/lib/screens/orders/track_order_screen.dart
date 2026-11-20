@@ -40,6 +40,69 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     }
   }
 
+  Future<void> _acceptOffer(SaleOrderModel order) async {
+    setState(() => _loading = true);
+    try {
+      await _api.acceptFinalOffer(order.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✓ Final buyback offer accepted! Please hand over device to agent.'),
+          backgroundColor: AppTheme.primaryGreen,
+          duration: Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _lookupOrder(order.saleCode);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
+  Future<void> _rejectOffer(SaleOrderModel order) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Decline Buyback Offer?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('If declined, the device inspection will be closed and the agent will return the phone to you immediately.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Decline Offer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    setState(() => _loading = true);
+    try {
+      await _api.rejectFinalOffer(order.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Offer declined. Device return initiated.'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _lookupOrder(order.saleCode);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -357,11 +420,13 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
   }
 
   Widget _buildOrderTimelineCard(SaleOrderModel order) {
-    // Stage Calculation
+    // Stage Calculation for 6-Milestone Lifecycle
     int currentStage = 1;
-    if (order.status == 'PICKUP_SCHEDULED') currentStage = 3;
-    if (order.status == 'FINAL_OFFER_SENT' || order.status == 'OWNERSHIP_TRANSFERRED') currentStage = 4;
-    if (order.status == 'PAYMENT_COMPLETED') currentStage = 5;
+    if (order.status == 'PICKUP_SCHEDULED') currentStage = 2;
+    if (order.status == 'FINAL_OFFER_SENT') currentStage = 3;
+    if (order.status == 'CUSTOMER_ACCEPTED') currentStage = 4;
+    if (order.status == 'OWNERSHIP_TRANSFERRED') currentStage = 5;
+    if (order.status == 'PAYMENT_COMPLETED') currentStage = 6;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -423,6 +488,142 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
 
         const SizedBox(height: 16),
 
+        // Action Banners based on customer approval stage
+        if (order.status == 'FINAL_OFFER_SENT') ...[
+          GlassContainer(
+            padding: const EdgeInsets.all(20),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.amber.shade600, width: 2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(10)),
+                      child: Icon(Icons.rate_review_rounded, color: Colors.amber.shade900, size: 22),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('ACTION REQUIRED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.amber, letterSpacing: 0.8)),
+                          Text('Review Final Buyback Offer', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.textPrimary)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Doorstep inspection is completed for your ${order.brandName} ${order.modelName}. Please review the final price below:',
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                ),
+                if (order.imeiNumber != null && order.imeiNumber!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text('Verified IMEI: ${order.imeiNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
+                ],
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGreen.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Final Agreed Payout:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                      Text(
+                        '₹${(order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)}',
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: AppTheme.primaryGreen),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.redAccent),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () => _rejectOffer(order),
+                        child: const Text('Decline', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      flex: 3,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryGreen,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        onPressed: () => _acceptOffer(order),
+                        child: const Text('Accept Offer ✓', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ] else if (order.status == 'CUSTOMER_ACCEPTED') ...[
+          GlassContainer(
+            padding: const EdgeInsets.all(16),
+            borderRadius: BorderRadius.circular(20),
+            child: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 26),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Offer Accepted (₹${(order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)})', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.darkGreen)),
+                      const SizedBox(height: 2),
+                      Text('Please hand over the physical device to agent ${order.assignedAgentName ?? "Specialist"}.', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ] else if (order.status == 'OWNERSHIP_TRANSFERRED') ...[
+          GlassContainer(
+            padding: const EdgeInsets.all(16),
+            borderRadius: BorderRadius.circular(20),
+            child: const Row(
+              children: [
+                Icon(Icons.inventory_2_rounded, color: Colors.blue, size: 26),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Device Collected by Agent', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Colors.blue)),
+                      SizedBox(height: 2),
+                      Text('Device is in company custody. Super Admin is releasing your instant payout.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+
         // 2. Timeline Card
         GlassContainer(
           padding: const EdgeInsets.all(22),
@@ -431,45 +632,52 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Live Pickup & Payout Progress',
+                'Live 6-Stage Pickup & Payout Progress',
                 style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
               ),
               const SizedBox(height: 18),
               _buildTimelineStep(
-                title: 'Request Submitted',
+                title: '1. Request Submitted',
                 subtitle: 'Order recorded in 1103 RECELL operations desk',
                 isCompleted: currentStage >= 1,
                 isCurrent: currentStage == 1,
               ),
               _buildTimelineStep(
-                title: 'Quote Generated',
-                subtitle: '₹${order.estimatedPrice.toStringAsFixed(0)} instant valuation locked',
+                title: '2. Pickup Scheduled',
+                subtitle: order.assignedAgentName != null
+                    ? 'Assigned to Agent ${order.assignedAgentName}'
+                    : 'Awaiting field agent assignment',
                 isCompleted: currentStage >= 2,
                 isCurrent: currentStage == 2,
               ),
               _buildTimelineStep(
-                title: 'Pickup Scheduled',
-                subtitle: order.assignedAgentName != null
-                    ? 'Assigned to Agent ${order.assignedAgentName}'
-                    : 'Awaiting field agent assignment',
+                title: '3. Doorstep QC Inspected',
+                subtitle: currentStage >= 3 ? 'Inspection completed by agent · Final offer sent' : '10-point physical inspection & IMEI verification',
                 isCompleted: currentStage >= 3,
                 isCurrent: currentStage == 3,
               ),
               _buildTimelineStep(
-                title: 'Device Collected',
-                subtitle: 'Physical doorstep inspection & IMEI verification',
+                title: '4. Offer Confirmed by Customer',
+                subtitle: currentStage >= 4 ? 'You accepted the final offer amount' : 'Customer reviews & confirms final buyback price',
                 isCompleted: currentStage >= 4,
                 isCurrent: currentStage == 4,
               ),
               _buildTimelineStep(
-                title: 'Final Price & Instant Payment',
-                subtitle: currentStage == 5 ? 'Transferred via UPI · Payout Completed' : 'Transferred via UPI before agent leaves',
+                title: '5. Device Collected',
+                subtitle: currentStage >= 5 ? 'Physical device handed over to agent' : 'Agent verifies customer agreement and collects phone',
                 isCompleted: currentStage >= 5,
                 isCurrent: currentStage == 5,
+              ),
+              _buildTimelineStep(
+                title: '6. Payout Disbursed',
+                subtitle: currentStage >= 6 ? 'Transferred via UPI · Payout Completed' : 'Super Admin releases instant payment',
+                isCompleted: currentStage >= 6,
+                isCurrent: currentStage == 6,
                 isLast: true,
               ),
             ],
           ),
+        ),
         ),
 
         const SizedBox(height: 16),

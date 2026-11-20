@@ -159,6 +159,31 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
     }
   }
 
+  Future<void> _handleMarkCollected(SaleOrderModel order) async {
+    try {
+      await _api.markDeviceCollected(order.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✓ Device ${order.saleCode} physically collected!\nUnlocked for Super Admin payout release.'),
+          backgroundColor: AppTheme.primaryGreen,
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _loadOrders();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   void _confirmLogout() {
     showDialog(
       context: context,
@@ -630,42 +655,125 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
               ),
               const SizedBox(height: 14),
 
-              // Action Button to Start QC Inspection
-              SizedBox(
-                width: double.infinity,
-                child: Container(
+              // Lifecycle Action Buttons based on Order Status
+              if (order.status == 'FINAL_OFFER_SENT') ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppTheme.primaryGreen, AppTheme.darkGreen],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primaryGreen.withOpacity(0.35),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                    color: Colors.amber.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.amber.shade700.withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.hourglass_top_rounded, size: 18, color: Colors.amber.shade800),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Final buyback offer ₹${(order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)} sent to customer.\nAwaiting customer acceptance before collection.',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.amber.shade900),
+                        ),
                       ),
                     ],
                   ),
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+              ] else if (order.status == 'CUSTOMER_ACCEPTED') ...[
+                Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryGreen.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.35)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle_rounded, size: 16, color: AppTheme.primaryGreen),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '✓ Customer accepted offer (₹${(order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)})!',
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: AppTheme.darkGreen),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    icon: const Icon(Icons.fact_check_rounded, size: 18),
-                    label: const Text(
-                      'Start Doorstep QC Inspection',
-                      style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.3),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryGreen,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon: const Icon(Icons.inventory_2_rounded, size: 18),
+                        label: const Text('Mark Device Collected (Handover Signed)', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+                        onPressed: () => _handleMarkCollected(order),
+                      ),
                     ),
-                    onPressed: () => _openInspectionForOrder(order),
+                  ],
+                ),
+              ] else if (order.status == 'OWNERSHIP_TRANSFERRED') ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.verified_rounded, size: 16, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text('Device Collected · Awaiting Super Admin Payout', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue)),
+                    ],
                   ),
                 ),
-              ),
+              ] else ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppTheme.primaryGreen, AppTheme.darkGreen],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryGreen.withOpacity(0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.fact_check_rounded, size: 18),
+                      label: const Text(
+                        'Start Doorstep QC Inspection',
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.3),
+                      ),
+                      onPressed: () => _openInspectionForOrder(order),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         );

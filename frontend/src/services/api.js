@@ -133,6 +133,7 @@ export const api = {
   getSaleDetail: (idOrCode) => request(`/sales/${idOrCode}/`),
   acceptOffer: (id) => request(`/sales/${id}/accept-offer/`, { method: 'POST' }),
   rejectOffer: (id) => request(`/sales/${id}/reject-offer/`, { method: 'POST' }),
+  markDeviceCollected: (id) => request(`/sales/${id}/mark-collected/`, { method: 'POST' }),
   assignPickup: (id, payload) => request(`/sales/${id}/schedule-pickup/`, { method: 'POST', body: JSON.stringify(payload) }),
   shiftPickupToNextDay: (id, payload = {}) => request(`/sales/${id}/shift-next-day/`, { method: 'POST', body: JSON.stringify(payload) }),
   lookupPincode: (pincode) => request(`/sales/pincode-lookup/?pincode=${pincode}`),

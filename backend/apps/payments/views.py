@@ -66,7 +66,14 @@ def record_payout_view(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     data = serializer.validated_data
-    sale = get_object_or_404(PhoneSale, id=data['sale_id'])
+    from apps.sales.views import _get_sale_instance
+    sale = _get_sale_instance(data['sale_id'])
+    if not sale:
+        return Response({'detail': f'Sale order not found for identifier: {data["sale_id"]}'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Ensure device is physically collected before payout release
+    if sale.status not in ['OWNERSHIP_TRANSFERRED', 'CUSTOMER_ACCEPTED']:
+        return Response({'detail': f'Payout blocked: device status is {sale.status}. Physical device collection required.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Ensure sale cannot be paid twice
     if hasattr(sale, 'payment'):
