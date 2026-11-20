@@ -678,7 +678,6 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
             ],
           ),
         ),
-        ),
 
         const SizedBox(height: 16),
 

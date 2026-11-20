@@ -64,7 +64,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
   // Auto-prioritized in Indian Standard Time (IST): Missed/Overdue -> Today Active -> Upcoming
   List<SaleOrderModel> get _queueOrders {
     final list = _sales.where((s) {
-      final isPending = ['SUBMITTED', 'PICKUP_SCHEDULED', 'PICKED_UP', 'INSPECTION_PENDING', 'FINAL_OFFER_SENT'].contains(s.status);
+      final isPending = ['SUBMITTED', 'PICKUP_SCHEDULED', 'PICKED_UP', 'INSPECTION_PENDING', 'FINAL_OFFER_SENT', 'CUSTOMER_ACCEPTED'].contains(s.status);
       if (!isPending) return false;
       if (_searchQuery.isEmpty) return true;
       return s.saleCode.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -171,7 +171,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
           behavior: SnackBarBehavior.floating,
         ),
       );
-      _loadOrders();
+      _loadAgentData();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
