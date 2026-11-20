@@ -68,10 +68,19 @@ export default function AdminDashboard({ currentUser }) {
   const awaitingPayoutsCount = sales.filter(s => ['OWNERSHIP_TRANSFERRED', 'CUSTOMER_ACCEPTED'].includes(s.status)).length;
   const completedCount = sales.filter(s => s.status === 'PAYMENT_COMPLETED').length;
 
+  const getTomorrowDateStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  };
+
   const handleOpenAssignModal = (s) => {
     setAssignSale(s);
     setSelectedAgentId(s.assigned_agent ? String(s.assigned_agent) : (agents[0]?.id ? String(agents[0].id) : ''));
-    setPickupDate(s.pickup_date || new Date().toISOString().split('T')[0]);
+    const tomorrowStr = getTomorrowDateStr();
+    // Default to tomorrow if pickup_date is missing or in the past/today
+    const initialDate = (s.pickup_date && s.pickup_date >= tomorrowStr) ? s.pickup_date : tomorrowStr;
+    setPickupDate(initialDate);
     setPickupSlot(s.pickup_slot || 'Morning (10:00 AM - 1:00 PM)');
   };
 
@@ -80,7 +89,8 @@ export default function AdminDashboard({ currentUser }) {
     if (!assignSale) return;
     setAssigningLoading(true);
     try {
-      await api.assignPickup(assignSale.id, {
+      const targetId = assignSale.id || assignSale.sale_code;
+      await api.assignPickup(targetId, {
         agent_id: selectedAgentId,
         pickup_date: pickupDate,
         pickup_slot: pickupSlot,
@@ -545,14 +555,27 @@ export default function AdminDashboard({ currentUser }) {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Pickup Date</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">Pickup Date</label>
+                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    Available Tomorrow Onwards
+                  </span>
+                </div>
                 <input
                   type="date"
                   required
+                  min={getTomorrowDateStr()}
                   value={pickupDate}
-                  onChange={(e) => setPickupDate(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-xl"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const minD = getTomorrowDateStr();
+                    setPickupDate(val < minD ? minD : val);
+                  }}
+                  className="w-full p-2 border border-slate-300 rounded-xl font-bold"
                 />
+                <p className="text-[11px] text-emerald-700 font-medium mt-1">
+                  ⚡ Doorstep logistics dispatch starts from tomorrow.
+                </p>
               </div>
 
               <div>

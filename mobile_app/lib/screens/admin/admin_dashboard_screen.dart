@@ -303,9 +303,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
     int selectedAgentId = _agents.first.id;
     String selectedSlot = order.pickupSlot ?? 'Morning (10:00 AM - 1:00 PM)';
-    final dateController = TextEditingController(
-      text: order.pickupDate ?? DateTime.now().toIso8601String().split('T')[0],
-    );
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final tomorrowStr = '${tomorrow.year.toString().padLeft(4, '0')}-${tomorrow.month.toString().padLeft(2, '0')}-${tomorrow.day.toString().padLeft(2, '0')}';
+    
+    // Earliest dispatch is tomorrow
+    String initialDate = tomorrowStr;
+    if (order.pickupDate != null && order.pickupDate!.trim().isNotEmpty) {
+      if (order.pickupDate!.trim().compareTo(tomorrowStr) >= 0) {
+        initialDate = order.pickupDate!.trim();
+      }
+    }
+    final dateController = TextEditingController(text: initialDate);
 
     showDialog(
       context: context,
@@ -364,14 +372,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     },
                   ),
                   const SizedBox(height: 14),
-                  const Text('Pickup Date (YYYY-MM-DD):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textPrimary)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Pickup Date (YYYY-MM-DD):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textPrimary)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryGreen.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('From Tomorrow', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.darkGreen)),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 6),
                   TextField(
                     controller: dateController,
+                    readOnly: true,
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: ctx,
+                        initialDate: DateTime.tryParse(dateController.text) ?? tomorrow,
+                        firstDate: tomorrow,
+                        lastDate: DateTime.now().add(const Duration(days: 60)),
+                      );
+                      if (picked != null) {
+                        final formatted = '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
+                        setDialogState(() => dateController.text = formatted);
+                      }
+                    },
                     decoration: InputDecoration(
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.85),
                       prefixIcon: const Icon(Icons.calendar_today_rounded, size: 18, color: AppTheme.primaryGreen),
+                      suffixIcon: const Icon(Icons.touch_app_rounded, size: 16, color: AppTheme.primaryGreen),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     ),
                   ),

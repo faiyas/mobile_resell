@@ -111,6 +111,14 @@ def sales_list_create_view(request):
 
         estimated_price = max(base_price - total_deduction, min_price)
 
+        # Pickup date enforcement: If customer books today, earliest pickup is TOMORROW!
+        tomorrow_date = (timezone.now().astimezone(IST) + datetime.timedelta(days=1)).date()
+        req_pickup_date = data.get('pickup_date')
+        if not req_pickup_date or req_pickup_date < tomorrow_date:
+            final_pickup_date = tomorrow_date
+        else:
+            final_pickup_date = req_pickup_date
+
         with transaction.atomic():
             customer_user = request.user if request.user.is_authenticated and request.user.role == 'CUSTOMER' else None
             if not customer_user:
@@ -136,7 +144,7 @@ def sales_list_create_view(request):
                 pickup_address=data['pickup_address'],
                 pickup_city=data.get('pickup_city', 'City'),
                 pickup_pincode=data['pickup_pincode'],
-                pickup_date=data.get('pickup_date') or timezone.now().astimezone(IST).date(),
+                pickup_date=final_pickup_date,
                 pickup_slot=data.get('pickup_slot', 'Morning (10:00 AM - 1:00 PM)'),
                 beneficiary_type=data.get('beneficiary_type', 'UPI'),
                 beneficiary_name=data['beneficiary_name'],
@@ -168,17 +176,31 @@ def sales_list_create_view(request):
 
         return Response(PhoneSaleDetailSerializer(sale).data, status=status.HTTP_201_CREATED)
 
+def _get_sale_instance(pk):
+    """Safely retrieves a PhoneSale by UUID or by sale_code without throwing ValidationError"""
+    if not pk:
+        return None
+    pk_str = str(pk).strip()
+    try:
+        import uuid
+        u = uuid.UUID(pk_str)
+        sale = PhoneSale.objects.filter(id=u).first()
+        if sale:
+            return sale
+    except (ValueError, TypeError):
+        pass
+
+    sale = PhoneSale.objects.filter(sale_code__iexact=pk_str).first()
+    if sale:
+        return sale
+    return None
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def sale_detail_view(request, pk):
-    try:
-        # pk can be UUID or sale_code
-        if len(str(pk)) == 36:
-            sale = PhoneSale.objects.get(id=pk)
-        else:
-            sale = PhoneSale.objects.get(sale_code=pk)
-    except PhoneSale.DoesNotExist:
-        return Response({'detail': 'Sale not found'}, status=status.HTTP_404_NOT_FOUND)
+    sale = _get_sale_instance(pk)
+    if not sale:
+        return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
 
     # Strict Role-based access validation
     user = request.user
@@ -210,7 +232,10 @@ def sale_detail_view(request, pk):
 @permission_classes([AllowAny])
 def accept_final_offer_view(request, pk):
     """Customer accepts the revised final offer after inspection"""
-    sale = get_object_or_404(PhoneSale, id=pk)
+    sale = _get_sale_instance(pk)
+    if not sale:
+        return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
+
     if sale.status != 'FINAL_OFFER_SENT':
         return Response({'detail': f'Cannot accept offer in state: {sale.status}'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -222,7 +247,10 @@ def accept_final_offer_view(request, pk):
 @permission_classes([AllowAny])
 def reject_final_offer_view(request, pk):
     """Customer rejects revised offer (phone returned)"""
-    sale = get_object_or_404(PhoneSale, id=pk)
+    sale = _get_sale_instance(pk)
+    if not sale:
+        return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
+
     sale.status = 'CUSTOMER_REJECTED'
     sale.save()
     return Response({'message': 'Offer rejected. Device return will be initiated.', 'status': sale.status})
@@ -234,7 +262,10 @@ def assign_pickup_view(request, pk):
     if request.user.role not in ['ADMIN', 'COLLECTION_AGENT']:
         return Response({'detail': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
-    sale = get_object_or_404(PhoneSale, id=pk)
+    sale = _get_sale_instance(pk)
+    if not sale:
+        return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
+
     agent_id = request.data.get('agent_id')
     pickup_date = request.data.get('pickup_date')
     pickup_slot = request.data.get('pickup_slot')
@@ -242,11 +273,35 @@ def assign_pickup_view(request, pk):
     if request.user.role == 'COLLECTION_AGENT':
         sale.assigned_agent = request.user
     elif agent_id:
-        agent = get_object_or_404(User, id=agent_id, role='COLLECTION_AGENT')
-        sale.assigned_agent = agent
+        try:
+            agent = User.objects.filter(id=int(agent_id)).first()
+            if agent:
+                sale.assigned_agent = agent
+        except (ValueError, TypeError):
+            pass
+
+    # Tomorrow is earliest booking date
+    tomorrow = (timezone.now().astimezone(IST) + datetime.timedelta(days=1)).date()
 
     if pickup_date:
-        sale.pickup_date = pickup_date
+        try:
+            if '-' in str(pickup_date):
+                parts = str(pickup_date).split('-')
+                if len(parts[0]) == 4: # YYYY-MM-DD
+                    parsed_d = datetime.date(int(parts[0]), int(parts[1]), int(parts[2]))
+                elif len(parts[2]) == 4: # DD-MM-YYYY
+                    parsed_d = datetime.date(int(parts[2]), int(parts[1]), int(parts[0]))
+                else:
+                    parsed_d = datetime.date.fromisoformat(str(pickup_date))
+            else:
+                parsed_d = datetime.date.fromisoformat(str(pickup_date))
+            sale.pickup_date = parsed_d
+        except Exception:
+            sale.pickup_date = tomorrow
+    else:
+        if not sale.pickup_date:
+            sale.pickup_date = tomorrow
+
     if pickup_slot:
         sale.pickup_slot = pickup_slot
 
@@ -261,7 +316,10 @@ def transfer_ownership_view(request, pk):
     if request.user.role not in ['ADMIN', 'COLLECTION_AGENT']:
         return Response({'detail': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
-    sale = get_object_or_404(PhoneSale, id=pk)
+    sale = _get_sale_instance(pk)
+    if not sale:
+        return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
+
     imei = request.data.get('imei')
     if not imei:
         return Response({'detail': 'Valid IMEI is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -279,7 +337,10 @@ def admin_approve_final_offer_view(request, pk):
     if request.user.role != 'ADMIN':
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
-    sale = get_object_or_404(PhoneSale, id=pk)
+    sale = _get_sale_instance(pk)
+    if not sale:
+        return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
+
     approved_price = request.data.get('approved_price')
     if not approved_price:
         return Response({'detail': 'Approved price is required'}, status=status.HTTP_400_BAD_REQUEST)

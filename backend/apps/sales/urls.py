@@ -15,7 +15,9 @@ urlpatterns = [
     path('<str:pk>/accept-offer/', accept_final_offer_view, name='sales-accept-offer'),
     path('<str:pk>/reject-offer/', reject_final_offer_view, name='sales-reject-offer'),
     path('<str:pk>/schedule-pickup/', assign_pickup_view, name='sales-schedule-pickup'),
+    path('<str:pk>/schedule_pickup/', assign_pickup_view, name='sales-schedule-pickup-under'),
     path('<str:pk>/assign-pickup/', assign_pickup_view, name='sales-assign-pickup'),
+    path('<str:pk>/assign_pickup/', assign_pickup_view, name='sales-assign-pickup-under'),
     path('<str:pk>/transfer-ownership/', transfer_ownership_view, name='sales-transfer-ownership'),
     path('<str:pk>/approve-final-offer/', admin_approve_final_offer_view, name='sales-approve-final-offer'),
 ]

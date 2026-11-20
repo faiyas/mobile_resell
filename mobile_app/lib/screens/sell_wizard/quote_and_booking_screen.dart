@@ -64,6 +64,20 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
 
   String _payoutType = 'UPI';
   String _pickupSlot = 'Morning (10:00 AM - 1:00 PM)';
+  DateTime _pickupDate = DateTime.now().add(const Duration(days: 1));
+
+  String _formatPickupDate(DateTime dt) {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final isTomorrow = dt.year == tomorrow.year && dt.month == tomorrow.month && dt.day == tomorrow.day;
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final dayName = days[dt.weekday - 1];
+    final mName = months[dt.month - 1];
+    if (isTomorrow) {
+      return 'Tomorrow ($dayName, ${dt.day} $mName)';
+    }
+    return '$dayName, ${dt.day} $mName ${dt.year}';
+  }
 
   @override
   void initState() {
@@ -179,6 +193,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
     setState(() => _submitting = true);
     try {
       final cityVal = _cityController.text.trim().isNotEmpty ? _cityController.text.trim() : 'Doorstep Pickup';
+      final dateStr = '${_pickupDate.year.toString().padLeft(4, '0')}-${_pickupDate.month.toString().padLeft(2, '0')}-${_pickupDate.day.toString().padLeft(2, '0')}';
       final payload = {
         'variant_id': widget.variant.id,
         'customer_name': _nameController.text.trim(),
@@ -186,6 +201,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
         'pickup_address': _addressController.text.trim(),
         'pickup_city': cityVal,
         'pickup_pincode': _pincodeController.text.trim(),
+        'pickup_date': dateStr,
         'pickup_slot': _pickupSlot,
         'beneficiary_type': _payoutType,
         'beneficiary_name': _nameController.text.trim(),
@@ -718,6 +734,90 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                             fillColor: Colors.white.withOpacity(0.85),
                           ),
                           validator: (val) => val == null || val.trim().isEmpty ? 'Please enter UPI ID' : null,
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Doorstep Pickup Date Selector (Restricted to Tomorrow Onwards)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.85),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppTheme.glassBorder),
+                          ),
+                          child: InkWell(
+                            onTap: () async {
+                              final tomorrow = DateTime.now().add(const Duration(days: 1));
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: _pickupDate.isBefore(tomorrow) ? tomorrow : _pickupDate,
+                                firstDate: tomorrow,
+                                lastDate: DateTime.now().add(const Duration(days: 30)),
+                                builder: (context, child) {
+                                  return Theme(
+                                    data: Theme.of(context).copyWith(
+                                      colorScheme: const ColorScheme.light(
+                                        primary: AppTheme.primaryGreen,
+                                        onPrimary: Colors.white,
+                                        onSurface: AppTheme.textPrimary,
+                                      ),
+                                    ),
+                                    child: child!,
+                                  );
+                                },
+                              );
+                              if (picked != null) {
+                                setState(() => _pickupDate = picked);
+                              }
+                            },
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.event_available_rounded, color: AppTheme.primaryGreen, size: 20),
+                                    const SizedBox(width: 8),
+                                    const Expanded(
+                                      child: Text(
+                                        'Doorstep Pickup Date',
+                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryGreen.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        'From Tomorrow',
+                                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.darkGreen),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _formatPickupDate(_pickupDate),
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                                    ),
+                                    const Text(
+                                      'Change 📅',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                const Text(
+                                  '⚡ Same-day slots are closed. Earliest pickup is tomorrow.',
+                                  style: TextStyle(fontSize: 10, color: AppTheme.darkGreen, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 12),
 

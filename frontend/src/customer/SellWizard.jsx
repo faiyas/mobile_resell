@@ -42,13 +42,20 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
   const [valuing, setValuing] = useState(false);
 
   // Customer Contact & Pickup Form
+  // Earliest available pickup date is strictly tomorrow
+  const getTomorrowDateStr = () => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split('T')[0];
+  };
+
   const [customerName, setCustomerName] = useState(currentUser?.full_name || '');
   const [customerPhone, setCustomerPhone] = useState(currentUser?.phone || '');
   const [customerEmail, setCustomerEmail] = useState(currentUser?.email || '');
   const [pickupAddress, setPickupAddress] = useState(currentUser?.default_address || '');
   const [pickupCity, setPickupCity] = useState(currentUser?.city || '');
   const [pickupPincode, setPickupPincode] = useState(currentUser?.pincode || '');
-  const [pickupDate, setPickupDate] = useState(new Date().toISOString().split('T')[0]);
+  const [pickupDate, setPickupDate] = useState(getTomorrowDateStr());
   const [pickupSlot, setPickupSlot] = useState('Afternoon (1:00 PM - 5:00 PM)');
 
   // Payout Method
@@ -812,26 +819,47 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
 
           {/* Date & Slot */}
           <div className="space-y-3">
-            <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-[#0BAA4B]" /> 3. Preferred Date & Time
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
+                <Calendar className="w-4 h-4 text-[#0BAA4B]" /> 3. Preferred Date & Time
+              </h4>
+              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300/60">
+                Earliest: Tomorrow
+              </span>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input
-                type="date"
-                required
-                value={pickupDate}
-                onChange={(e) => setPickupDate(e.target.value)}
-                className="w-full p-2.5 glass-input rounded-xl font-bold"
-              />
-              <select
-                value={pickupSlot}
-                onChange={(e) => setPickupSlot(e.target.value)}
-                className="w-full p-2.5 glass-input rounded-xl font-bold"
-              >
-                <option value="Morning (10:00 AM - 1:00 PM)">Morning (10:00 AM - 1:00 PM)</option>
-                <option value="Afternoon (1:00 PM - 5:00 PM)">Afternoon (1:00 PM - 5:00 PM)</option>
-                <option value="Evening (5:00 PM - 8:00 PM)">Evening (5:00 PM - 8:00 PM)</option>
-              </select>
+              <div>
+                <input
+                  type="date"
+                  required
+                  min={getTomorrowDateStr()}
+                  value={pickupDate}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const minDate = getTomorrowDateStr();
+                    if (val < minDate) {
+                      setPickupDate(minDate);
+                    } else {
+                      setPickupDate(val);
+                    }
+                  }}
+                  className="w-full p-2.5 glass-input rounded-xl font-bold"
+                />
+                <p className="text-[10px] text-emerald-700 font-semibold mt-1">
+                  ⚡ Same-day slots are closed for logistics dispatch.
+                </p>
+              </div>
+              <div>
+                <select
+                  value={pickupSlot}
+                  onChange={(e) => setPickupSlot(e.target.value)}
+                  className="w-full p-2.5 glass-input rounded-xl font-bold"
+                >
+                  <option value="Morning (10:00 AM - 1:00 PM)">Morning (10:00 AM - 1:00 PM)</option>
+                  <option value="Afternoon (1:00 PM - 5:00 PM)">Afternoon (1:00 PM - 5:00 PM)</option>
+                  <option value="Evening (5:00 PM - 8:00 PM)">Evening (5:00 PM - 8:00 PM)</option>
+                </select>
+              </div>
             </div>
           </div>
 
