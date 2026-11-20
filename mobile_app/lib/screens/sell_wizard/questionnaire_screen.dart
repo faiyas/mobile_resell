@@ -857,7 +857,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
       return const Icon(Icons.receipt_long_rounded, size: 44, color: AppTheme.primaryGreen);
     }
     if (c.contains('icloud')) {
-      return const Icon(Icons.cloud_lock_outlined, size: 44, color: Color(0xFF3B82F6));
+      return const Icon(Icons.cloud_outlined, size: 44, color: Color(0xFF3B82F6));
     }
     if (c.contains('cam')) {
       return const Icon(Icons.camera_alt_outlined, size: 42, color: AppTheme.primaryGreen);

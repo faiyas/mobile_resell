@@ -58,6 +58,7 @@ class DeviceCategoryModel {
   final String slug;
   final String iconName;
   final String? imageBase64;
+  final bool isActive;
 
   DeviceCategoryModel({
     required this.id,
@@ -65,6 +66,7 @@ class DeviceCategoryModel {
     required this.slug,
     required this.iconName,
     this.imageBase64,
+    this.isActive = true,
   });
 
   factory DeviceCategoryModel.fromJson(Map<String, dynamic> json) {
@@ -74,6 +76,7 @@ class DeviceCategoryModel {
       slug: json['slug']?.toString() ?? '',
       iconName: json['icon_name']?.toString() ?? 'Smartphone',
       imageBase64: json['image_base64']?.toString(),
+      isActive: json['is_active'] == null ? true : (json['is_active'] == true || json['is_active'].toString().toLowerCase() == 'true'),
     );
   }
 }
