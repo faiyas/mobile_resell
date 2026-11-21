@@ -142,6 +142,7 @@ class PhoneModelItem {
   final String? seriesName;
   final String? imageBase64;
   final int releaseYear;
+  final bool hasWarranty;
   final List<StorageVariantModel> variants;
 
   PhoneModelItem({
@@ -154,6 +155,7 @@ class PhoneModelItem {
     this.seriesName,
     this.imageBase64,
     required this.releaseYear,
+    this.hasWarranty = true,
     this.variants = const [],
   });
 
@@ -193,6 +195,7 @@ class PhoneModelItem {
       seriesName: json['series_name']?.toString() ?? (json['series'] is Map ? json['series']['name']?.toString() : null),
       imageBase64: json['image_base64']?.toString(),
       releaseYear: int.tryParse(json['release_year']?.toString() ?? '') ?? (json['release_year'] is int ? json['release_year'] : 2024),
+      hasWarranty: json['has_warranty'] ?? true,
       variants: vList,
     );
   }
@@ -399,6 +402,32 @@ class CMSSectionModel {
   }
 }
 
+class SaleConditionAnswerModel {
+  final int? id;
+  final String optionTitle;
+  final String categoryName;
+  final String? customText;
+  final double deductionApplied;
+
+  SaleConditionAnswerModel({
+    this.id,
+    required this.optionTitle,
+    required this.categoryName,
+    this.customText,
+    this.deductionApplied = 0.0,
+  });
+
+  factory SaleConditionAnswerModel.fromJson(Map<String, dynamic> json) {
+    return SaleConditionAnswerModel(
+      id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? ''),
+      optionTitle: json['option_title']?.toString() ?? json['step_name']?.toString() ?? '',
+      categoryName: json['category_name']?.toString() ?? 'Condition',
+      customText: json['custom_text']?.toString(),
+      deductionApplied: double.tryParse(json['deduction_applied']?.toString() ?? '0') ?? 0.0,
+    );
+  }
+}
+
 class SaleOrderModel {
   final dynamic id; // UUID string (e.g. "b569b11a-...") or int
   final String saleCode;
@@ -435,6 +464,7 @@ class SaleOrderModel {
   final String? scheduleAlertMessage;
   final InspectionData? inspection;
   final PaymentData? payment;
+  final List<SaleConditionAnswerModel> answers;
 
   SaleOrderModel({
     required this.id,
@@ -472,6 +502,7 @@ class SaleOrderModel {
     this.scheduleAlertMessage,
     this.inspection,
     this.payment,
+    this.answers = const [],
   });
 
   factory SaleOrderModel.fromJson(Map<String, dynamic> json) {
@@ -497,6 +528,13 @@ class SaleOrderModel {
       try {
         pay = PaymentData.fromJson(Map<String, dynamic>.from(json['payment'] as Map));
       } catch (_) {}
+    }
+
+    var ansList = <SaleConditionAnswerModel>[];
+    if (json['answers'] != null && json['answers'] is List) {
+      ansList = (json['answers'] as List)
+          .map((a) => SaleConditionAnswerModel.fromJson(Map<String, dynamic>.from(a as Map)))
+          .toList();
     }
 
     return SaleOrderModel(
@@ -535,6 +573,7 @@ class SaleOrderModel {
       scheduleAlertMessage: json['schedule_alert_message']?.toString(),
       inspection: insp,
       payment: pay,
+      answers: ansList,
     );
   }
 

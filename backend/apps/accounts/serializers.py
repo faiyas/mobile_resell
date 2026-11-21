@@ -42,16 +42,20 @@ class RegisterSerializer(serializers.ModelSerializer):
         return clean_phone
 
     def create(self, validated_data):
-        # Public self-registration is strictly restricted to CUSTOMER role
-        # Field Agents can only be created by Admin from Admin Desk
-        role = 'CUSTOMER'
+        is_admin = self.context.get('is_admin', False)
+        requested_role = validated_data.get('role', 'CUSTOMER')
+        if is_admin and requested_role in ['COLLECTION_AGENT', 'ADMIN']:
+            role = requested_role
+        else:
+            role = 'CUSTOMER'
+
         user = User.objects.create_user(
             email=validated_data['email'],
             password=validated_data['password'],
             phone=validated_data['phone'],
             full_name=validated_data.get('full_name', ''),
             role=role,
-            is_staff=False
+            is_staff=(role == 'ADMIN')
         )
         return user
 

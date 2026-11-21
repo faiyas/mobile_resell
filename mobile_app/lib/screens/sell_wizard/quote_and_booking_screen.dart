@@ -544,9 +544,15 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                           ],
                         ),
                         const SizedBox(height: 14),
-                        _buildPriceRow('Base Catalog Value', '₹${widget.variant.basePrice.toStringAsFixed(0)}', isPositive: true),
+                        _buildPriceRow('Base Catalog Value (Mint)', '₹${widget.variant.basePrice.toStringAsFixed(0)}', isPositive: true),
                         Divider(height: 18, color: AppTheme.border.withOpacity(0.6)),
-                        _buildPriceRow('Reported Conditions', 'Deductions Calculated', isNegative: false),
+                        _buildPriceRow(
+                          'Condition Deductions (Calculated)',
+                          (widget.variant.basePrice - _estimatedPrice) > 0
+                              ? '-₹${(widget.variant.basePrice - _estimatedPrice).toStringAsFixed(0)}'
+                              : '₹0 (Flawless)',
+                          isNegative: (widget.variant.basePrice - _estimatedPrice) > 0,
+                        ),
                         const SizedBox(height: 6),
                         Container(
                           padding: const EdgeInsets.all(10),

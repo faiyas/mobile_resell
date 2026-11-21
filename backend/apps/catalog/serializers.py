@@ -32,7 +32,7 @@ class PhoneModelSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PhoneModel
-        fields = ['id', 'brand', 'brand_name', 'series', 'series_name', 'name', 'slug', 'image_base64', 'release_year', 'is_active', 'variants']
+        fields = ['id', 'brand', 'brand_name', 'series', 'series_name', 'name', 'slug', 'image_base64', 'release_year', 'has_warranty', 'is_active', 'variants']
 
 class BrandSerializer(serializers.ModelSerializer):
     models = serializers.SerializerMethodField()

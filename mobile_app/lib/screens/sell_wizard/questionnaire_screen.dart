@@ -71,7 +71,24 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   Future<void> _loadQuestionnaire() async {
     setState(() => _loading = true);
     try {
-      final data = await _api.getConditionCategories(brandId: widget.brand.id);
+      var data = await _api.getConditionCategories(brandId: widget.brand.id);
+      if (!widget.model.hasWarranty) {
+        // Old model without warranty: filter out warranty options and warranty steps
+        data = data.map((cat) {
+          final filtered = cat.options.where((o) => !o.isWarranty).toList();
+          return ConditionCategoryModel(
+            id: cat.id,
+            name: cat.name,
+            subtitle: cat.subtitle,
+            stepNumber: cat.stepNumber,
+            selectionType: cat.selectionType,
+            isMandatory: cat.isMandatory,
+            brandId: cat.brandId,
+            brandName: cat.brandName,
+            options: filtered,
+          );
+        }).where((cat) => cat.options.isNotEmpty && !cat.name.toLowerCase().contains('warranty')).toList();
+      }
       setState(() {
         _steps = data;
         _loading = false;

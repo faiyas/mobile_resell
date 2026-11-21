@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -36,11 +37,34 @@ class _HomeScreenState extends State<HomeScreen> {
   List<BrandModel> _brands = [];
   SellDraftData? _savedDraft;
   SaleOrderModel? _agentActiveSale;
+  final ScrollController _brandsScrollController = ScrollController();
+  Timer? _brandsAutoScrollTimer;
 
   @override
   void initState() {
     super.initState();
     _loadInitialData();
+  }
+
+  @override
+  void dispose() {
+    _brandsAutoScrollTimer?.cancel();
+    _brandsScrollController.dispose();
+    super.dispose();
+  }
+
+  void _startBrandsAutoScroll() {
+    _brandsAutoScrollTimer?.cancel();
+    _brandsAutoScrollTimer = Timer.periodic(const Duration(milliseconds: 50), (_) {
+      if (!_brandsScrollController.hasClients) return;
+      final maxExtent = _brandsScrollController.position.maxScrollExtent;
+      final currentOffset = _brandsScrollController.offset;
+      if (currentOffset >= maxExtent) {
+        _brandsScrollController.jumpTo(0);
+      } else {
+        _brandsScrollController.jumpTo(currentOffset + 1.2);
+      }
+    });
   }
 
   Future<void> _loadInitialData() async {
@@ -59,6 +83,9 @@ class _HomeScreenState extends State<HomeScreen> {
           _savedDraft = draft;
           _isLoading = false;
         });
+        if (br.isNotEmpty) {
+          _startBrandsAutoScroll();
+        }
       }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
@@ -849,289 +876,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
             if (_savedDraft != null) _buildResumeDraftCard(_savedDraft!),
 
-            // 2. Quick Action Tiles
-            Row(
-              children: [
-                Expanded(
-                  child: _buildActionTile(
-                    icon: Icons.smartphone,
-                    title: 'Instant Valuation',
-                    subtitle: 'Get 60s Quote',
-                    bgColor: AppTheme.lightGreen,
-                    iconColor: AppTheme.primaryGreen,
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CategorySelectionScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildActionTile(
-                    icon: Icons.local_shipping_outlined,
-                    title: 'Track Pickup',
-                    subtitle: 'Agent Status',
-                    bgColor: const Color(0xFFFEF3C7),
-                    iconColor: const Color(0xFFD97706),
-                    onTap: () => setState(() => _currentIndex = 1),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _buildActionTile(
-                    icon: Icons.account_balance_wallet_outlined,
-                    title: 'My Payout',
-                    subtitle: 'UPI Receipt',
-                    bgColor: const Color(0xFFEDE9FE),
-                    iconColor: const Color(0xFF7C3AED),
-                    onTap: () => setState(() => _currentIndex = 1),
-                  ),
-                ),
-              ],
-            ),
+            // 2. EXCLUSIVELY 2x2 CATEGORIES GRID (Like Reference Image)
+            _buildBigCategoryGrid(),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-            // 3. Choose Category (Device Categories)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Select Device Category',
-                  style: TextStyle(
-                    color: AppTheme.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const CategorySelectionScreen(),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    'View All',
-                    style: TextStyle(
-                      color: AppTheme.primaryGreen,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
+            // 3. 3 QUICK SERVICE FEATURE BOXES (Instant Valuation, Track Pickup, My Payout)
+            _buildQuickActionBoxes(),
 
-            Builder(
-              builder: (context) {
-                // Only show active categories (defaults: Mobile, Tablet, Gaming Console)
-                final activeCats = _categories.where((c) => c.isActive).toList();
-                final displayCats = activeCats.isNotEmpty
-                    ? activeCats
-                    : _categories.where((c) {
-                        final n = c.name.toLowerCase();
-                        return n == 'mobile' || n == 'tablet' || n == 'gaming console';
-                      }).toList();
+            const SizedBox(height: 22),
 
-                final isThree = displayCats.length <= 3;
-                return GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: isThree ? displayCats.length : 2,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                    childAspectRatio: isThree ? 0.95 : 1.35,
-                  ),
-                  itemCount: displayCats.length,
-                  itemBuilder: (context, idx) {
-                    final cat = displayCats[idx];
-                    final isOther = cat.name.toLowerCase() == 'other' || cat.name.toLowerCase() == 'others';
-
-                    return GlassContainer(
-                      padding: const EdgeInsets.all(10),
-                      borderRadius: 20,
-                      onTap: () {
-                        if (isOther) {
-                          _showOtherCategoryGadgetModal(context);
-                        } else {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CategorySelectionScreen(selectedCategory: cat),
-                            ),
-                          );
-                        }
-                      },
-                      child: isThree
-                          ? Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Container(
-                                  width: 44,
-                                  height: 44,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.lightGreen.withValues(alpha: 0.85),
-                                    borderRadius: BorderRadius.circular(14),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppTheme.primaryGreen.withValues(alpha: 0.18),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: _buildCategoryGraphic(cat, isOther),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  cat.name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    color: AppTheme.textPrimary,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  isOther ? 'Custom' : 'Instant Offer',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: isOther ? AppTheme.darkGreen : AppTheme.textSecondary,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Row(
-                              children: [
-                                Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.lightGreen.withValues(alpha: 0.85),
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppTheme.primaryGreen.withValues(alpha: 0.20),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: _buildCategoryGraphic(cat, isOther),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        cat.name,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: AppTheme.textPrimary,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w900,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        isOther ? 'Custom Gadget' : 'Instant Offer',
-                                        style: TextStyle(
-                                          color: isOther ? AppTheme.darkGreen : AppTheme.textSecondary,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                    );
-                  },
-                );
-              },
-            ),
-
-            const SizedBox(height: 14),
-
-            // 4. Top Brands (Scrollable showcase only, not clickable)
-            const Text(
-              'Top Phone Brands',
-              style: TextStyle(
-                color: AppTheme.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            SizedBox(
-              height: 84,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                itemCount: _brands.length,
-                itemBuilder: (context, idx) {
-                  final brand = _brands[idx];
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: GlassContainer(
-                      width: 95,
-                      borderRadius: 18,
-                      padding: const EdgeInsets.all(8),
-                      onTap: null, // Display only, not clickable
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(10),
-                              boxShadow: [
-                                BoxShadow(color: AppTheme.primaryGreen.withOpacity(0.12), blurRadius: 4),
-                              ],
-                            ),
-                            child: Center(child: _buildBrandLogo(brand)),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            brand.name,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              color: AppTheme.textPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
+            // 4. AUTO-SCROLLING TOP BRANDS TICKER MARQUEE
+            _buildAutoScrollingBrandsMarquee(),
 
             const SizedBox(height: 24),
 

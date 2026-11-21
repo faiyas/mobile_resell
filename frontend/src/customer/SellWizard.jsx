@@ -563,6 +563,16 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
 
                   <button
                     onClick={() => {
+                      if (selectedModel?.has_warranty === false) {
+                        setQuestionSteps(prev => prev
+                          .filter(cat => !cat.name.toLowerCase().includes('warranty'))
+                          .map(cat => ({
+                            ...cat,
+                            options: (cat.options || []).filter(opt => !opt.is_warranty)
+                          }))
+                          .filter(cat => cat.options.length > 0)
+                        );
+                      }
                       setQuestionStepIndex(0);
                       setCurrentScreen(4); // Start questionnaire
                     }}
@@ -786,10 +796,12 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
             </div>
 
             <div className="flex justify-between items-center py-1">
-              <span className="text-[#7B8980]">Reported Condition Adjustments:</span>
-              <span className="font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[11px]">
-                Condition Deductions Calculated
-              </span>
+              <span className="text-[#7B8980]">Condition Deductions (Calculated):</span>
+              <strong className="text-rose-600 font-black">
+                {Number(valuationResult.base_price) - Number(valuationResult.estimated_price) > 0
+                  ? `-₹${(Number(valuationResult.base_price) - Number(valuationResult.estimated_price)).toLocaleString('en-IN')}`
+                  : '₹0 (Flawless)'}
+              </strong>
             </div>
 
             <div className="bg-emerald-50/80 border border-emerald-200/80 p-2.5 rounded-xl text-[11px] text-[#087C38] font-medium leading-relaxed">

@@ -61,6 +61,7 @@ class PhoneModel(models.Model):
     slug = models.SlugField(max_length=180, blank=True)
     image_base64 = models.TextField(blank=True, default='', help_text="Base64 encoded phone picture")
     release_year = models.PositiveIntegerField(null=True, blank=True)
+    has_warranty = models.BooleanField(default=True, help_text="Set to False for older models out of warranty period so warranty question is skipped")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

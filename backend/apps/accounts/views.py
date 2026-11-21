@@ -11,12 +11,11 @@ from .authentication import generate_jwt_token
 @permission_classes([AllowAny])
 def register_view(request):
     data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-    # Security Rule: Only authenticated ADMIN can create COLLECTION_AGENT accounts.
-    # Public self-registration is strictly locked to CUSTOMER.
-    if not (request.user and request.user.is_authenticated and getattr(request.user, 'role', '') == 'ADMIN'):
+    is_admin = bool(request.user and request.user.is_authenticated and getattr(request.user, 'role', '') == 'ADMIN')
+    if not is_admin:
         data['role'] = 'CUSTOMER'
 
-    serializer = RegisterSerializer(data=data)
+    serializer = RegisterSerializer(data=data, context={'is_admin': is_admin})
     if serializer.is_valid():
         user = serializer.save()
         token = generate_jwt_token(user)

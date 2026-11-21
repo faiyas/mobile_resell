@@ -191,6 +191,7 @@ class PhoneSaleListSerializer(serializers.ModelSerializer):
     storage = serializers.SerializerMethodField()
     ram = serializers.SerializerMethodField()
     assigned_agent_name = serializers.ReadOnlyField(source='assigned_agent.full_name')
+    answers = PhoneSaleConditionAnswerSerializer(many=True, read_only=True)
     has_inspection = serializers.SerializerMethodField()
     has_payment = serializers.SerializerMethodField()
     is_overdue = serializers.SerializerMethodField()
@@ -210,6 +211,7 @@ class PhoneSaleListSerializer(serializers.ModelSerializer):
             'beneficiary_type', 'beneficiary_name', 'beneficiary_upi_id',
             'beneficiary_account_no', 'beneficiary_ifsc',
             'imei_number', 'customer_handover_signed', 'admin_notes',
+            'answers',
             'has_inspection', 'has_payment', 'created_at', 'created_at_ist', 'updated_at',
             'is_overdue', 'schedule_status', 'schedule_alert_message'
         ]

@@ -47,6 +47,8 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
   String _feedbackMessage = '';
   bool _isSuccess = false;
   final Map<String, String> _capturedPhotos = {};
+  final Set<int> _verifiedAnswers = {};
+  final Set<int> _mismatchAnswers = {};
 
   void _capturePhotoForSlot(String label) {
     showModalBottomSheet(
@@ -278,6 +280,8 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
   void _selectSale(SaleOrderModel s) {
     setState(() {
       _selectedSale = s;
+      _verifiedAnswers.clear();
+      _mismatchAnswers.clear();
       _priceController.text = (s.finalPrice ?? s.estimatedPrice).toStringAsFixed(0);
       _imeiController.text = s.imeiNumber ?? '358291048291048';
       _feedbackMessage = '';
@@ -633,6 +637,170 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
                                           _selectedSale!.otherDefectsNotes!,
                                           style: TextStyle(fontSize: 12, color: Colors.amber.shade900, height: 1.3),
                                         ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+
+                                const SizedBox(height: 16),
+
+                                // Customer Declared Condition & Questionnaire Answers (Interactive Check-off)
+                                if (_selectedSale!.answers.isNotEmpty) ...[
+                                  const SizedBox(height: 12),
+                                  GlassContainer(
+                                    padding: const EdgeInsets.all(16),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(8)),
+                                              child: const Icon(Icons.rule_rounded, color: AppTheme.primaryGreen, size: 16),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Customer Declared Condition',
+                                                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary),
+                                                  ),
+                                                  Text(
+                                                    'Tap each item to verify at doorstep against customer claim',
+                                                    style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        ...List.generate(_selectedSale!.answers.length, (idx) {
+                                          final ans = _selectedSale!.answers[idx];
+                                          final isVerified = _verifiedAnswers.contains(idx);
+                                          final isMismatch = _mismatchAnswers.contains(idx);
+
+                                          return Container(
+                                            margin: const EdgeInsets.only(bottom: 8),
+                                            padding: const EdgeInsets.all(10),
+                                            decoration: BoxDecoration(
+                                              color: isVerified
+                                                  ? AppTheme.lightGreen.withOpacity(0.5)
+                                                  : isMismatch
+                                                      ? Colors.red.shade50
+                                                      : Colors.white.withOpacity(0.6),
+                                              borderRadius: BorderRadius.circular(12),
+                                              border: Border.all(
+                                                color: isVerified
+                                                    ? AppTheme.primaryGreen.withOpacity(0.5)
+                                                    : isMismatch
+                                                        ? Colors.red.shade300
+                                                        : AppTheme.border.withOpacity(0.5),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              children: [
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    children: [
+                                                      Container(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.blueGrey.shade50,
+                                                          borderRadius: BorderRadius.circular(6),
+                                                        ),
+                                                        child: Text(
+                                                          ans.categoryName,
+                                                          style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blueGrey.shade800),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                      Text(
+                                                        ans.optionTitle,
+                                                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppTheme.textPrimary),
+                                                      ),
+                                                      if (ans.customText != null && ans.customText!.isNotEmpty) ...[
+                                                        const SizedBox(height: 2),
+                                                        Text('Note: ', style: const TextStyle(fontSize: 10, fontStyle: FontStyle.italic, color: AppTheme.textSecondary)),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                InkWell(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      if (isVerified) {
+                                                        _verifiedAnswers.remove(idx);
+                                                      } else {
+                                                        _verifiedAnswers.add(idx);
+                                                        _mismatchAnswers.remove(idx);
+                                                      }
+                                                    });
+                                                  },
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: isVerified ? AppTheme.primaryGreen : Colors.grey.shade100,
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      border: Border.all(color: isVerified ? AppTheme.primaryGreen : Colors.grey.shade300),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(Icons.check, size: 12, color: isVerified ? Colors.white : Colors.grey.shade700),
+                                                        const SizedBox(width: 4),
+                                                        Text(
+                                                          'Matches',
+                                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isVerified ? Colors.white : Colors.grey.shade700),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                InkWell(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      if (isMismatch) {
+                                                        _mismatchAnswers.remove(idx);
+                                                      } else {
+                                                        _mismatchAnswers.add(idx);
+                                                        _verifiedAnswers.remove(idx);
+                                                      }
+                                                    });
+                                                  },
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: isMismatch ? Colors.red : Colors.grey.shade100,
+                                                      borderRadius: BorderRadius.circular(8),
+                                                      border: Border.all(color: isMismatch ? Colors.red : Colors.grey.shade300),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(Icons.close, size: 12, color: isMismatch ? Colors.white : Colors.grey.shade700),
+                                                        const SizedBox(width: 4),
+                                                        Text(
+                                                          'Mismatch',
+                                                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isMismatch ? Colors.white : Colors.grey.shade700),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                        }),
                                       ],
                                     ),
                                   ),

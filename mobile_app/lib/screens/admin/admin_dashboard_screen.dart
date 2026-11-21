@@ -1366,6 +1366,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                               ],
                             ),
                           ],
+                          if (order.answers.isNotEmpty) ...[
+                            const SizedBox(height: 6),
+                            Wrap(
+                              spacing: 5,
+                              runSpacing: 4,
+                              children: order.answers.map((a) {
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blueGrey.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: Colors.blueGrey.shade200),
+                                  ),
+                                  child: Text(
+                                    '${a.categoryName}: ${a.optionTitle}',
+                                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.blueGrey.shade800),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                          if (order.otherDefectsNotes != null && order.otherDefectsNotes!.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.amber.shade200),
+                              ),
+                              child: Text(
+                                'Customer Note: ${order.otherDefectsNotes}',
+                                style: TextStyle(fontSize: 10, color: Colors.amber.shade900, fontStyle: FontStyle.italic),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 6),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1478,6 +1514,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   }
 
   void _editConditionOption(ConditionOptionModel opt) {
+    final titleController = TextEditingController(text: opt.title);
     final valController = TextEditingController(text: opt.defaultDeductionValue.toStringAsFixed(0));
     final imgController = TextEditingController(text: opt.imageBase64 ?? '');
     String deductionType = opt.deductionType;
@@ -1510,7 +1547,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(opt.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(labelText: 'Defect / Option Title *'),
+                  ),
                   const SizedBox(height: 14),
                   TextField(
                     controller: valController,
@@ -1655,7 +1695,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             final img = imgController.text.trim();
                             Navigator.pop(ctx);
                             try {
+                              final title = titleController.text.trim();
                               await _api.updateConditionOption(opt.id, {
+                                'title': title.isNotEmpty ? title : opt.title,
                                 'default_deduction_value': val,
                                 'deduction_type': deductionType,
                                 'image_base64': img,
@@ -2459,6 +2501,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     final nameCtrl = TextEditingController();
     final yearCtrl = TextEditingController(text: DateTime.now().year.toString());
     int selectedBrandId = brands.first.id;
+    int? selectedSeriesId;
+    bool hasWarranty = true;
+    List<SeriesModel> brandSeries = [];
+    bool loadedSeries = false;
     String? selectedPhotoBase64;
 
     showDialog(
@@ -2476,11 +2522,46 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 children: [
                   const Text('Add Phone Model', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                   const SizedBox(height: 14),
+                  Builder(builder: (ctx) {
+                    if (!loadedSeries) {
+                      loadedSeries = true;
+                      _api.getSeries(brandId: selectedBrandId).then((s) {
+                        setDlgState(() => brandSeries = s);
+                      });
+                    }
+                    return const SizedBox.shrink();
+                  }),
                   DropdownButtonFormField<int>(
                     value: selectedBrandId,
                     decoration: const InputDecoration(labelText: 'Brand *'),
                     items: brands.map((b) => DropdownMenuItem(value: b.id, child: Text(b.name))).toList(),
-                    onChanged: (v) => setDlgState(() => selectedBrandId = v!),
+                    onChanged: (v) {
+                      setDlgState(() {
+                        selectedBrandId = v!;
+                        selectedSeriesId = null;
+                      });
+                      _api.getSeries(brandId: v).then((s) {
+                        setDlgState(() => brandSeries = s);
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int?>(
+                    value: selectedSeriesId,
+                    decoration: const InputDecoration(labelText: 'Series (Optional)'),
+                    items: [
+                      const DropdownMenuItem<int?>(value: null, child: Text('No Series (Standalone)')),
+                      ...brandSeries.map((s) => DropdownMenuItem<int?>(value: s.id, child: Text(s.name))),
+                    ],
+                    onChanged: (v) => setDlgState(() => selectedSeriesId = v),
+                  ),
+                  const SizedBox(height: 10),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Warranty Eligible', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    subtitle: const Text('Disable for old models without warranty claim options', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+                    value: hasWarranty,
+                    onChanged: (v) => setDlgState(() => hasWarranty = v),
                   ),
                   const SizedBox(height: 10),
                   TextField(
@@ -2554,8 +2635,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             try {
                               await _api.createPhoneModel({
                                 'brand': selectedBrandId,
+                                if (selectedSeriesId != null) 'series': selectedSeriesId,
                                 'name': name,
                                 'release_year': int.tryParse(yearCtrl.text.trim()) ?? DateTime.now().year,
+                                'has_warranty': hasWarranty,
                                 'image_base64': selectedPhotoBase64 ?? '',
                               });
                               onAdded();
@@ -3096,6 +3179,585 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
+  void _showSeriesManager() async {
+    List<BrandModel> brands = [];
+    List<SeriesModel> series = [];
+    int? filterBrandId;
+
+    try {
+      brands = await _api.getBrands();
+      series = await _api.getSeries();
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final displaySeries = filterBrandId != null
+              ? series.where((s) => s.brandId == filterBrandId).toList()
+              : series;
+
+          return ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                height: MediaQuery.of(ctx).size.height * 0.85,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.96),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(10))),
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.view_carousel_rounded, color: AppTheme.primaryGreen),
+                            SizedBox(width: 8),
+                            Text('Device Series Control', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                          ],
+                        ),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryGreen,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: const Icon(Icons.add, size: 16),
+                          label: const Text('Add Series', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          onPressed: () => _showAddSeriesDialog(
+                            brands: brands,
+                            initialBrandId: filterBrandId,
+                            onAdded: () async {
+                              final updated = await _api.getSeries(brandId: filterBrandId);
+                              setSheetState(() => series = updated);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (brands.isNotEmpty)
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            ChoiceChip(
+                              label: const Text('All Brands'),
+                              selected: filterBrandId == null,
+                              onSelected: (_) async {
+                                final s = await _api.getSeries();
+                                setSheetState(() {
+                                  filterBrandId = null;
+                                  series = s;
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 6),
+                            ...brands.map((b) => Padding(
+                                  padding: const EdgeInsets.only(right: 6),
+                                  child: ChoiceChip(
+                                    label: Text(b.name),
+                                    selected: filterBrandId == b.id,
+                                    onSelected: (sel) async {
+                                      final newId = sel ? b.id : null;
+                                      final s = await _api.getSeries(brandId: newId);
+                                      setSheetState(() {
+                                        filterBrandId = newId;
+                                        series = s;
+                                      });
+                                    },
+                                  ),
+                                )),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+                    Expanded(
+                      child: displaySeries.isEmpty
+                          ? const Center(child: Text('No series found for this brand', style: TextStyle(color: AppTheme.textSecondary)))
+                          : ListView.separated(
+                              itemCount: displaySeries.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 8),
+                              itemBuilder: (context, idx) {
+                                final s = displaySeries[idx];
+                                return Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: AppTheme.border.withOpacity(0.6)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(8),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryGreen.withOpacity(0.12),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: const Icon(Icons.layers_rounded, color: AppTheme.primaryGreen, size: 20),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(s.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary)),
+                                            if (s.brandName != null) ...[
+                                              const SizedBox(height: 2),
+                                              Text('Brand: ${s.brandName}', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                                        tooltip: 'Delete Series',
+                                        onPressed: () async {
+                                          final conf = await showDialog<bool>(
+                                            context: context,
+                                            builder: (c) => AlertDialog(
+                                              title: const Text('Delete Series', style: TextStyle(fontWeight: FontWeight.bold)),
+                                              content: Text('Delete series "${s.name}"?'),
+                                              actions: [
+                                                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+                                                ElevatedButton(
+                                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                                  onPressed: () => Navigator.pop(c, true),
+                                                  child: const Text('Delete', style: TextStyle(color: Colors.white)),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (conf == true) {
+                                            try {
+                                              await _api.deleteSeries(s.id);
+                                              final updated = await _api.getSeries(brandId: filterBrandId);
+                                              setSheetState(() => series = updated);
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text('✓ Series "${s.name}" deleted!'), backgroundColor: AppTheme.primaryGreen),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                                              }
+                                            }
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAddSeriesDialog({required List<BrandModel> brands, int? initialBrandId, required VoidCallback onAdded}) {
+    if (brands.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add a brand first')));
+      return;
+    }
+
+    final nameCtrl = TextEditingController();
+    final orderCtrl = TextEditingController(text: '0');
+    int selectedBrandId = initialBrandId ?? brands.first.id;
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (dlgCtx, setDlgState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassContainer(
+            padding: const EdgeInsets.all(22),
+            borderRadius: BorderRadius.circular(22),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Add Device Series', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<int>(
+                    value: selectedBrandId,
+                    decoration: const InputDecoration(labelText: 'Brand *'),
+                    items: brands.map((b) => DropdownMenuItem(value: b.id, child: Text(b.name))).toList(),
+                    onChanged: (v) => setDlgState(() => selectedBrandId = v!),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Series Name *', hintText: 'e.g. iPhone 16 Series, Galaxy S24 Series'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: orderCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Display Order', hintText: '0'),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('Cancel')),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                          onPressed: () async {
+                            final name = nameCtrl.text.trim();
+                            if (name.isEmpty) return;
+                            Navigator.pop(dlgCtx);
+                            try {
+                              await _api.createSeries({
+                                'brand': selectedBrandId,
+                                'name': name,
+                                'display_order': int.tryParse(orderCtrl.text.trim()) ?? 0,
+                              });
+                              onAdded();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('✓ Series "$name" created!'), backgroundColor: AppTheme.primaryGreen),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                              }
+                            }
+                          },
+                          child: const Text('Create'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddConditionCategoryModal({ConditionCategoryModel? categoryToEdit}) {
+    final nameCtrl = TextEditingController(text: categoryToEdit?.name ?? '');
+    final subtitleCtrl = TextEditingController(text: categoryToEdit?.subtitle ?? '');
+    final stepNumCtrl = TextEditingController(text: (categoryToEdit?.stepNumber ?? (_conditionCategories.length + 1)).toString());
+    int? selectedBrandId = categoryToEdit?.brandId;
+    String selectionType = categoryToEdit?.selectionType ?? 'SINGLE';
+    bool isMandatory = categoryToEdit?.isMandatory ?? true;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(16),
+          child: GlassContainer(
+            padding: const EdgeInsets.all(22),
+            borderRadius: BorderRadius.circular(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: AppTheme.primaryGreen.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                        child: Icon(categoryToEdit == null ? Icons.add_circle_outline_rounded : Icons.edit_rounded, color: AppTheme.primaryGreen, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(categoryToEdit == null ? 'Add Questionnaire Step' : 'Edit Questionnaire Step', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Step Title *', hintText: 'e.g. Screen & Touchscreen'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: subtitleCtrl,
+                    decoration: const InputDecoration(labelText: 'Subtitle (Optional)', hintText: 'e.g. Tell us about display glass'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: stepNumCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Step Number *'),
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int?>(
+                    value: selectedBrandId,
+                    decoration: const InputDecoration(labelText: 'Brand Assignment'),
+                    items: [
+                      const DropdownMenuItem<int?>(value: null, child: Text('Universal (All Brands)')),
+                      ..._pricingBrands.map((b) => DropdownMenuItem<int?>(value: b.id, child: Text(b.name))),
+                    ],
+                    onChanged: (v) => setDlgState(() => selectedBrandId = v),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Single Choice'),
+                        selected: selectionType == 'SINGLE',
+                        onSelected: (v) => setDlgState(() => selectionType = 'SINGLE'),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text('Multiple Choice'),
+                        selected: selectionType == 'MULTI',
+                        onSelected: (v) => setDlgState(() => selectionType = 'MULTI'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Mandatory Step', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    subtitle: const Text('Customer must answer before continuing', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+                    value: isMandatory,
+                    onChanged: (v) => setDlgState(() => isMandatory = v),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                          onPressed: () async {
+                            final name = nameCtrl.text.trim();
+                            if (name.isEmpty) return;
+                            final stepNum = int.tryParse(stepNumCtrl.text.trim()) ?? 1;
+                            Navigator.pop(ctx);
+                            try {
+                              final payload = {
+                                'name': name,
+                                'subtitle': subtitleCtrl.text.trim(),
+                                'step_number': stepNum,
+                                'selection_type': selectionType,
+                                'is_mandatory': isMandatory,
+                                if (selectedBrandId != null) 'brand': selectedBrandId,
+                              };
+                              if (categoryToEdit != null) {
+                                await _api.updateConditionCategory(categoryToEdit.id, payload);
+                              } else {
+                                await _api.createConditionCategory(payload);
+                              }
+                              _loadAdminData();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('✓ Step "$name" ${categoryToEdit == null ? "created" : "updated"}!'), backgroundColor: AppTheme.primaryGreen),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                              }
+                            }
+                          },
+                          child: Text(categoryToEdit == null ? 'Create Step' : 'Update Step'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddConditionOptionModal(ConditionCategoryModel cat) {
+    final titleCtrl = TextEditingController();
+    final valCtrl = TextEditingController(text: '500');
+    final imgCtrl = TextEditingController();
+    String deductionType = 'FLAT';
+    bool isRejection = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(16),
+          child: GlassContainer(
+            padding: const EdgeInsets.all(22),
+            borderRadius: BorderRadius.circular(24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: AppTheme.primaryGreen.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+                        child: const Icon(Icons.add_circle_outline_rounded, color: AppTheme.primaryGreen, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text('Add Option to ${cat.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: titleCtrl,
+                    decoration: const InputDecoration(labelText: 'Option / Defect Title *', hintText: 'e.g. Broken back glass'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: valCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Deduction Amount *', prefixIcon: Icon(Icons.currency_rupee, color: AppTheme.primaryGreen)),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Flat (₹)'),
+                        selected: deductionType == 'FLAT',
+                        onSelected: (v) => setDlgState(() => deductionType = 'FLAT'),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text('Percentage (%)'),
+                        selected: deductionType == 'PERCENTAGE',
+                        onSelected: (v) => setDlgState(() => deductionType = 'PERCENTAGE'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Reject Device If Selected', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    subtitle: const Text('Instantly marks device ineligible for buyback', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+                    value: isRejection,
+                    onChanged: (v) => setDlgState(() => isRejection = v),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.lightGreen,
+                          foregroundColor: AppTheme.darkGreen,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppTheme.primaryGreen),
+                        label: const Text('Pick Photo (JPG/PNG)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final b64 = await ImageHelper.pickImageAsBase64();
+                          if (b64 != null) {
+                            setDlgState(() => imgCtrl.text = b64);
+                          }
+                        },
+                      ),
+                      if (imgCtrl.text.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () => setDlgState(() => imgCtrl.text = ''),
+                          child: const Text('Clear', style: TextStyle(color: Colors.red, fontSize: 11)),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                          onPressed: () async {
+                            final title = titleCtrl.text.trim();
+                            if (title.isEmpty) return;
+                            final val = double.tryParse(valCtrl.text.trim()) ?? 0.0;
+                            Navigator.pop(ctx);
+                            try {
+                              await _api.createConditionOption({
+                                'category': cat.id,
+                                'title': title,
+                                'default_deduction_value': val,
+                                'deduction_type': deductionType,
+                                'is_rejection': isRejection,
+                                'image_base64': imgCtrl.text.trim(),
+                              });
+                              _loadAdminData();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('✓ Option "$title" added!'), backgroundColor: AppTheme.primaryGreen),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                              }
+                            }
+                          },
+                          child: const Text('Add Option'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPricingTab() {
     final filteredCategories = _conditionCategories.where((c) {
       if (_selectedPricingBrandId == null) return true;
@@ -3118,9 +3780,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 const SizedBox(width: 6),
                 _buildCatalogQuickBtn('Brands', Icons.verified_rounded, _showBrandManager),
                 const SizedBox(width: 6),
+                _buildCatalogQuickBtn('Series', Icons.view_carousel_rounded, _showSeriesManager),
+                const SizedBox(width: 6),
                 _buildCatalogQuickBtn('Models', Icons.phone_android_rounded, _showModelManager),
                 const SizedBox(width: 6),
                 _buildCatalogQuickBtn('Variants', Icons.storage_rounded, _showVariantManager),
+                const SizedBox(width: 6),
+                _buildCatalogQuickBtn('+ Add Step', Icons.add_circle_outline_rounded, _showAddConditionCategoryModal),
               ],
             ),
           ),
@@ -3271,6 +3937,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                               child: Text('${cat.options.length} options', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.primaryGreen)),
                             ),
                             const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 18, color: AppTheme.primaryGreen),
+                              tooltip: 'Edit Question Step',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () => _showAddConditionCategoryModal(categoryToEdit: cat),
+                            ),
+                            const SizedBox(width: 6),
                             IconButton(
                               icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
                               tooltip: 'Delete Question Step',

@@ -521,6 +521,90 @@ class ApiService {
 
   Future<Map<String, dynamic>> updateConditionOption(dynamic optionId, Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/valuation/options/$optionId/');
+    final res = await http.patch(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 200) {
+      _cachedConditions = null;
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<Map<String, dynamic>> createConditionOption(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/options/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 201) {
+      _cachedConditions = null;
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<Map<String, dynamic>> createConditionCategory(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/conditions/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 201) {
+      _cachedConditions = null;
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<Map<String, dynamic>> updateConditionCategory(dynamic categoryId, Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/conditions/$categoryId/');
+    final res = await http.put(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 200) {
+      _cachedConditions = null;
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<Map<String, dynamic>> createSeries(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/series/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 201) {
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<Map<String, dynamic>> updateSeries(dynamic seriesId, Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/series/$seriesId/');
     final res = await http.put(
       url,
       headers: _headers,
@@ -531,7 +615,15 @@ class ApiService {
       return jsonDecode(res.body);
     } else {
       final err = jsonDecode(res.body);
-      throw Exception(err['detail'] ?? 'Failed to update deduction');
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<void> deleteSeries(dynamic seriesId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/series/$seriesId/');
+    final res = await http.delete(url, headers: _headers);
+    if (res.statusCode != 204 && res.statusCode != 200) {
+      throw Exception('Failed to delete series');
     }
   }
 

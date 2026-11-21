@@ -52,7 +52,7 @@ def condition_categories_view(request):
             return Response(ConditionCategorySerializer(cat).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET', 'PUT', 'DELETE'])
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([AllowAny])
 def condition_category_detail_view(request, pk):
     try:
@@ -66,7 +66,7 @@ def condition_category_detail_view(request, pk):
     if not request.user.is_authenticated or request.user.role != 'ADMIN':
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
-    if request.method == 'PUT':
+    if request.method in ['PUT', 'PATCH']:
         serializer = ConditionCategorySerializer(category, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
@@ -96,7 +96,17 @@ def condition_options_view(request):
     elif request.method == 'POST':
         if not request.user.is_authenticated or request.user.role != 'ADMIN':
             return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
-        serializer = ConditionOptionSerializer(data=request.data)
+        
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        if not data.get('code'):
+            import uuid, re
+            raw_title = str(data.get('title', 'OPT')).strip()
+            clean_title = re.sub(r'[^A-Za-z0-9]+', '_', raw_title).upper().strip('_')[:20]
+            if not clean_title:
+                clean_title = 'OPT'
+            data['code'] = f"{clean_title}_{uuid.uuid4().hex[:8].upper()}"
+
+        serializer = ConditionOptionSerializer(data=data)
         if serializer.is_valid():
             opt = serializer.save()
             return Response(ConditionOptionSerializer(opt).data, status=status.HTTP_201_CREATED)
