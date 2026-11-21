@@ -44,7 +44,9 @@ def sales_list_create_view(request):
     if request.method == 'GET':
         _auto_shift_overdue_pickups()
         user = request.user
-        queryset = PhoneSale.objects.all().select_related('variant__model__brand', 'assigned_agent')
+        queryset = PhoneSale.objects.all().select_related(
+            'variant__model__brand', 'assigned_agent', 'payment'
+        ).prefetch_related('inspection__photos')
 
         # Role-based filtering
         if not user.is_authenticated:
@@ -58,13 +60,19 @@ def sales_list_create_view(request):
             if sale_code:
                 queryset = queryset.filter(sale_code=sale_code)
         elif user.role == 'CUSTOMER':
-            q = queryset.filter(customer=user) | queryset.filter(customer_phone=user.phone)
+            q = queryset.filter(customer=user)
+            if user.phone:
+                q = q | queryset.filter(customer_phone=user.phone)
             if user.email:
                 q = q | queryset.filter(customer_email__iexact=user.email)
             queryset = q.distinct()
         elif user.role == 'COLLECTION_AGENT':
-            # Collection agent sees assigned tasks OR unassigned bookings needing pickup
-            queryset = (queryset.filter(assigned_agent=user) | queryset.filter(assigned_agent__isnull=True, status__in=['SUBMITTED', 'PICKUP_SCHEDULED'])).distinct()
+            # Collection agent view: default is their own assigned queue & history.
+            # If agent specifically queries unassigned pool: ?pool=true
+            if request.GET.get('pool', 'false').lower() == 'true':
+                queryset = queryset.filter(assigned_agent__isnull=True, status__in=['SUBMITTED', 'PICKUP_SCHEDULED'])
+            else:
+                queryset = queryset.filter(assigned_agent=user)
         elif user.role == 'ADMIN':
             pass # Super Admin sees all orders across the business
         else:

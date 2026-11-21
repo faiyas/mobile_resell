@@ -105,13 +105,14 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
     }
   };
 
-  // Status step configuration
+  // 6-Milestone Lifecycle
   const STEPS = [
-    { key: 'SUBMITTED', label: 'Request Submitted' },
-    { key: 'PICKUP_SCHEDULED', label: 'Pickup Scheduled' },
-    { key: 'INSPECTION_PENDING', label: 'Device Inspection' },
-    { key: 'FINAL_OFFER_SENT', label: 'Final Offer' },
-    { key: 'PAYMENT_COMPLETED', label: 'Payout Disbursed' },
+    { key: 'SUBMITTED', label: '1. Request Placed' },
+    { key: 'PICKUP_SCHEDULED', label: '2. Pickup Scheduled' },
+    { key: 'INSPECTION_PENDING', label: '3. Doorstep QC' },
+    { key: 'FINAL_OFFER_SENT', label: '4. Offer Confirmed' },
+    { key: 'OWNERSHIP_TRANSFERRED', label: '5. Pickup Completed' },
+    { key: 'PAYMENT_COMPLETED', label: '6. Payout Disbursed' },
   ];
 
   const getStepIndex = (status) => {
@@ -121,11 +122,11 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
       case 'PICKED_UP':
       case 'INSPECTION_PENDING':
       case 'INSPECTION_COMPLETED': return 2;
-      case 'FINAL_OFFER_SENT':
-      case 'CUSTOMER_ACCEPTED':
+      case 'FINAL_OFFER_SENT': return 3;
+      case 'CUSTOMER_ACCEPTED': return 3;
       case 'OWNERSHIP_TRANSFERRED':
-      case 'PAYMENT_PENDING': return 3;
-      case 'PAYMENT_COMPLETED': return 4;
+      case 'PAYMENT_PENDING': return 4;
+      case 'PAYMENT_COMPLETED': return 5;
       default: return 0;
     }
   };
@@ -321,6 +322,73 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                   >
                     Reject Offer (Return Device)
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* STATUS BANNER: CUSTOMER ACCEPTED, AWAITING PHYSICAL COLLECTION */}
+            {selectedSale.status === 'CUSTOMER_ACCEPTED' && (
+              <div className="glass-card bg-blue-50/90 border-2 border-blue-300 rounded-2xl p-5 space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
+                  <h4 className="font-extrabold text-blue-900 text-sm">
+                    Final Buyback Price Confirmed (₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')})
+                  </h4>
+                </div>
+                <p className="text-xs text-blue-800">
+                  Please hand over the physical device to pickup specialist <strong>{selectedSale.assigned_agent_name || 'Agent'}</strong>. The agent will sign for custody, and your instant payout will be released.
+                </p>
+              </div>
+            )}
+
+            {/* STATUS BANNER: PICKUP COMPLETED & IN COMPANY CUSTODY */}
+            {selectedSale.status === 'OWNERSHIP_TRANSFERRED' && (
+              <div className="glass-card bg-emerald-50/90 border-2 border-emerald-400 rounded-2xl p-5 space-y-2 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
+                    ✓
+                  </div>
+                  <div>
+                    <h4 className="font-black text-emerald-950 text-base">
+                      Pickup Completed & Device Handed Over
+                    </h4>
+                    <p className="text-xs text-emerald-800">
+                      Physical custody transferred to 1103 RECELL specialist {selectedSale.assigned_agent_name || 'Agent'}.
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-white/80 p-3 rounded-xl border border-emerald-200 text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-2">
+                  <span>Super Admin has been notified to release payment of <strong>₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}</strong> to your {selectedSale.beneficiary_type}.</span>
+                  <span className="font-bold text-emerald-800 text-[11px] bg-emerald-100 px-2.5 py-1 rounded-full whitespace-nowrap">Payout Processing...</span>
+                </div>
+              </div>
+            )}
+
+            {/* Inspection Proof Gallery */}
+            {selectedSale.inspection?.photos && selectedSale.inspection.photos.length > 0 && (
+              <div className="glass-card p-4 sm:p-5 rounded-2xl border border-white/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs sm:text-sm text-[#17251C] flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-[#0BAA4B]" />
+                    Doorstep QC Physical Photos ({selectedSale.inspection.photos.length} Captured by Agent)
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-mono">
+                    IMEI: {selectedSale.inspection.verified_imei || selectedSale.imei_number || 'Verified'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {selectedSale.inspection.photos.map((p, idx) => (
+                    <div key={p.id || idx} className="rounded-xl overflow-hidden border border-slate-200 bg-white aspect-square shadow-xs">
+                      <img
+                        src={p.image_base64?.startsWith('data:') ? p.image_base64 : `data:image/jpeg;base64,${p.image_base64}`}
+                        alt={p.label}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="p-1 bg-slate-900/80 text-center">
+                        <span className="text-[9px] font-bold text-white block truncate">{p.label}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

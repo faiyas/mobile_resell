@@ -557,6 +557,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                   Text('Payout Mode: ${order.beneficiaryType}', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                   if (order.beneficiaryUpiId != null)
                     Text('UPI ID: ${order.beneficiaryUpiId}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
+                  if (order.inspection != null && order.inspection!.photos.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Doorstep QC Proof (4 Photos):', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                        Text('IMEI: ${order.inspection!.verifiedImei ?? order.imeiNumber ?? "Verified"}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    SizedBox(
+                      height: 65,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: order.inspection!.photos.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, pIdx) {
+                          final p = order.inspection!.photos[pIdx];
+                          final bytes = ImageHelper.decodeBase64(p.imageBase64);
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Stack(
+                              children: [
+                                if (bytes != null)
+                                  Image.memory(bytes, width: 65, height: 65, fit: BoxFit.cover)
+                                else
+                                  Container(width: 65, height: 65, color: Colors.grey.shade200, child: const Icon(Icons.image, size: 20)),
+                                Positioned(
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  child: Container(
+                                    color: Colors.black.withOpacity(0.65),
+                                    padding: const EdgeInsets.symmetric(vertical: 1),
+                                    child: Text(p.label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 14),
                   TextField(
                     controller: utrController,

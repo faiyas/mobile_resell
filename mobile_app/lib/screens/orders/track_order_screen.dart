@@ -604,17 +604,24 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
           GlassContainer(
             padding: const EdgeInsets.all(16),
             borderRadius: BorderRadius.circular(20),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.inventory_2_rounded, color: Colors.blue, size: 26),
-                SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGreen.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 24),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Device Collected by Agent', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: Colors.blue)),
-                      SizedBox(height: 2),
-                      Text('Device is in company custody. Super Admin is releasing your instant payout.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                      const Text('Pickup Completed & In Custody', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.darkGreen)),
+                      const SizedBox(height: 2),
+                      Text('Device safely handed over to ${order.assignedAgentName ?? "Agent"}. Super Admin payout is being processed.', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
                     ],
                   ),
                 ),
@@ -663,7 +670,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                 isCurrent: currentStage == 4,
               ),
               _buildTimelineStep(
-                title: '5. Device Collected',
+                title: '5. Pickup Completed (Device Collected)',
                 subtitle: currentStage >= 5 ? 'Physical device handed over to agent' : 'Agent verifies customer agreement and collects phone',
                 isCompleted: currentStage >= 5,
                 isCurrent: currentStage == 5,

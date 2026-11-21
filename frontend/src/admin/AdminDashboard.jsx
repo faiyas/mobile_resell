@@ -391,9 +391,9 @@ export default function AdminDashboard({ currentUser }) {
               <option value="">All Statuses</option>
               <option value="SUBMITTED">Submitted</option>
               <option value="PICKUP_SCHEDULED">Pickup Scheduled</option>
-              <option value="INSPECTION_COMPLETED">Inspection Completed</option>
               <option value="FINAL_OFFER_SENT">Final Offer Sent</option>
-              <option value="OWNERSHIP_TRANSFERRED">Ownership Transferred</option>
+              <option value="CUSTOMER_ACCEPTED">Offer Confirmed by Customer</option>
+              <option value="OWNERSHIP_TRANSFERRED">Pickup Completed (In Custody)</option>
               <option value="PAYMENT_COMPLETED">Payment Completed (Paid)</option>
             </select>
           </div>
@@ -442,10 +442,11 @@ export default function AdminDashboard({ currentUser }) {
                       <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
                         s.status === 'PAYMENT_COMPLETED' ? 'bg-emerald-100 text-emerald-800' :
                         s.status === 'FINAL_OFFER_SENT' ? 'bg-amber-100 text-amber-800' :
-                        s.status === 'OWNERSHIP_TRANSFERRED' ? 'bg-indigo-100 text-indigo-800' :
+                        s.status === 'CUSTOMER_ACCEPTED' ? 'bg-blue-100 text-blue-800' :
+                        s.status === 'OWNERSHIP_TRANSFERRED' ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' :
                         'bg-slate-100 text-slate-700'
                       }`}>
-                        {s.status.replace(/_/g, ' ')}
+                        {s.status === 'OWNERSHIP_TRANSFERRED' ? 'Pickup Completed' : s.status.replace(/_/g, ' ')}
                       </span>
                     </td>
                     <td className="py-3.5 px-3 text-right space-x-1 whitespace-nowrap">

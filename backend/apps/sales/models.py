@@ -34,8 +34,8 @@ class PhoneSale(models.Model):
         related_name='phone_sales'
     )
     customer_name = models.CharField(max_length=150)
-    customer_phone = models.CharField(max_length=20)
-    customer_email = models.EmailField(blank=True)
+    customer_phone = models.CharField(max_length=20, db_index=True)
+    customer_email = models.EmailField(blank=True, db_index=True)
 
     # Variant is optional to support 'Others' category custom devices
     variant = models.ForeignKey(StorageVariant, on_delete=models.PROTECT, related_name='sales', null=True, blank=True)
@@ -54,7 +54,7 @@ class PhoneSale(models.Model):
     estimated_price = models.DecimalField(max_digits=10, decimal_places=2)
     final_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='SUBMITTED')
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='SUBMITTED', db_index=True)
 
     # Pickup Details
     assigned_agent = models.ForeignKey(
@@ -67,7 +67,7 @@ class PhoneSale(models.Model):
     pickup_address = models.TextField()
     pickup_city = models.CharField(max_length=100, default='City')
     pickup_pincode = models.CharField(max_length=10)
-    pickup_date = models.DateField(null=True, blank=True)
+    pickup_date = models.DateField(null=True, blank=True, db_index=True)
     pickup_slot = models.CharField(max_length=50, blank=True, default='Morning (10:00 AM - 1:00 PM)')
 
     # Payment Details for Customer receiving funds
@@ -91,6 +91,12 @@ class PhoneSale(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['customer_phone', '-created_at']),
+            models.Index(fields=['assigned_agent', 'status']),
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['pickup_date', 'status']),
+        ]
 
     def save(self, *args, **kwargs):
         if not self.sale_code:

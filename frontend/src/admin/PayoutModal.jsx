@@ -10,6 +10,8 @@ import { fileToBase64 } from '../utils/imageCompressor';
 export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
   if (!sale) return null;
 
+  const [saleDetail, setSaleDetail] = useState(sale);
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
   const [copiedField, setCopiedField] = useState('');
   
@@ -22,6 +24,24 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
   
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Fetch complete sale details with inspection photos
+  useEffect(() => {
+    async function loadFullDetails() {
+      try {
+        const full = await api.getSaleDetail(sale.id || sale.sale_code);
+        if (full) {
+          setSaleDetail(full);
+          if (full.final_price || full.estimated_price) {
+            setAmount(full.final_price || full.estimated_price);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load full sale details for payout verification:', e);
+      }
+    }
+    loadFullDetails();
+  }, [sale]);
 
   // Generate dynamic UPI QR Code on mount
   useEffect(() => {
@@ -134,6 +154,55 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
             <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 font-semibold flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {/* Section 0: Physical Device Inspection Proof Photos & Verified IMEI */}
+          {saleDetail?.inspection?.photos && saleDetail.inspection.photos.length > 0 && (
+            <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 sm:p-5 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <span className="font-extrabold text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  Physical Device Inspection Proof ({saleDetail.inspection.photos.length} Live Photos)
+                </span>
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full self-start sm:self-auto">
+                  Collected by {saleDetail.assigned_agent_name || saleDetail.inspection.inspector_name || 'Field Specialist'}
+                </span>
+              </div>
+
+              {/* 4 Photos Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {saleDetail.inspection.photos.map((p, idx) => (
+                  <div
+                    key={p.id || idx}
+                    onClick={() => setLightboxPhoto(p)}
+                    className="group relative cursor-pointer rounded-xl overflow-hidden border border-emerald-200 bg-white hover:ring-2 hover:ring-emerald-500 transition aspect-square shadow-xs"
+                    title={`Click to zoom ${p.label}`}
+                  >
+                    <img
+                      src={p.image_base64?.startsWith('data:') ? p.image_base64 : `data:image/jpeg;base64,${p.image_base64}`}
+                      alt={p.label}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-200"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 bg-slate-900/85 backdrop-blur-xs py-1 px-1.5 text-center">
+                      <span className="text-[9px] sm:text-[10px] font-bold text-white block truncate">{p.label}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Verification Badges */}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-700 bg-white p-2.5 rounded-xl border border-emerald-200/80">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-500 uppercase text-[10px]">Verified 15-Digit IMEI:</span>
+                  <span className="font-mono font-black text-slate-900">{saleDetail.inspection.verified_imei || saleDetail.imei_number || '15-Digit Verified'}</span>
+                </div>
+                {saleDetail.inspection.inspector_notes && (
+                  <div className="text-[11px] text-slate-600 italic">
+                    Note: "{saleDetail.inspection.inspector_notes}"
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -362,6 +431,33 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
         </form>
 
       </div>
+
+      {/* Lightbox Photo Preview Modal */}
+      {lightboxPhoto && (
+        <div 
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+          onClick={() => setLightboxPhoto(null)}
+        >
+          <div className="relative max-w-lg w-full bg-slate-900 rounded-2xl overflow-hidden p-3 border border-slate-700 text-center" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-2 px-1 text-white">
+              <span className="font-bold text-xs">{lightboxPhoto.label}</span>
+              <button 
+                type="button"
+                onClick={() => setLightboxPhoto(null)}
+                className="p-1 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <img 
+              src={lightboxPhoto.image_base64?.startsWith('data:') ? lightboxPhoto.image_base64 : `data:image/jpeg;base64,${lightboxPhoto.image_base64}`} 
+              alt={lightboxPhoto.label}
+              className="max-h-[70vh] w-auto mx-auto rounded-xl object-contain shadow-2xl"
+            />
+            <p className="text-[10px] text-slate-400 mt-2 font-mono">1103 RECELL · Doorstep QC Physical Proof</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

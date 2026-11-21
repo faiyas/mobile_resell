@@ -102,10 +102,10 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
     return list;
   }
 
-  // Completed Handover History: Orders where QC was finished / accepted / paid
+  // Completed Handover History: Orders where QC was finished and device was collected / paid
   List<SaleOrderModel> get _historyOrders {
     return _sales.where((s) {
-      final isCompleted = ['OWNERSHIP_TRANSFERRED', 'CUSTOMER_ACCEPTED', 'PAYMENT_COMPLETED', 'CUSTOMER_REJECTED'].contains(s.status);
+      final isCompleted = ['OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED', 'CUSTOMER_REJECTED'].contains(s.status);
       if (!isCompleted) return false;
       if (_searchQuery.isEmpty) return true;
       return s.saleCode.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -827,7 +827,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
-                      order.status.replaceAll('_', ' '),
+                      order.status == 'OWNERSHIP_TRANSFERRED' ? 'PICKUP COMPLETED' : order.status.replaceAll('_', ' '),
                       style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: statusColor),
                     ),
                   ),
@@ -859,6 +859,28 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
                 'Customer: ${order.customerName} (${order.customerPhone})',
                 style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
               ),
+              if (order.status == 'OWNERSHIP_TRANSFERRED')
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGreen.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.inventory_2_rounded, size: 14, color: AppTheme.primaryGreen),
+                      SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Device in custody · Payout unlocked for Super Admin',
+                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.darkGreen),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         );
