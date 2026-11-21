@@ -146,6 +146,9 @@ export const api = {
   // Payments (Manual Payout Proof & UTR)
   getPaymentQR: (saleId) => request(`/payments/qr/${saleId}/`),
   recordPayout: (payload) => request('/payments/record-payout/', { method: 'POST', body: JSON.stringify(payload) }),
-  getPaymentsList: () => request('/payments/'),
+  getPaymentsList: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/payments/${query ? `?${query}` : ''}`);
+  },
   getPaymentReceipt: (saleCode) => request(`/payments/receipt/${saleCode}/`),
 };

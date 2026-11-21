@@ -262,6 +262,7 @@ class ApiService {
     int? sourceBrandId,
     required int targetBrandId,
     bool markMandatory = true,
+    bool overwrite = true,
   }) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/valuation/conditions/copy-from-brand/');
     final res = await http.post(
@@ -271,13 +272,19 @@ class ApiService {
         'source_brand_id': sourceBrandId,
         'target_brand_id': targetBrandId,
         'mark_mandatory': markMandatory,
+        'overwrite': overwrite,
       }),
     );
     if (res.statusCode == 201 || res.statusCode == 200) {
       return jsonDecode(res.body);
     } else {
-      final err = jsonDecode(res.body);
-      throw Exception(err['detail'] ?? 'Failed to copy questions from brand');
+      try {
+        final err = jsonDecode(res.body);
+        throw err['detail'] ?? 'Failed to copy questions from brand';
+      } catch (e) {
+        if (e is String) rethrow;
+        throw 'Server response error (${res.statusCode})';
+      }
     }
   }
 

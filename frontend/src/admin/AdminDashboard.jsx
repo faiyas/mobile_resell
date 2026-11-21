@@ -43,6 +43,31 @@ export default function AdminDashboard({ currentUser }) {
   const [assigningLoading, setAssigningLoading] = useState(false);
   const [successToast, setSuccessToast] = useState('');
 
+  // History tab date filters
+  const [historyPeriod, setHistoryPeriod] = useState('all');
+  const [historyStartDate, setHistoryStartDate] = useState('');
+  const [historyEndDate, setHistoryEndDate] = useState('');
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  const filterPayments = async (period = historyPeriod, start = historyStartDate, end = historyEndDate) => {
+    setHistoryLoading(true);
+    setHistoryPeriod(period);
+    setHistoryStartDate(start);
+    setHistoryEndDate(end);
+    try {
+      const params = {};
+      if (period && period !== 'all') params.period = period;
+      if (start) params.start_date = start;
+      if (end) params.end_date = end;
+      const data = await api.getPaymentsList(params);
+      setPaymentsList(data);
+    } catch (e) {
+      console.error('Failed to filter payments:', e);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadDashboardData();
   }, []);
@@ -520,14 +545,73 @@ export default function AdminDashboard({ currentUser }) {
       {/* ================= TAB 4: PAYOUTS HISTORY ================= */}
       {activeTab === 'history' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in p-5 space-y-4">
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
               <h3 className="text-base font-extrabold text-slate-900">Verified Payout Ledger</h3>
               <p className="text-xs text-slate-500">All bank transfers and UPI payouts uploaded with Base64 screenshot receipts.</p>
             </div>
-            <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">
-              Total: ₹{Number(paymentsList.total_disbursed).toLocaleString('en-IN')}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-full">
+                Disbursed: ₹{Number(paymentsList.total_disbursed).toLocaleString('en-IN')} ({paymentsList.total_count || paymentsList.payments?.length || 0} Records)
+              </span>
+            </div>
+          </div>
+
+          {/* Date & Period Filters */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+            {/* Quick Period Buttons */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="font-bold text-slate-600 mr-1 text-[11px] uppercase tracking-wider">Period:</span>
+              {[
+                { key: 'all', label: 'All Time' },
+                { key: 'today', label: 'Today' },
+                { key: 'yesterday', label: 'Yesterday' },
+                { key: 'week', label: 'This Week' },
+                { key: 'month', label: 'This Month' },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => filterPayments(tab.key, '', '')}
+                  className={`px-3 py-1.5 rounded-lg font-bold text-xs transition ${
+                    historyPeriod === tab.key && !historyStartDate
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Calendar Custom Range */}
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-slate-600 text-[11px] uppercase tracking-wider">Custom:</span>
+              <input
+                type="date"
+                value={historyStartDate}
+                onChange={(e) => filterPayments('custom', e.target.value, historyEndDate)}
+                className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+                title="Start Date"
+              />
+              <span className="text-slate-400 font-bold">to</span>
+              <input
+                type="date"
+                value={historyEndDate}
+                onChange={(e) => filterPayments('custom', historyStartDate, e.target.value)}
+                className="px-2 py-1 bg-white border border-slate-300 rounded-lg text-xs font-medium"
+                title="End Date"
+              />
+              {(historyStartDate || historyEndDate || historyPeriod !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => filterPayments('all', '', '')}
+                  className="px-2.5 py-1 text-slate-500 hover:text-slate-800 font-bold text-xs underline"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="overflow-x-auto">

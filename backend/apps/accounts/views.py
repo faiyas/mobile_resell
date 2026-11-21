@@ -34,13 +34,19 @@ def login_view(request):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    email = serializer.validated_data['email'].strip()
+    identifier = serializer.validated_data['email'].strip()
     password = serializer.validated_data['password']
 
-    try:
-        user = User.objects.get(email__iexact=email)
-    except User.DoesNotExist:
-        return Response({'detail': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)
+    # Support login with either email or 10-digit mobile number
+    user = None
+    clean_digits = ''.join(filter(str.isdigit, identifier))
+    if len(clean_digits) >= 10:
+        user = User.objects.filter(phone__endswith=clean_digits[-10:]).first()
+    if not user:
+        user = User.objects.filter(email__iexact=identifier).first()
+
+    if not user:
+        return Response({'detail': 'Invalid email/phone or password'}, status=status.HTTP_401_UNAUTHORIZED)
 
     if not user.check_password(password):
         return Response({'detail': 'Invalid email or password'}, status=status.HTTP_401_UNAUTHORIZED)

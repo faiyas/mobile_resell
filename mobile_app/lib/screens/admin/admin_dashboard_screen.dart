@@ -119,7 +119,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
   List<SaleOrderModel> get _payoutQueue =>
       _sales.where((s) => ['OWNERSHIP_TRANSFERRED', 'CUSTOMER_ACCEPTED'].contains(s.status)).toList();
 
+  DateTimeRange? _selectedDateRange;
+  String _datePeriodFilter = 'ALL'; // 'ALL', 'TODAY', 'WEEK', 'MONTH'
+
   List<SaleOrderModel> get _filteredSales {
+    final now = DateTime.now();
     return _sales.where((s) {
       final matchesStatus = _statusFilter == 'ALL' ? true : s.status == _statusFilter;
       final matchesQuery = _searchQuery.isEmpty
@@ -127,7 +131,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           : s.saleCode.toLowerCase().contains(_searchQuery.toLowerCase()) ||
               s.customerName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
               s.customerPhone.contains(_searchQuery);
-      return matchesStatus && matchesQuery;
+
+      if (!matchesStatus || !matchesQuery) return false;
+
+      // Period / Date filters
+      if (_selectedDateRange != null && s.createdAt != null) {
+        final orderDate = DateTime.tryParse(s.createdAt!);
+        if (orderDate != null) {
+          final start = DateTime(_selectedDateRange!.start.year, _selectedDateRange!.start.month, _selectedDateRange!.start.day);
+          final end = DateTime(_selectedDateRange!.end.year, _selectedDateRange!.end.month, _selectedDateRange!.end.day, 23, 59, 59);
+          if (orderDate.isBefore(start) || orderDate.isAfter(end)) return false;
+        }
+      } else if (_datePeriodFilter == 'TODAY' && s.createdAt != null) {
+        final orderDate = DateTime.tryParse(s.createdAt!);
+        if (orderDate != null && (orderDate.year != now.year || orderDate.month != now.month || orderDate.day != now.day)) {
+          return false;
+        }
+      } else if (_datePeriodFilter == 'WEEK' && s.createdAt != null) {
+        final orderDate = DateTime.tryParse(s.createdAt!);
+        if (orderDate != null && now.difference(orderDate).inDays > 7) {
+          return false;
+        }
+      } else if (_datePeriodFilter == 'MONTH' && s.createdAt != null) {
+        final orderDate = DateTime.tryParse(s.createdAt!);
+        if (orderDate != null && (orderDate.year != now.year || orderDate.month != now.month)) {
+          return false;
+        }
+      }
+
+      return true;
     }).toList();
   }
 
@@ -1204,6 +1236,72 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
               _buildFilterChip('PICKUP_SCHEDULED', 'Scheduled'),
               _buildFilterChip('OWNERSHIP_TRANSFERRED', 'Awaiting Payout'),
               _buildFilterChip('PAYMENT_COMPLETED', 'Completed'),
+            ],
+          ),
+        ),
+        // Date / Period Filter Row
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+          child: Row(
+            children: [
+              ActionChip(
+                avatar: Icon(Icons.calendar_today_rounded, size: 12, color: _selectedDateRange != null ? Colors.white : AppTheme.darkGreen),
+                label: Text(
+                  _selectedDateRange != null
+                      ? '${_selectedDateRange!.start.day}/${_selectedDateRange!.start.month} - ${_selectedDateRange!.end.day}/${_selectedDateRange!.end.month}'
+                      : 'Pick Dates',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: _selectedDateRange != null ? Colors.white : AppTheme.darkGreen,
+                  ),
+                ),
+                backgroundColor: _selectedDateRange != null ? AppTheme.primaryGreen : AppTheme.lightGreen,
+                onPressed: () async {
+                  final picked = await showDateRangePicker(
+                    context: context,
+                    firstDate: DateTime(2025),
+                    lastDate: DateTime.now().add(const Duration(days: 30)),
+                    initialDateRange: _selectedDateRange,
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _selectedDateRange = picked;
+                      _datePeriodFilter = 'CUSTOM';
+                    });
+                  }
+                },
+              ),
+              const SizedBox(width: 6),
+              ...['ALL', 'TODAY', 'WEEK', 'MONTH'].map((p) => Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: ChoiceChip(
+                  label: Text(
+                    p == 'ALL' ? 'All Time' : p == 'TODAY' ? 'Today' : p == 'WEEK' ? 'This Week' : 'This Month',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                  selected: _datePeriodFilter == p && _selectedDateRange == null,
+                  selectedColor: AppTheme.primaryGreen.withOpacity(0.2),
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _datePeriodFilter = p;
+                        _selectedDateRange = null;
+                      });
+                    }
+                  },
+                ),
+              )),
+              if (_selectedDateRange != null || _datePeriodFilter != 'ALL')
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 16, color: Colors.red),
+                  tooltip: 'Reset Date Filter',
+                  onPressed: () => setState(() {
+                    _selectedDateRange = null;
+                    _datePeriodFilter = 'ALL';
+                  }),
+                ),
             ],
           ),
         ),
@@ -3131,7 +3229,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                       children: [
                         Expanded(
                           child: Text(
-                            'Step ${cat.stepNumber}: ${cat.name}',
+                            'Step ${index + 1}: ${cat.name}',
                             style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
                           ),
                         ),

@@ -26,6 +26,8 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
   bool _loading = false;
   List<SaleOrderModel> _sales = [];
   String _searchQuery = '';
+  String _historyPeriodFilter = 'ALL';
+  DateTimeRange? _historyDateRange;
 
   @override
   void initState() {
@@ -104,14 +106,38 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
 
   // Completed Handover History: Orders where QC was finished and device was collected / paid
   List<SaleOrderModel> get _historyOrders {
+    final now = DateTime.now();
     return _sales.where((s) {
       final isCompleted = ['OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED', 'CUSTOMER_REJECTED'].contains(s.status);
       if (!isCompleted) return false;
-      if (_searchQuery.isEmpty) return true;
-      return s.saleCode.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          s.customerName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          s.customerPhone.contains(_searchQuery) ||
-          s.modelName.toLowerCase().contains(_searchQuery.toLowerCase());
+      if (_searchQuery.isNotEmpty) {
+        final matches = s.saleCode.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            s.customerName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            s.customerPhone.contains(_searchQuery) ||
+            s.modelName.toLowerCase().contains(_searchQuery.toLowerCase());
+        if (!matches) return false;
+      }
+
+      // Date / Period Filtering
+      if (_historyDateRange != null && s.createdAt != null) {
+        final d = DateTime.tryParse(s.createdAt!);
+        if (d != null) {
+          final start = DateTime(_historyDateRange!.start.year, _historyDateRange!.start.month, _historyDateRange!.start.day);
+          final end = DateTime(_historyDateRange!.end.year, _historyDateRange!.end.month, _historyDateRange!.end.day, 23, 59, 59);
+          if (d.isBefore(start) || d.isAfter(end)) return false;
+        }
+      } else if (_historyPeriodFilter == 'TODAY' && s.createdAt != null) {
+        final d = DateTime.tryParse(s.createdAt!);
+        if (d != null && (d.year != now.year || d.month != now.month || d.day != now.day)) return false;
+      } else if (_historyPeriodFilter == 'WEEK' && s.createdAt != null) {
+        final d = DateTime.tryParse(s.createdAt!);
+        if (d != null && now.difference(d).inDays > 7) return false;
+      } else if (_historyPeriodFilter == 'MONTH' && s.createdAt != null) {
+        final d = DateTime.tryParse(s.createdAt!);
+        if (d != null && (d.year != now.year || d.month != now.month)) return false;
+      }
+
+      return true;
     }).toList();
   }
 
@@ -783,108 +809,174 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
 
   Widget _buildHistoryList() {
     final list = _historyOrders;
-    if (list.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    return Column(
+      children: [
+        // Date / Period Filter Chips for Agent Completed Pickups
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Row(
             children: [
-              const Icon(Icons.history_rounded, size: 54, color: AppTheme.textSecondary),
-              const SizedBox(height: 12),
-              const Text('No Handover History Yet', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary)),
-              const SizedBox(height: 6),
-              const Text('Completed inspections will appear here with final agreed prices and proof records.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+              ActionChip(
+                avatar: Icon(Icons.calendar_today_rounded, size: 12, color: _historyDateRange != null ? Colors.white : AppTheme.darkGreen),
+                label: Text(
+                  _historyDateRange != null
+                      ? '${_historyDateRange!.start.day}/${_historyDateRange!.start.month} - ${_historyDateRange!.end.day}/${_historyDateRange!.end.month}'
+                      : 'Pick Dates',
+                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: _historyDateRange != null ? Colors.white : AppTheme.darkGreen),
+                ),
+                backgroundColor: _historyDateRange != null ? AppTheme.primaryGreen : AppTheme.lightGreen,
+                onPressed: () async {
+                  final picked = await showDateRangePicker(
+                    context: context,
+                    firstDate: DateTime(2025),
+                    lastDate: DateTime.now().add(const Duration(days: 30)),
+                    initialDateRange: _historyDateRange,
+                  );
+                  if (picked != null) {
+                    setState(() {
+                      _historyDateRange = picked;
+                      _historyPeriodFilter = 'CUSTOM';
+                    });
+                  }
+                },
+              ),
+              const SizedBox(width: 6),
+              ...['ALL', 'TODAY', 'WEEK', 'MONTH'].map((p) => Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: ChoiceChip(
+                  label: Text(
+                    p == 'ALL' ? 'All Time' : p == 'TODAY' ? 'Today' : p == 'WEEK' ? 'This Week' : 'This Month',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                  ),
+                  selected: _historyPeriodFilter == p && _historyDateRange == null,
+                  selectedColor: AppTheme.primaryGreen.withOpacity(0.2),
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _historyPeriodFilter = p;
+                        _historyDateRange = null;
+                      });
+                    }
+                  },
+                ),
+              )),
+              if (_historyDateRange != null || _historyPeriodFilter != 'ALL')
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 16, color: Colors.red),
+                  tooltip: 'Reset Filter',
+                  onPressed: () => setState(() {
+                    _historyDateRange = null;
+                    _historyPeriodFilter = 'ALL';
+                  }),
+                ),
             ],
           ),
         ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-      itemCount: list.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final order = list[index];
-        final statusColor = _getStatusColor(order.status);
-        final finalVal = order.finalPrice ?? order.estimatedPrice;
-
-        return GlassContainer(
-          padding: const EdgeInsets.all(16),
-          borderRadius: BorderRadius.circular(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(order.saleCode, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.primaryGreen)),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      order.status == 'OWNERSHIP_TRANSFERRED' ? 'PICKUP COMPLETED' : order.status.replaceAll('_', ' '),
-                      style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: statusColor),
+        Expanded(
+          child: list.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.history_rounded, size: 54, color: AppTheme.textSecondary),
+                        const SizedBox(height: 12),
+                        const Text('No Handover History Yet', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary)),
+                        const SizedBox(height: 6),
+                        const Text('Completed inspections will appear here with final agreed prices and proof records.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                      ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '${order.brandName} ${order.modelName} (${order.storage})',
-                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.textPrimary),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  const Text('Final Handover Price: ', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
-                  Text(
-                    '₹${finalVal.toStringAsFixed(0)}',
-                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.primaryGreen),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              if (order.imeiNumber != null && order.imeiNumber!.isNotEmpty)
-                Text(
-                  'Verified IMEI: ${order.imeiNumber}',
-                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                ),
-              const SizedBox(height: 6),
-              Text(
-                'Customer: ${order.customerName} (${order.customerPhone})',
-                style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-              ),
-              if (order.status == 'OWNERSHIP_TRANSFERRED')
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.inventory_2_rounded, size: 14, color: AppTheme.primaryGreen),
-                      SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          'Device in custody · Payout unlocked for Super Admin',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.darkGreen),
-                        ),
+                )
+              : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                  itemCount: list.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final order = list[index];
+                    final statusColor = _getStatusColor(order.status);
+                    final finalVal = order.finalPrice ?? order.estimatedPrice;
+
+                    return GlassContainer(
+                      padding: const EdgeInsets.all(16),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(order.saleCode, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.primaryGreen)),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: statusColor.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  order.status == 'OWNERSHIP_TRANSFERRED' ? 'PICKUP COMPLETED' : order.status.replaceAll('_', ' '),
+                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: statusColor),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${order.brandName} ${order.modelName} (${order.storage})',
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.textPrimary),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Text('Final Handover Price: ', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+                              Text(
+                                '₹${finalVal.toStringAsFixed(0)}',
+                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.primaryGreen),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          if (order.imeiNumber != null && order.imeiNumber!.isNotEmpty)
+                            Text(
+                              'Verified IMEI: ${order.imeiNumber}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                            ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Customer: ${order.customerName} (${order.customerPhone})',
+                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                          ),
+                          if (order.status == 'OWNERSHIP_TRANSFERRED')
+                            Container(
+                              margin: const EdgeInsets.only(top: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryGreen.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                              ),
+                              child: const Row(
+                                children: [
+                                  Icon(Icons.inventory_2_rounded, size: 14, color: AppTheme.primaryGreen),
+                                  SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Device in custody · Payout unlocked for Super Admin',
+                                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.darkGreen),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-            ],
-          ),
-        );
-      },
+        ),
+      ],
     );
   }
 }

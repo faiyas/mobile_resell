@@ -109,16 +109,53 @@ def record_payout_view(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def payments_list_view(request):
-    """Admin view of all payout records and financial summary"""
+    """Admin view of all payout records and financial summary with date filters"""
     if request.user.role != 'ADMIN':
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     payments = Payment.objects.all().select_related('sale__variant__model__brand', 'paid_by').defer('payment_proof_base64')
+    
+    import datetime
+    from django.utils import timezone
+    IST = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+    now_ist = timezone.now().astimezone(IST)
+    today = now_ist.date()
+
+    period = request.GET.get('period', '').lower()
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+
+    if period == 'today':
+        payments = payments.filter(paid_at__date=today)
+    elif period == 'yesterday':
+        yesterday = today - datetime.timedelta(days=1)
+        payments = payments.filter(paid_at__date=yesterday)
+    elif period in ['week', 'this_week']:
+        start_week = today - datetime.timedelta(days=today.weekday())
+        payments = payments.filter(paid_at__date__gte=start_week, paid_at__date__lte=today)
+    elif period in ['month', 'this_month']:
+        start_month = today.replace(day=1)
+        payments = payments.filter(paid_at__date__gte=start_month, paid_at__date__lte=today)
+    else:
+        if start_date:
+            try:
+                sd = datetime.date.fromisoformat(start_date.strip())
+                payments = payments.filter(paid_at__date__gte=sd)
+            except (ValueError, TypeError):
+                pass
+        if end_date:
+            try:
+                ed = datetime.date.fromisoformat(end_date.strip())
+                payments = payments.filter(paid_at__date__lte=ed)
+            except (ValueError, TypeError):
+                pass
+
     total_disbursed = sum(p.amount for p in payments)
     
     return Response({
         'total_count': payments.count(),
         'total_disbursed': float(total_disbursed),
+        'period': period or 'all',
         'payments': PaymentListSerializer(payments, many=True).data,
     })
 

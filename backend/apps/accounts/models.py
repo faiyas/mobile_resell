@@ -27,8 +27,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         ('COLLECTION_AGENT', 'Collection Team'),
     )
 
-    email = models.EmailField(unique=True, max_length=255)
-    phone = models.CharField(max_length=20, blank=True, default='')
+    email = models.EmailField(unique=True, max_length=255, db_index=True)
+    phone = models.CharField(max_length=20, blank=True, default='', db_index=True)
     full_name = models.CharField(max_length=150, blank=True, default='')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='CUSTOMER')
     

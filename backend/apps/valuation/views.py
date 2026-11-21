@@ -293,6 +293,7 @@ def copy_questions_from_brand_view(request):
     """
     Clones all condition questions, visual Base64 illustrations, and deduction values
     from a source brand to a target brand, with optional mandatory toggle.
+    Guarantees unique codes <= 50 chars and transaction atomicity with JSON responses.
     """
     if request.user.role != 'ADMIN':
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
@@ -300,6 +301,7 @@ def copy_questions_from_brand_view(request):
     source_brand_id = request.data.get('source_brand_id')
     target_brand_id = request.data.get('target_brand_id')
     mark_mandatory = request.data.get('mark_mandatory', True)
+    overwrite = request.data.get('overwrite', False)
     
     if not target_brand_id:
         return Response({'detail': 'target_brand_id is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -324,54 +326,69 @@ def copy_questions_from_brand_view(request):
     if not source_cats.exists():
         return Response({'detail': 'No condition questions found to copy from.'}, status=status.HTTP_404_NOT_FOUND)
     
-    copied_cats = 0
-    copied_opts = 0
+    import uuid
+    from django.db import transaction
     
-    for src_cat in source_cats:
-        new_cat = ConditionCategory.objects.create(
-            device_category=src_cat.device_category,
-            brand=target_brand,
-            step_number=src_cat.step_number,
-            name=src_cat.name,
-            subtitle=src_cat.subtitle,
-            selection_type=src_cat.selection_type,
-            pro_tip=src_cat.pro_tip,
-            icon_name=src_cat.icon_name,
-            image_base64=src_cat.image_base64,
-            is_mandatory=mark_mandatory if mark_mandatory is not None else src_cat.is_mandatory,
-            display_order=src_cat.display_order,
-            is_active=True
-        )
-        copied_cats += 1
-        
-        for src_opt in src_cat.options.filter(is_active=True):
-            clean_code = src_opt.code.split('_', 1)[-1] if '_' in src_opt.code else src_opt.code
-            unique_code = f"{target_brand.slug.upper()}_{clean_code}"
-            if ConditionOption.objects.filter(code=unique_code).exists():
-                unique_code = f"{unique_code}_{new_cat.id}"
+    brand_prefix = (target_brand.slug or target_brand.name[:6]).upper().replace('-', '_')[:8]
+    
+    try:
+        with transaction.atomic():
+            if overwrite:
+                ConditionCategory.objects.filter(brand=target_brand).delete()
+                
+            copied_cats = 0
+            copied_opts = 0
             
-            ConditionOption.objects.create(
-                category=new_cat,
-                code=unique_code,
-                title=src_opt.title,
-                description=src_opt.description,
-                image_base64=src_opt.image_base64,
-                is_defect=src_opt.is_defect,
-                is_accessory_bonus=src_opt.is_accessory_bonus,
-                is_warranty=src_opt.is_warranty,
-                deduction_type=src_opt.deduction_type,
-                default_deduction_value=src_opt.default_deduction_value,
-                exclusive_group=src_opt.exclusive_group,
-                is_rejection=src_opt.is_rejection,
-                display_order=src_opt.display_order,
-                is_active=True
-            )
-            copied_opts += 1
-            
-    return Response({
-        'detail': f'Successfully cloned {copied_cats} question categories and {copied_opts} options to {target_brand.name}.',
-        'target_brand': target_brand.name,
-        'copied_categories': copied_cats,
-        'copied_options': copied_opts
-    }, status=status.HTTP_201_CREATED)
+            for src_cat in source_cats:
+                new_cat = ConditionCategory.objects.create(
+                    device_category=src_cat.device_category,
+                    brand=target_brand,
+                    step_number=src_cat.step_number,
+                    name=src_cat.name,
+                    subtitle=src_cat.subtitle,
+                    selection_type=src_cat.selection_type,
+                    pro_tip=src_cat.pro_tip,
+                    icon_name=src_cat.icon_name,
+                    image_base64=src_cat.image_base64,
+                    is_mandatory=mark_mandatory if mark_mandatory is not None else src_cat.is_mandatory,
+                    display_order=src_cat.display_order,
+                    is_active=True
+                )
+                copied_cats += 1
+                
+                for src_opt in src_cat.options.filter(is_active=True):
+                    clean_code = src_opt.code.split('_', 1)[-1] if '_' in src_opt.code else src_opt.code
+                    short_hash = uuid.uuid4().hex[:6].upper()
+                    unique_code = f"{brand_prefix}_{clean_code[:30]}_{short_hash}"[:50]
+                    
+                    while ConditionOption.objects.filter(code=unique_code).exists():
+                        short_hash = uuid.uuid4().hex[:6].upper()
+                        unique_code = f"{brand_prefix}_{clean_code[:30]}_{short_hash}"[:50]
+                    
+                    ConditionOption.objects.create(
+                        category=new_cat,
+                        code=unique_code,
+                        title=src_opt.title,
+                        description=src_opt.description,
+                        image_base64=src_opt.image_base64,
+                        is_defect=src_opt.is_defect,
+                        is_accessory_bonus=src_opt.is_accessory_bonus,
+                        is_warranty=src_opt.is_warranty,
+                        deduction_type=src_opt.deduction_type,
+                        default_deduction_value=src_opt.default_deduction_value,
+                        exclusive_group=src_opt.exclusive_group,
+                        is_rejection=src_opt.is_rejection,
+                        display_order=src_opt.display_order,
+                        is_active=True
+                    )
+                    copied_opts += 1
+                    
+        return Response({
+            'detail': f'Successfully cloned {copied_cats} question categories and {copied_opts} options to {target_brand.name}.',
+            'target_brand': target_brand.name,
+            'copied_categories': copied_cats,
+            'copied_options': copied_opts
+        }, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        return Response({'detail': f'Failed to copy questions: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
