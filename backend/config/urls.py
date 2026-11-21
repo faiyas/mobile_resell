@@ -1,7 +1,22 @@
 from django.contrib import admin
 from django.urls import path, include
+from django.http import JsonResponse
+from django.utils import timezone
+
+def health_check(request):
+    """Ultra-lightweight health endpoint for uptime monitors and keep-alive pingers"""
+    return JsonResponse({
+        'status': 'healthy',
+        'engine': '1103_recell_backend',
+        'timestamp': timezone.now().isoformat()
+    })
 
 urlpatterns = [
+    path('health/', health_check),
+    path('ping/', health_check),
+    path('api/v1/health/', health_check),
+    path('api/health/', health_check),
+
     path('admin/', admin.site.urls),
 
     # Standard API v1 endpoints

@@ -46,7 +46,16 @@ export default function App() {
       }
     }).catch(console.error);
 
-    return () => window.removeEventListener('recell-auth-expired', handleAuthExpired);
+    // Heartbeat Keep-Alive: Ping backend every 1 minute to prevent cloud backend idling
+    api.pingHealth();
+    const keepAliveTimer = setInterval(() => {
+      api.pingHealth();
+    }, 60000);
+
+    return () => {
+      window.removeEventListener('recell-auth-expired', handleAuthExpired);
+      clearInterval(keepAliveTimer);
+    };
   }, []);
 
   const handleLogout = () => {

@@ -695,6 +695,14 @@ class ApiService {
     _cachedConditions = null;
   }
 
+  /// Lightweight keep-alive health check ping
+  Future<void> pingHealth() async {
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/health/');
+      await http.get(url, headers: _headers).timeout(const Duration(seconds: 4));
+    } catch (_) {}
+  }
+
   void clearCatalogCache() {
     _cachedCMSSections = null;
     _cachedCategories = null;

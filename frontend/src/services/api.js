@@ -151,4 +151,7 @@ export const api = {
     return request(`/payments/${query ? `?${query}` : ''}`);
   },
   getPaymentReceipt: (saleCode) => request(`/payments/receipt/${saleCode}/`),
+  
+  // Health & Keep-Alive Ping
+  pingHealth: () => request('/health/').catch(() => null),
 };
