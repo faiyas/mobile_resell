@@ -98,8 +98,19 @@ class ApiService {
       await saveAuth(data['token'], user);
       return {'success': true, 'user': user};
     } else {
-      final err = jsonDecode(res.body);
-      throw Exception(err['detail'] ?? 'Registration failed');
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map) {
+          if (err['detail'] != null) throw Exception(err['detail']);
+          if (err['message'] != null) throw Exception(err['message']);
+          final firstVal = err.values.isNotEmpty ? err.values.first : null;
+          if (firstVal is List && firstVal.isNotEmpty) throw Exception(firstVal.first.toString());
+          if (firstVal != null) throw Exception(firstVal.toString());
+        }
+      } catch (e) {
+        if (e is Exception && !e.toString().contains('FormatException')) rethrow;
+      }
+      throw Exception('Registration failed. Please check your details.');
     }
   }
 

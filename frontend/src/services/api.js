@@ -47,7 +47,12 @@ async function request(endpoint, options = {}) {
       removeCurrentUser();
       window.dispatchEvent(new CustomEvent('recell-auth-expired'));
     }
-    const errorMsg = data.detail || data.message || Object.values(data)[0] || 'API Request Failed';
+    let errorMsg = data.detail || data.message;
+    if (!errorMsg && typeof data === 'object' && data !== null) {
+      const firstVal = Object.values(data)[0];
+      errorMsg = Array.isArray(firstVal) ? firstVal[0] : (typeof firstVal === 'string' ? firstVal : null);
+    }
+    errorMsg = errorMsg || 'API Request Failed';
     throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
   }
   return data;

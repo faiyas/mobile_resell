@@ -546,14 +546,28 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                         const SizedBox(height: 14),
                         _buildPriceRow('Base Catalog Value', '₹${widget.variant.basePrice.toStringAsFixed(0)}', isPositive: true),
                         Divider(height: 18, color: AppTheme.border.withOpacity(0.6)),
-                        if (_breakdown.isNotEmpty)
-                          ..._breakdown.map((b) => _buildPriceRow(
-                                b['title'] ?? 'Condition Factor',
-                                '-₹${(double.tryParse(b['deduction'].toString()) ?? 0.0).toStringAsFixed(0)}',
-                                isNegative: true,
-                              ))
-                        else
-                          _buildPriceRow('Condition Deductions', '₹0', isNegative: false),
+                        _buildPriceRow('Reported Conditions', 'Deductions Calculated', isNegative: false),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppTheme.lightGreen.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.verified_user_outlined, size: 16, color: AppTheme.primaryGreen),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Field Agent will perform doorstep physical verification and confirm final valuation before payout.',
+                                  style: TextStyle(fontSize: 10, color: AppTheme.darkGreen, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         Divider(height: 18, color: AppTheme.border.withOpacity(0.6)),
                         _buildPriceRow(
                           'Net Doorstep Payout',

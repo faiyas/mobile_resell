@@ -1399,19 +1399,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          // Switch Role Quick Button
-          GlassContainer(
-            padding: const EdgeInsets.all(6),
-            borderRadius: BorderRadius.circular(16),
-            child: ListTile(
-              leading: const Icon(Icons.swap_horiz_rounded, color: AppTheme.primaryGreen),
-              title: const Text('Switch Account Role', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
-              subtitle: const Text('Fast switch between Admin, Agent & Customer', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-              trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.primaryGreen),
-              onTap: _showAuth,
-            ),
-          ),
-          const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
               color: Colors.red.withOpacity(0.06),

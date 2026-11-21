@@ -663,17 +663,15 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
                             <p className="text-[10px] text-[#7B8980] mt-0.5 line-clamp-1">{opt.description}</p>
                           )}
                           <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/80 text-[10px]">
-                            <span className="text-[#7B8980] font-bold">Price Impact</span>
+                            <span className="text-[#7B8980] font-semibold">Verification:</span>
                             {opt.is_rejection ? (
-                              <span className="font-black text-rose-600">Rejects Offer (₹0)</span>
+                              <span className="font-black text-rose-600">Critical Check</span>
                             ) : opt.is_accessory_bonus ? (
-                              <span className="font-black text-[#0BAA4B]">+ Accessory Added</span>
-                            ) : Number(opt.default_deduction_value) > 0 ? (
-                              <span className="font-black text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">
-                                -₹{Number(opt.default_deduction_value).toLocaleString('en-IN')}
-                              </span>
+                              <span className="font-black text-[#0BAA4B]">✓ Accessory Included</span>
+                            ) : isSelected ? (
+                              <span className="font-black text-[#0BAA4B]">✓ Selected</span>
                             ) : (
-                              <span className="font-black text-[#0BAA4B]">✓ No Impact (₹0)</span>
+                              <span className="font-semibold text-[#7B8980]">Verified at Doorstep</span>
                             )}
                           </div>
                         </div>
@@ -787,12 +785,16 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
               <strong className="text-[#17251C] font-black">₹{Number(valuationResult.base_price).toLocaleString('en-IN')}</strong>
             </div>
 
-            {valuationResult.breakdown?.map((item, idx) => (
-              <div key={idx} className="flex justify-between items-center py-1 text-amber-800">
-                <span>{item.title}:</span>
-                <span className="font-black">-₹{Number(item.deduction).toLocaleString('en-IN')}</span>
-              </div>
-            ))}
+            <div className="flex justify-between items-center py-1">
+              <span className="text-[#7B8980]">Reported Condition Adjustments:</span>
+              <span className="font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[11px]">
+                Condition Deductions Calculated
+              </span>
+            </div>
+
+            <div className="bg-emerald-50/80 border border-emerald-200/80 p-2.5 rounded-xl text-[11px] text-[#087C38] font-medium leading-relaxed">
+              ✓ Our certified Field Agent will verify your device physical condition at your doorstep and confirm the final offer price before instant payout.
+            </div>
 
             <div className="flex justify-between items-center pt-3 border-t border-white/80 text-sm">
               <span className="font-black text-[#17251C]">Net Doorstep Payout:</span>

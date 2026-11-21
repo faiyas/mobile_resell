@@ -36,23 +36,6 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
     super.dispose();
   }
 
-  void _quickLogin(String email, String password) async {
-    setState(() {
-      _loading = true;
-      _error = '';
-    });
-    try {
-      await _api.login(email, password);
-      widget.onSuccess();
-      if (mounted) Navigator.pop(context);
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -171,69 +154,6 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
 
                   const SizedBox(height: 16),
 
-                  // 1-Click Fast Role Sign-in Glass Box
-                  GlassContainer(
-                    padding: const EdgeInsets.all(12),
-                    borderRadius: BorderRadius.circular(18),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.bolt_rounded, size: 14, color: AppTheme.primaryGreen),
-                            SizedBox(width: 4),
-                            Text('1-Click Fast Role Sign-in:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.textSecondary)),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _quickLogin('admin@buyback.in', 'admin123'),
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: Colors.white.withOpacity(0.85),
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  side: BorderSide(color: AppTheme.glassBorder),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                child: const Text('Admin', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _quickLogin('agent@buyback.in', 'agent123'),
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: Colors.white.withOpacity(0.85),
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  side: BorderSide(color: AppTheme.glassBorder),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                child: const Text('Agent', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => _quickLogin('customer@example.com', 'customer123'),
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: Colors.white.withOpacity(0.85),
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
-                                  side: BorderSide(color: AppTheme.glassBorder),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                child: const Text('Customer', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 14),
-
                   if (_error.isNotEmpty)
                     GlassContainer(
                       padding: const EdgeInsets.all(10),
@@ -279,14 +199,32 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
 
                   TextFormField(
                     controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
+                    keyboardType: _isRegister ? TextInputType.emailAddress : TextInputType.text,
                     decoration: InputDecoration(
-                      labelText: 'Email Address *',
-                      prefixIcon: const Icon(Icons.email_outlined, color: AppTheme.primaryGreen),
+                      labelText: _isRegister ? 'Email Address *' : 'Mobile Number or Email *',
+                      prefixIcon: Icon(
+                        _isRegister ? Icons.email_outlined : Icons.account_circle_outlined, 
+                        color: AppTheme.primaryGreen
+                      ),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.85),
                     ),
-                    validator: (v) => v == null || !v.contains('@') ? 'Enter valid email' : null,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) {
+                        return _isRegister ? 'Enter email address' : 'Enter mobile number or email';
+                      }
+                      final val = v.trim();
+                      if (_isRegister) {
+                        if (!val.contains('@')) return 'Enter valid email address';
+                      } else {
+                        final isPhone = RegExp(r'^[0-9]{10}$').hasMatch(val);
+                        final isEmail = val.contains('@');
+                        if (!isPhone && !isEmail) {
+                          return 'Enter valid 10-digit mobile or email';
+                        }
+                      }
+                      return null;
+                    },
                   ),
                   const SizedBox(height: 10),
 

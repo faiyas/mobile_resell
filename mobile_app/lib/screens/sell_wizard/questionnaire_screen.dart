@@ -233,17 +233,15 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: opt.defaultDeductionValue == 0 ? AppTheme.lightGreen : Colors.red.shade50,
+                  color: AppTheme.lightGreen,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  opt.defaultDeductionValue == 0
-                      ? 'No Value Deduction (₹0)'
-                      : 'Estimated Valuation Impact: -₹${opt.defaultDeductionValue.toStringAsFixed(0)}',
+                child: const Text(
+                  'Doorstep Verification by Certified Agent',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: opt.defaultDeductionValue == 0 ? AppTheme.darkGreen : Colors.red.shade900,
+                    color: AppTheme.darkGreen,
                   ),
                 ),
               ),
@@ -524,27 +522,23 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: opt.defaultDeductionValue == 0
-                                      ? AppTheme.lightGreen
-                                      : opt.isRejection
-                                          ? Colors.red.shade50
-                                          : AppTheme.canvas,
+                                  color: opt.isRejection
+                                      ? Colors.red.shade50
+                                      : (isSelected ? AppTheme.lightGreen : AppTheme.canvas),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
-                                  opt.defaultDeductionValue == 0
-                                      ? (opt.isAccessoryBonus ? 'Included (+₹0)' : 'No Defect (₹0)')
-                                      : opt.deductionType == 'PERCENTAGE'
-                                          ? '-${opt.defaultDeductionValue.toStringAsFixed(0)}%'
-                                          : '-₹${opt.defaultDeductionValue.toStringAsFixed(0)}',
+                                  opt.isRejection
+                                      ? 'Critical Check'
+                                      : opt.isAccessoryBonus
+                                          ? 'Accessory'
+                                          : (isSelected ? 'Selected' : 'Doorstep QC'),
                                   style: TextStyle(
                                     fontSize: 9,
                                     fontWeight: FontWeight.bold,
-                                    color: opt.defaultDeductionValue == 0
-                                        ? AppTheme.darkGreen
-                                        : opt.isRejection
-                                            ? Colors.red.shade900
-                                            : AppTheme.textSecondary,
+                                    color: opt.isRejection
+                                        ? Colors.red.shade900
+                                        : (isSelected ? AppTheme.darkGreen : AppTheme.textSecondary),
                                   ),
                                 ),
                               ),

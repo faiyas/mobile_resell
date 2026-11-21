@@ -22,7 +22,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     try {
       let res;
       if (isRegister) {
-        res = await api.register({ email: email.trim(), password, full_name: fullName.trim(), phone: phone.trim(), role });
+        res = await api.register({ email: email.trim(), password, full_name: fullName.trim(), phone: phone.trim(), role: 'CUSTOMER' });
       } else {
         res = await api.login({ email: email.trim(), password });
       }
@@ -33,22 +33,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
       onClose();
     } catch (err) {
       setError(err.message || 'Authentication failed. Please check credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleQuickLogin = async (quickEmail, quickPassword) => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await api.login({ email: quickEmail, password: quickPassword });
-      setAuthToken(res.token);
-      setCurrentUser(res.user);
-      onAuthSuccess(res.user);
-      onClose();
-    } catch (err) {
-      setError(err.message || 'Quick login failed. Verify test account.');
     } finally {
       setLoading(false);
     }
@@ -76,43 +60,6 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           >
             <X className="w-5 h-5" />
           </button>
-        </div>
-
-        {/* Quick Demo 1-Click Logins */}
-        <div className="bg-white/60 backdrop-blur border-b border-white/80 p-3 sm:p-4 shrink-0">
-          <p className="text-[10px] font-extrabold text-[#7B8980] uppercase tracking-wider mb-2 flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-[#0BAA4B]" />
-            <span>1-Click Fast Role Sign-in:</span>
-          </p>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('admin@buyback.in', 'admin123')}
-              className="px-2 py-2 rounded-xl bg-slate-900 hover:bg-black text-white text-[11px] font-extrabold shadow-sm transition flex flex-col items-center justify-center text-center active:scale-95"
-            >
-              <ShieldCheck className="w-4 h-4 mb-0.5 text-emerald-400" />
-              <span>Super Admin</span>
-              <span className="text-[8px] text-slate-400 font-mono">admin@buyback.in</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('agent@buyback.in', 'agent123')}
-              className="px-2 py-2 rounded-xl bg-[#087C38] hover:bg-[#0D4722] text-white text-[11px] font-extrabold shadow-sm transition flex flex-col items-center justify-center text-center active:scale-95"
-            >
-              <UserCheck className="w-4 h-4 mb-0.5 text-emerald-300" />
-              <span>Pickup Agent</span>
-              <span className="text-[8px] text-emerald-200 font-mono">agent@buyback.in</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleQuickLogin('customer@example.com', 'customer123')}
-              className="px-2 py-2 rounded-xl bg-[#0BAA4B] hover:bg-[#087C38] text-white text-[11px] font-extrabold shadow-sm transition flex flex-col items-center justify-center text-center active:scale-95"
-            >
-              <User className="w-4 h-4 mb-0.5 text-white" />
-              <span>Customer</span>
-              <span className="text-[8px] text-emerald-100 font-mono">customer@example.com</span>
-            </button>
-          </div>
         </div>
 
         {/* Form Body */}
@@ -156,33 +103,22 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
                   />
                 </div>
               </div>
-
-              <div>
-                <label className="block text-xs font-extrabold text-[#17251C] mb-1">Account Role *</label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-[#E7EEE9] rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0BAA4B] bg-white font-bold"
-                >
-                  <option value="CUSTOMER">Customer (Sell Devices & Get Paid)</option>
-                  <option value="COLLECTION_AGENT">Collection Agent (Field Team Inspection)</option>
-                  <option value="ADMIN">Administrator (Full Desk Operations)</option>
-                </select>
-              </div>
             </>
           )}
 
           <div>
-            <label className="block text-xs font-extrabold text-[#17251C] mb-1">Email Address *</label>
+            <label className="block text-xs font-extrabold text-[#17251C] mb-1">
+              {isRegister ? 'Email Address *' : 'Mobile Number or Email *'}
+            </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
-                type="email"
+                type="text"
                 required
-                autoComplete="email"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@domain.com"
+                placeholder={isRegister ? "your.email@domain.com" : "10-digit mobile (e.g. 9025232453) or email"}
                 className="w-full pl-9 pr-3 py-2.5 border border-[#E7EEE9] rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#0BAA4B]"
               />
             </div>

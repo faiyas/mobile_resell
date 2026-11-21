@@ -399,31 +399,6 @@ export default function App() {
         )}
       </nav>
 
-      {/* Desktop Role Quick Switcher */}
-      {currentUser?.role === 'ADMIN' && (
-        <div className="hidden md:flex fixed bottom-4 right-4 z-40 glass-panel border border-white/80 rounded-2xl p-1.5 shadow-2xl items-center gap-1.5 text-xs">
-          <span className="font-bold text-[10px] text-[#7B8980] pl-2 uppercase">Quick Switch:</span>
-          <button
-            onClick={() => setActiveTab('admin')}
-            className={`px-2.5 py-1.5 rounded-lg font-bold transition ${activeTab === 'admin' ? 'bg-[#0BAA4B] text-white shadow-sm' : 'hover:bg-white/60 text-[#087C38]'}`}
-          >
-            👑 Admin Desk
-          </button>
-          <button
-            onClick={() => setActiveTab('inspection')}
-            className={`px-2.5 py-1.5 rounded-lg font-bold transition ${activeTab === 'inspection' ? 'bg-amber-600 text-white shadow-sm' : 'hover:bg-white/60 text-amber-800'}`}
-          >
-            🛵 Agent View
-          </button>
-          <button
-            onClick={() => setActiveTab('sell')}
-            className={`px-2.5 py-1.5 rounded-lg font-bold transition ${activeTab === 'sell' ? 'bg-[#087C38] text-white shadow-sm' : 'hover:bg-white/60 text-[#17251C]'}`}
-          >
-            📱 Customer Sell
-          </button>
-        </div>
-      )}
-
       {/* Footer */}
       <Footer />
 

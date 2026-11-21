@@ -24,7 +24,7 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
     } else if (currentUser) {
       loadMySales();
     } else {
-      handleSearch('XP2610008753');
+      setSelectedSale(null);
     }
   }, [initialSaleCode, currentUser]);
 
