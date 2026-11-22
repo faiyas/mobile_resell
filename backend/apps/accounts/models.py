@@ -24,6 +24,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
         ('CUSTOMER', 'Customer'),
         ('ADMIN', 'Administrator'),
+        ('SUPER_ADMIN', 'Super Admin'),
         ('COLLECTION_AGENT', 'Collection Team'),
     )
 
@@ -31,6 +32,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     phone = models.CharField(max_length=20, blank=True, default='', db_index=True)
     full_name = models.CharField(max_length=150, blank=True, default='')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='CUSTOMER')
+
+    @property
+    def is_admin_role(self):
+        return self.role in ['ADMIN', 'SUPER_ADMIN'] or self.is_staff or self.is_superuser
     
     # Saved Customer Doorstep & Payout Details (Auto-filled on bookings)
     default_address = models.TextField(blank=True, default='')

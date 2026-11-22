@@ -73,7 +73,7 @@ def sales_list_create_view(request):
                 queryset = queryset.filter(assigned_agent__isnull=True, status__in=['SUBMITTED', 'PICKUP_SCHEDULED'])
             else:
                 queryset = queryset.filter(assigned_agent=user)
-        elif user.role == 'ADMIN':
+        elif user.role in ['ADMIN', 'SUPER_ADMIN']:
             pass # Super Admin sees all orders across the business
         else:
             queryset = queryset.none()
@@ -403,7 +403,7 @@ def transfer_ownership_view(request, pk):
 @permission_classes([IsAuthenticated])
 def admin_approve_final_offer_view(request, pk):
     """Admin reviews inspection and sets approved final price"""
-    if request.user.role != 'ADMIN':
+    if request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     sale = _get_sale_instance(pk)

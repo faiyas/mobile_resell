@@ -906,14 +906,29 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================= 2x2 BIG CATEGORIES GRID (Matching Reference) =================
+  // Helper to resolve icon when category has no custom uploaded image in DB
+  IconData _getCategoryIcon(DeviceCategoryModel cat) {
+    final lower = cat.name.toLowerCase();
+    final slug = cat.slug.toLowerCase();
+    if (lower.contains('phone') || lower.contains('mobile') || slug.contains('phone') || slug.contains('mobile')) {
+      return Icons.smartphone_rounded;
+    } else if (lower.contains('tablet') || lower.contains('ipad') || slug.contains('tablet')) {
+      return Icons.tablet_mac_rounded;
+    } else if (lower.contains('laptop') || lower.contains('macbook') || lower.contains('computer') || slug.contains('laptop')) {
+      return Icons.laptop_mac_rounded;
+    } else if (lower.contains('watch') || slug.contains('watch')) {
+      return Icons.watch_rounded;
+    } else if (lower.contains('console') || slug.contains('console') || lower.contains('game')) {
+      return Icons.sports_esports_rounded;
+    } else if (lower.contains('dead')) {
+      return Icons.phone_disabled_rounded;
+    }
+    return Icons.devices_other_rounded;
+  }
+
+  // ================= DYNAMIC CATEGORIES GRID DIRECTLY FROM DATABASE =================
   Widget _buildBigCategoryGrid() {
-    final catDefs = [
-      {'name': 'Phone', 'icon': Icons.smartphone_rounded, 'match': ['mobile', 'phone']},
-      {'name': 'Tablet', 'icon': Icons.tablet_mac_rounded, 'match': ['tablet', 'ipad']},
-      {'name': 'Laptop', 'icon': Icons.laptop_mac_rounded, 'match': ['laptop', 'macbook', 'computer']},
-      {'name': 'Smartwatch', 'icon': Icons.watch_rounded, 'match': ['smartwatch', 'watch']},
-    ];
+    if (_categories.isEmpty) return const SizedBox.shrink();
 
     return Column(
       children: [
@@ -947,32 +962,18 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSpacing: 12,
             childAspectRatio: 1.05,
           ),
-          itemCount: catDefs.length,
+          itemCount: _categories.length,
           itemBuilder: (context, idx) {
-            final def = catDefs[idx];
+            final cat = _categories[idx];
+            final bytes = ImageHelper.decodeBase64(cat.imageBase64);
+
             return InkWell(
               borderRadius: BorderRadius.circular(22),
               onTap: () {
-                final match = _categories.where((c) {
-                  final cName = c.name.toLowerCase();
-                  final cSlug = c.slug.toLowerCase();
-                  final keys = (def['match'] as List<String>);
-                  return keys.any((k) => cName.contains(k) || cSlug.contains(k));
-                }).firstOrNull;
-
-                final targetCat = match ?? DeviceCategoryModel(
-                  id: idx + 1,
-                  name: def['name'] as String,
-                  slug: (def['name'] as String).toLowerCase(),
-                  iconName: (def['name'] as String).toLowerCase(),
-                  subtitle: 'Sell your ${def['name']}',
-                  displayOrder: idx + 1,
-                );
-
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => CategorySelectionScreen(selectedCategory: targetCat),
+                    builder: (_) => CategorySelectionScreen(selectedCategory: cat),
                   ),
                 );
               },
@@ -993,26 +994,42 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      width: 58,
+                      height: 58,
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade50,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        def['icon'] as IconData,
-                        size: 38,
-                        color: const Color(0xFF1B2A20),
-                      ),
+                      child: bytes != null
+                          ? Image.memory(bytes, fit: BoxFit.contain)
+                          : Icon(
+                              _getCategoryIcon(cat),
+                              size: 34,
+                              color: const Color(0xFF1B2A20),
+                            ),
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      def['name'] as String,
+                      cat.name,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                         color: Color(0xFF1B2A20),
                       ),
                     ),
+                    if (cat.subtitle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        cat.subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -30,7 +30,7 @@ export default function App() {
     if (user) {
       setCurrentUser(user);
       // Auto-route to dedicated workspace on load (never show guest landing page if logged in)
-      if (user.role === 'ADMIN') {
+      if ((user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) {
         setActiveTab('admin');
       } else if (user.role === 'COLLECTION_AGENT') {
         setActiveTab('inspection');
@@ -73,7 +73,7 @@ export default function App() {
   const handleAuthSuccess = (user) => {
     setCurrentUser(user);
     // Strict automatic role-based redirection
-    if (user.role === 'ADMIN') {
+    if ((user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) {
       setActiveTab('admin');
     } else if (user.role === 'COLLECTION_AGENT') {
       setActiveTab('inspection');
@@ -83,8 +83,8 @@ export default function App() {
   };
 
   // Route security guard: enforce permissions
-  const canAccessAdmin = currentUser?.role === 'ADMIN';
-  const canAccessAgent = currentUser?.role === 'COLLECTION_AGENT' || currentUser?.role === 'ADMIN';
+  const canAccessAdmin = (currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN');
+  const canAccessAgent = currentUser?.role === 'COLLECTION_AGENT' || (currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN');
 
   return (
     <div className="min-h-screen flex flex-col bg-mesh-canvas text-[#17251C] selection:bg-[#0BAA4B] selection:text-white antialiased">
@@ -354,7 +354,7 @@ export default function App() {
         </button>
 
         {/* Show Admin Desk ONLY to Admin */}
-        {currentUser?.role === 'ADMIN' && (
+        {(currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN') && (
           <button
             onClick={() => setActiveTab('admin')}
             className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${
@@ -367,7 +367,7 @@ export default function App() {
         )}
 
         {/* Show Agent Portal ONLY to Collection Staff & Admin */}
-        {(currentUser?.role === 'COLLECTION_AGENT' || currentUser?.role === 'ADMIN') && (
+        {(currentUser?.role === 'COLLECTION_AGENT' || (currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN')) && (
           <button
             onClick={() => setActiveTab('inspection')}
             className={`flex flex-col items-center justify-center py-1 px-2.5 rounded-xl transition ${

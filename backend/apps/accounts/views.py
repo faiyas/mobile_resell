@@ -81,7 +81,7 @@ def me_view(request):
 @permission_classes([IsAuthenticated])
 def collection_agents_view(request):
     """List collection agents for assignment (Admin only)"""
-    if request.user.role != 'ADMIN':
+    if request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
     
     agents = User.objects.filter(role='COLLECTION_AGENT', is_active=True)

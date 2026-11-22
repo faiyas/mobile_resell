@@ -10,20 +10,23 @@ from .serializers import (
     CMSHomeSectionSerializer
 )
 
+def is_admin_user(user):
+    return user and user.is_authenticated and (user.role in ['ADMIN', 'SUPER_ADMIN'] or user.is_staff or user.is_superuser)
+
 # ================= 1. DEVICE CATEGORIES (Mobile, Tablet, Laptop, Watch, Dead Phone) =================
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def categories_list_view(request):
     if request.method == 'GET':
         show_all = request.GET.get('all', 'false').lower() == 'true'
-        if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
+        if show_all and is_admin_user(request.user):
             categories = DeviceCategory.objects.all()
         else:
             categories = DeviceCategory.objects.filter(is_active=True)
         return Response(DeviceCategorySerializer(categories, many=True).data)
 
     elif request.method == 'POST':
-        if not request.user.is_authenticated or request.user.role != 'ADMIN':
+        if not is_admin_user(request.user):
             return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         serializer = DeviceCategorySerializer(data=request.data)
         if serializer.is_valid():
@@ -42,7 +45,7 @@ def category_detail_view(request, pk):
     if request.method == 'GET':
         return Response(DeviceCategorySerializer(category).data)
 
-    if not request.user.is_authenticated or request.user.role != 'ADMIN':
+    if not is_admin_user(request.user):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'PUT':
@@ -65,7 +68,7 @@ def brands_list_view(request):
         show_all = request.GET.get('all', 'false').lower() == 'true'
         category_id = request.GET.get('category')
         
-        if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
+        if show_all and is_admin_user(request.user):
             brands = Brand.objects.all()
         else:
             brands = Brand.objects.filter(is_active=True)
@@ -85,7 +88,7 @@ def brands_list_view(request):
         return Response(serializer.data)
 
     elif request.method == 'POST':
-        if not request.user.is_authenticated or request.user.role != 'ADMIN':
+        if not is_admin_user(request.user):
             return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         serializer = BrandBasicSerializer(data=request.data)
         if serializer.is_valid():
@@ -105,7 +108,7 @@ def brand_detail_view(request, pk):
         serializer = BrandSerializer(brand)
         return Response(serializer.data)
 
-    if not request.user.is_authenticated or request.user.role != 'ADMIN':
+    if not is_admin_user(request.user):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'PUT':
@@ -131,7 +134,7 @@ def series_list_view(request):
         return Response(DeviceSeriesSerializer(queryset, many=True).data)
 
     elif request.method == 'POST':
-        if not request.user.is_authenticated or request.user.role != 'ADMIN':
+        if not is_admin_user(request.user):
             return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         serializer = DeviceSeriesSerializer(data=request.data)
         if serializer.is_valid():
@@ -150,7 +153,7 @@ def series_detail_view(request, pk):
     if request.method == 'GET':
         return Response(DeviceSeriesSerializer(series).data)
 
-    if not request.user.is_authenticated or request.user.role != 'ADMIN':
+    if not is_admin_user(request.user):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'PUT':
@@ -172,7 +175,7 @@ def models_list_view(request):
         brand_id = request.GET.get('brand')
         series_id = request.GET.get('series')
         show_all = request.GET.get('all', 'false').lower() == 'true'
-        if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
+        if show_all and is_admin_user(request.user):
             queryset = PhoneModel.objects.all().select_related('brand', 'series').prefetch_related('variants')
         else:
             queryset = PhoneModel.objects.filter(is_active=True).select_related('brand', 'series').prefetch_related('variants')
@@ -186,7 +189,7 @@ def models_list_view(request):
         return Response(serializer.data)
 
     elif request.method == 'POST':
-        if not request.user.is_authenticated or request.user.role != 'ADMIN':
+        if not is_admin_user(request.user):
             return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         serializer = PhoneModelSerializer(data=request.data)
         if serializer.is_valid():
@@ -206,7 +209,7 @@ def model_detail_view(request, pk):
         serializer = PhoneModelSerializer(phone_model)
         return Response(serializer.data)
 
-    if not request.user.is_authenticated or request.user.role != 'ADMIN':
+    if not is_admin_user(request.user):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'PUT':
@@ -228,7 +231,7 @@ def variants_list_create_view(request):
         model_id = request.GET.get('model')
         show_all = request.GET.get('all', 'false').lower() == 'true'
         
-        if show_all and request.user.is_authenticated and request.user.role == 'ADMIN':
+        if show_all and is_admin_user(request.user):
             queryset = StorageVariant.objects.all().select_related('model__brand')
         else:
             queryset = StorageVariant.objects.filter(is_active=True).select_related('model__brand')
@@ -240,7 +243,7 @@ def variants_list_create_view(request):
         return Response(serializer.data)
 
     elif request.method == 'POST':
-        if not request.user.is_authenticated or request.user.role != 'ADMIN':
+        if not is_admin_user(request.user):
             return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         serializer = StorageVariantSerializer(data=request.data)
         if serializer.is_valid():
@@ -260,7 +263,7 @@ def variant_detail_view(request, pk):
         serializer = StorageVariantSerializer(variant)
         return Response(serializer.data)
 
-    if not request.user.is_authenticated or request.user.role != 'ADMIN':
+    if not is_admin_user(request.user):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method in ['PUT', 'PATCH']:
@@ -296,7 +299,7 @@ def cms_sections_view(request):
         sections = CMSHomeSection.objects.filter(is_active=True).order_by('display_order')
         return Response(CMSHomeSectionSerializer(sections, many=True).data)
 
-    if not request.user.is_authenticated or request.user.role != 'ADMIN':
+    if not is_admin_user(request.user):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method in ['POST', 'PUT']:

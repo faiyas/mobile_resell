@@ -52,7 +52,7 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
 
           {/* 1103 RECELL Brand Logo */}
           <div
-            onClick={() => setActiveTab(currentUser?.role === 'ADMIN' ? 'admin' : currentUser?.role === 'COLLECTION_AGENT' ? 'inspection' : 'sell')}
+            onClick={() => setActiveTab((currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN') ? 'admin' : currentUser?.role === 'COLLECTION_AGENT' ? 'inspection' : 'sell')}
             className="flex items-center gap-2.5 cursor-pointer group shrink-0 select-none"
           >
             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] flex items-center justify-center text-white shadow-lg shadow-[#0BAA4B]/25 group-hover:scale-105 transition-transform font-black text-sm border border-white/40">
@@ -97,7 +97,7 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             </button>
 
             {/* Show Admin Dashboard ONLY to Admin */}
-            {currentUser?.role === 'ADMIN' && (
+            {(currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN') && (
               <button
                 onClick={() => setActiveTab('admin')}
                 className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${activeTab === 'admin'
@@ -111,7 +111,7 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             )}
 
             {/* Show Agent Portal ONLY to Collection Staff & Admin */}
-            {(currentUser?.role === 'COLLECTION_AGENT' || currentUser?.role === 'ADMIN') && (
+            {(currentUser?.role === 'COLLECTION_AGENT' || (currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN')) && (
               <button
                 onClick={() => setActiveTab('inspection')}
                 className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${activeTab === 'inspection'
@@ -133,10 +133,10 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
                   <p className="text-xs font-black text-[#17251C] leading-none truncate max-w-[85px] xs:max-w-[120px] sm:max-w-none">
                     {currentUser.full_name || currentUser.email}
                   </p>
-                  <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wide ${currentUser.role === 'ADMIN' ? 'text-[#087C38]' :
+                  <span className={`text-[9px] sm:text-[10px] font-black uppercase tracking-wide ${(currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') ? 'text-[#087C38]' :
                     currentUser.role === 'COLLECTION_AGENT' ? 'text-amber-600' : 'text-[#0BAA4B]'
                     }`}>
-                    {currentUser.role === 'ADMIN' ? '👑 Admin' : currentUser.role === 'COLLECTION_AGENT' ? '🛵 Agent' : '👤 Customer'}
+                    {(currentUser.role === 'ADMIN' || currentUser.role === 'SUPER_ADMIN') ? '👑 Admin' : currentUser.role === 'COLLECTION_AGENT' ? '🛵 Agent' : '👤 Customer'}
                   </span>
                 </div>
                 <button
