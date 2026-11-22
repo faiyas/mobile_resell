@@ -61,16 +61,20 @@ class DeviceCategoryModel {
   final int id;
   final String name;
   final String slug;
+  final String subtitle;
   final String iconName;
   final String? imageBase64;
+  final int displayOrder;
   final bool isActive;
 
   DeviceCategoryModel({
     required this.id,
     required this.name,
     required this.slug,
+    this.subtitle = '',
     required this.iconName,
     this.imageBase64,
+    this.displayOrder = 0,
     this.isActive = true,
   });
 
@@ -79,8 +83,10 @@ class DeviceCategoryModel {
       id: int.tryParse(json['id']?.toString() ?? '') ?? (json['id'] is int ? json['id'] : 0),
       name: json['name']?.toString() ?? '',
       slug: json['slug']?.toString() ?? '',
+      subtitle: json['subtitle']?.toString() ?? '',
       iconName: json['icon_name']?.toString() ?? 'Smartphone',
       imageBase64: json['image_base64']?.toString(),
+      displayOrder: int.tryParse(json['display_order']?.toString() ?? '') ?? 0,
       isActive: json['is_active'] == null ? true : (json['is_active'] == true || json['is_active'].toString().toLowerCase() == 'true'),
     );
   }

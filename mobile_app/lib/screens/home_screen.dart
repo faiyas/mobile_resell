@@ -18,6 +18,7 @@ import 'admin/admin_dashboard_screen.dart';
 import 'auth/auth_modal_sheet.dart';
 import '../utils/contact_launcher.dart';
 import '../widgets/brand_logo.dart';
+import '../utils/image_helper.dart';
 import 'splash_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -906,26 +907,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Helper to resolve icon when category has no custom uploaded image in DB
-  IconData _getCategoryIcon(DeviceCategoryModel cat) {
-    final lower = cat.name.toLowerCase();
-    final slug = cat.slug.toLowerCase();
-    if (lower.contains('phone') || lower.contains('mobile') || slug.contains('phone') || slug.contains('mobile')) {
-      return Icons.smartphone_rounded;
-    } else if (lower.contains('tablet') || lower.contains('ipad') || slug.contains('tablet')) {
-      return Icons.tablet_mac_rounded;
-    } else if (lower.contains('laptop') || lower.contains('macbook') || lower.contains('computer') || slug.contains('laptop')) {
-      return Icons.laptop_mac_rounded;
-    } else if (lower.contains('watch') || slug.contains('watch')) {
-      return Icons.watch_rounded;
-    } else if (lower.contains('console') || slug.contains('console') || lower.contains('game')) {
-      return Icons.sports_esports_rounded;
-    } else if (lower.contains('dead')) {
-      return Icons.phone_disabled_rounded;
-    }
-    return Icons.devices_other_rounded;
-  }
-
   // ================= DYNAMIC CATEGORIES GRID DIRECTLY FROM DATABASE =================
   Widget _buildBigCategoryGrid() {
     if (_categories.isEmpty) return const SizedBox.shrink();
@@ -965,7 +946,6 @@ class _HomeScreenState extends State<HomeScreen> {
           itemCount: _categories.length,
           itemBuilder: (context, idx) {
             final cat = _categories[idx];
-            final bytes = ImageHelper.decodeBase64(cat.imageBase64);
 
             return InkWell(
               borderRadius: BorderRadius.circular(22),
@@ -1001,13 +981,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Colors.grey.shade50,
                         shape: BoxShape.circle,
                       ),
-                      child: bytes != null
-                          ? Image.memory(bytes, fit: BoxFit.contain)
-                          : Icon(
-                              _getCategoryIcon(cat),
-                              size: 34,
-                              color: const Color(0xFF1B2A20),
-                            ),
+                      child: Center(
+                        child: _buildCategoryGraphic(cat, false),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
