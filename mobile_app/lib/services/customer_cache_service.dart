@@ -121,10 +121,7 @@ class CustomerCacheService {
           'name': b.name,
           'slug': b.slug,
           'logo_base64': b.logoBase64,
-          'category': b.category,
-          'is_active': b.isActive,
-          'display_order': b.displayOrder,
-          'models_count': b.modelsCount,
+          'category': b.categoryId,
         }).toList());
 
         final oldBrands = prefs.getString(_keyBrands);
