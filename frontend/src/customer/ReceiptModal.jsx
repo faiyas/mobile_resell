@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X, Printer, ShieldCheck, CheckCircle2, Smartphone, Download, ExternalLink } from 'lucide-react';
 
 export default function ReceiptModal({ receiptData, onClose }) {
@@ -8,8 +9,8 @@ export default function ReceiptModal({ receiptData, onClose }) {
     window.print();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in">
       <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-200 max-h-[92vh] flex flex-col">
         
         {/* Modal Top Bar */}
@@ -138,6 +139,7 @@ export default function ReceiptModal({ receiptData, onClose }) {
         </div>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

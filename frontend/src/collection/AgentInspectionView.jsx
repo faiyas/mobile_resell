@@ -82,7 +82,7 @@ export default function AgentInspectionView({ currentUser }) {
     // Fetch full order details including customer's self-reported conditions & existing inspection
     setLoadingDetail(true);
     try {
-      const detail = await api.getSaleByCode(sale.sale_code);
+      const detail = await (api.getSaleByCode ? api.getSaleByCode(sale.sale_code) : api.getSaleDetail(sale.sale_code || sale.id));
       setSaleDetails(detail);
       
       if (detail.inspection) {

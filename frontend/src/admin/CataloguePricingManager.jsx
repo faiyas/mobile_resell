@@ -585,13 +585,27 @@ export default function CataloguePricingManager() {
   const handleSaveCategory = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        name: categoryForm.name,
+        subtitle: categoryForm.subtitle || '',
+        step_number: Number(categoryForm.step_number) || 1,
+        selection_type: categoryForm.selection_type || 'SINGLE',
+        pro_tip: categoryForm.pro_tip || '',
+        icon_name: categoryForm.icon_name || 'Smartphone',
+        image_base64: categoryForm.image_base64 || '',
+        brand: categoryForm.brand ? Number(categoryForm.brand) : null,
+        device_category: categoryForm.device_category ? Number(categoryForm.device_category) : null,
+        is_mandatory: Boolean(categoryForm.is_mandatory),
+        display_order: Number(categoryForm.display_order) || 0,
+        is_active: Boolean(categoryForm.is_active)
+      };
       const targetId = editingCategory ? editingCategory.id : (selectedQuestionStep ? selectedQuestionStep.id : null);
       if (targetId) {
-        await api.updateConditionCategory(targetId, categoryForm);
-        showFeedback('success', `Questionnaire Step '${categoryForm.name}' updated`);
+        await api.updateConditionCategory(targetId, payload);
+        showFeedback('success', `Questionnaire Step '${payload.name}' updated`);
       } else {
-        await api.createConditionCategory(categoryForm);
-        showFeedback('success', `Questionnaire Step '${categoryForm.name}' created`);
+        await api.createConditionCategory(payload);
+        showFeedback('success', `Questionnaire Step '${payload.name}' created`);
       }
       setCategoryModalOpen(false);
       loadAllData();

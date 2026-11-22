@@ -46,36 +46,63 @@ def condition_categories_view(request):
     elif request.method == 'POST':
         if not request.user.is_authenticated or request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
             return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
-        serializer = ConditionCategorySerializer(data=request.data)
-        if serializer.is_valid():
-            cat = serializer.save()
-            return Response(ConditionCategorySerializer(cat).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            if data.get('brand') in ['', 0, '0', 'null']:
+                data['brand'] = None
+            if data.get('device_category') in ['', 0, '0', 'null']:
+                data['device_category'] = None
+            valid_fields = {'device_category', 'brand', 'step_number', 'name', 'subtitle', 'selection_type', 'pro_tip', 'icon_name', 'image_base64', 'is_mandatory', 'display_order', 'is_active'}
+            sanitized_data = {k: v for k, v in data.items() if k in valid_fields}
+
+            serializer = ConditionCategorySerializer(data=sanitized_data)
+            if serializer.is_valid():
+                cat = serializer.save()
+                return Response(ConditionCategorySerializer(cat).data, status=status.HTTP_201_CREATED)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
 @permission_classes([AllowAny])
 def condition_category_detail_view(request, pk):
     try:
-        category = ConditionCategory.objects.get(pk=pk)
-    except ConditionCategory.DoesNotExist:
-        return Response({'detail': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            category = ConditionCategory.objects.get(pk=pk)
+        except ConditionCategory.DoesNotExist:
+            return Response({'detail': 'Category not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'GET':
-        return Response(ConditionCategorySerializer(category).data)
+        if request.method == 'GET':
+            return Response(ConditionCategorySerializer(category).data)
 
-    if not request.user.is_authenticated or request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
-        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+        if not request.user.is_authenticated or request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+            return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
-    if request.method in ['PUT', 'PATCH']:
-        serializer = ConditionCategorySerializer(category, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if request.method in ['PUT', 'PATCH']:
+            data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+            if data.get('brand') in ['', 0, '0', 'null']:
+                data['brand'] = None
+            if data.get('device_category') in ['', 0, '0', 'null']:
+                data['device_category'] = None
+            valid_fields = {'device_category', 'brand', 'step_number', 'name', 'subtitle', 'selection_type', 'pro_tip', 'icon_name', 'image_base64', 'is_mandatory', 'display_order', 'is_active'}
+            sanitized_data = {k: v for k, v in data.items() if k in valid_fields}
 
-    elif request.method == 'DELETE':
-        category.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+            serializer = ConditionCategorySerializer(category, data=sanitized_data, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        elif request.method == 'DELETE':
+            category.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return Response({'detail': f"Server error: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])

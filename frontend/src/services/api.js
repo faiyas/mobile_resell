@@ -47,12 +47,16 @@ async function request(endpoint, options = {}) {
       removeCurrentUser();
       window.dispatchEvent(new CustomEvent('recell-auth-expired'));
     }
-    let errorMsg = data.detail || data.message;
+    let errorMsg = data.detail || data.message || data.error;
     if (!errorMsg && typeof data === 'object' && data !== null) {
-      const firstVal = Object.values(data)[0];
-      errorMsg = Array.isArray(firstVal) ? firstVal[0] : (typeof firstVal === 'string' ? firstVal : null);
+      const entries = Object.entries(data);
+      if (entries.length > 0) {
+        const [field, val] = entries[0];
+        const valText = Array.isArray(val) ? val.join(', ') : (typeof val === 'string' ? val : JSON.stringify(val));
+        errorMsg = field === 'detail' || field === 'non_field_errors' ? valText : `${field}: ${valText}`;
+      }
     }
-    errorMsg = errorMsg || 'API Request Failed';
+    errorMsg = errorMsg || (response.statusText ? `${response.status} ${response.statusText}` : 'API Request Failed');
     throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
   }
   return data;
@@ -136,6 +140,7 @@ export const api = {
     return request(`/sales/${query ? `?${query}` : ''}`);
   },
   getSaleDetail: (idOrCode) => request(`/sales/${idOrCode}/`),
+  getSaleByCode: (code) => request(`/sales/${code}/`),
   acceptOffer: (id) => request(`/sales/${id}/accept-offer/`, { method: 'POST' }),
   rejectOffer: (id) => request(`/sales/${id}/reject-offer/`, { method: 'POST' }),
   markDeviceCollected: (id) => request(`/sales/${id}/mark-collected/`, { method: 'POST' }),

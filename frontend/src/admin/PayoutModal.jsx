@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   X, QrCode, Upload, Copy, Check, AlertCircle, 
   ArrowRight, ShieldCheck, IndianRupee, Smartphone, FileImage 
@@ -117,8 +118,8 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-2 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in">
       <div className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-200 max-h-[92vh] flex flex-col">
         
         {/* Header */}
@@ -458,6 +459,7 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }

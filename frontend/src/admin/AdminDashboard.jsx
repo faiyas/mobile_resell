@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   IndianRupee, Smartphone, Clock, CheckCircle2, AlertCircle, 
   Search, Filter, QrCode, Upload, Eye, UserPlus, RefreshCw, 
-  Layers, ShieldAlert, Award, FileText, ChevronRight, Sparkles 
+  Layers, ShieldAlert, Award, FileText, ChevronRight, Sparkles,
+  Truck, X, MapPin, Calendar, UserCheck, User
 } from 'lucide-react';
 import { api } from '../services/api';
 import PayoutModal from './PayoutModal';
@@ -669,95 +671,215 @@ export default function AdminDashboard({ currentUser }) {
         />
       )}
 
-      {/* Assign Agent Modal */}
-      {assignSale && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
-            <h3 className="font-bold text-base text-slate-900">
-              Schedule Pickup for {assignSale.sale_code}
-            </h3>
-            
-            <form onSubmit={handleAssignPickup} className="space-y-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Assign Collection Agent</label>
-                <select
-                  required
-                  value={selectedAgentId}
-                  onChange={(e) => setSelectedAgentId(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-xl"
-                >
-                  <option value="">Select Field Staff</option>
-                  {agents.map((ag) => (
-                    <option key={ag.id} value={ag.id}>{ag.full_name} ({ag.phone})</option>
-                  ))}
-                </select>
-              </div>
+      {/* Assign Agent Modal (Fixed Portal UI) */}
+      {assignSale && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setAssignSale(null);
+          }}
+        >
+          <div 
+            className="bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 flex flex-col max-h-[92vh] overflow-hidden animate-slide-up sm:animate-zoom-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Mobile Sheet Drag Handle */}
+            <div className="sm:hidden pt-3 pb-1 flex justify-center">
+              <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
+            </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block font-bold text-slate-700">Pickup Date</label>
-                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">
-                    Available Tomorrow Onwards
+            {/* Header */}
+            <div className="px-5 sm:px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#E8F8ED] text-[#087C38] flex items-center justify-center font-bold shrink-0 border border-[#0BAA4B]/20 shadow-sm">
+                  <Truck className="w-5 h-5 text-[#0BAA4B]" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900">
+                    Schedule Logistics Dispatch
+                  </h3>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="font-mono text-xs font-bold text-[#087C38] bg-[#E8F8ED] px-2 py-0.5 rounded-md border border-[#0BAA4B]/20">
+                      Order #{assignSale.sale_code}
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      Doorstep Pickup
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAssignSale(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs">
+              
+              {/* Order Quick Context Card */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-[#0BAA4B]" />
+                    <span className="font-extrabold text-slate-900 text-sm">
+                      {assignSale.device_name || 'Device'}
+                    </span>
+                  </div>
+                  <span className="font-black text-emerald-600 text-sm">
+                    ₹{Number(assignSale.final_price || assignSale.estimated_price || 0).toLocaleString('en-IN')}
                   </span>
                 </div>
-                <input
-                  type="date"
-                  required
-                  min={getTomorrowDateStr()}
-                  value={pickupDate}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const minD = getTomorrowDateStr();
-                    setPickupDate(val < minD ? minD : val);
-                  }}
-                  className="w-full p-2 border border-slate-300 rounded-xl font-bold"
-                />
-                <p className="text-[11px] text-emerald-700 font-medium mt-1">
-                  ⚡ Doorstep logistics dispatch starts from tomorrow.
-                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[11px] text-slate-600 pt-1 border-t border-slate-200/60">
+                  <div className="flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="font-bold text-slate-800">{assignSale.customer_name}</span>
+                    <span className="text-slate-500">({assignSale.customer_phone})</span>
+                  </div>
+                  {assignSale.pickup_address && (
+                    <div className="flex items-center gap-1.5 truncate" title={assignSale.pickup_address}>
+                      <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                      <span className="truncate">{assignSale.pickup_address}</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Time Slot</label>
-                <select
-                  value={pickupSlot}
-                  onChange={(e) => setPickupSlot(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-xl"
-                >
-                  <option value="Morning (10:00 AM - 1:00 PM)">Morning (10:00 AM - 1:00 PM)</option>
-                  <option value="Afternoon (1:00 PM - 4:00 PM)">Afternoon (1:00 PM - 4:00 PM)</option>
-                  <option value="Evening (4:00 PM - 7:30 PM)">Evening (4:00 PM - 7:30 PM)</option>
-                </select>
-              </div>
+              {/* Form */}
+              <form onSubmit={handleAssignPickup} className="space-y-4">
+                {/* Agent Selection */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                      <UserCheck className="w-3.5 h-3.5 text-[#0BAA4B]" />
+                      <span>Assign Field Collection Specialist</span>
+                    </label>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                      {agents.length} Staff Available
+                    </span>
+                  </div>
+                  <select
+                    required
+                    value={selectedAgentId}
+                    onChange={(e) => setSelectedAgentId(e.target.value)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-bold text-slate-800 text-xs focus:ring-2 focus:ring-[#0BAA4B] focus:border-[#0BAA4B] outline-none transition"
+                  >
+                    <option value="">Select Field Staff</option>
+                    {agents.map((ag) => (
+                      <option key={ag.id} value={ag.id}>
+                        {ag.full_name} ({ag.phone})
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setAssignSale(null)}
-                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={assigningLoading}
-                  className="w-1/2 bg-slate-900 text-white py-2.5 rounded-xl font-bold hover:bg-black transition flex items-center justify-center gap-1.5"
-                >
-                  {assigningLoading ? 'Assigning Agent...' : 'Confirm Schedule'}
-                </button>
-              </div>
-            </form>
+                {/* Pickup Date */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="font-bold text-slate-700 flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-[#0BAA4B]" />
+                      <span>Pickup Date</span>
+                    </label>
+                    <span className="text-[10px] font-black text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                      Available Tomorrow Onwards
+                    </span>
+                  </div>
+                  <input
+                    type="date"
+                    required
+                    min={getTomorrowDateStr()}
+                    value={pickupDate}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const minD = getTomorrowDateStr();
+                      setPickupDate(val < minD ? minD : val);
+                    }}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-black text-slate-800 text-xs focus:ring-2 focus:ring-[#0BAA4B] focus:border-[#0BAA4B] outline-none transition"
+                  />
+                  <p className="text-[11px] text-emerald-700 font-semibold mt-1.5 flex items-center gap-1">
+                    <span>⚡</span> Doorstep logistics dispatch starts from tomorrow.
+                  </p>
+                </div>
+
+                {/* Time Slot */}
+                <div>
+                  <label className="font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-[#0BAA4B]" />
+                    <span>Preferred Time Slot Window</span>
+                  </label>
+                  <select
+                    value={pickupSlot}
+                    onChange={(e) => setPickupSlot(e.target.value)}
+                    className="w-full p-2.5 bg-white border border-slate-300 rounded-xl font-semibold text-slate-800 text-xs focus:ring-2 focus:ring-[#0BAA4B] focus:border-[#0BAA4B] outline-none transition"
+                  >
+                    <option value="Morning (10:00 AM - 1:00 PM)">🌅 Morning (10:00 AM - 1:00 PM)</option>
+                    <option value="Afternoon (1:00 PM - 4:00 PM)">☀️ Afternoon (1:00 PM - 4:00 PM)</option>
+                    <option value="Evening (4:00 PM - 7:30 PM)">🌇 Evening (4:00 PM - 7:30 PM)</option>
+                  </select>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="flex gap-2.5 pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setAssignSale(null)}
+                    className="w-1/2 py-2.5 px-4 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl font-bold transition text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={assigningLoading}
+                    className="w-1/2 bg-gradient-to-r from-[#0BAA4B] to-[#087C38] hover:from-[#087C38] hover:to-[#05632B] text-white py-2.5 px-4 rounded-xl font-extrabold transition flex items-center justify-center gap-1.5 shadow-md shadow-[#0BAA4B]/20 text-xs disabled:opacity-50"
+                  >
+                    {assigningLoading ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        <span>Assigning...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Truck className="w-3.5 h-3.5" />
+                        <span>Confirm Schedule</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit Deduction Modal */}
-      {editingOption && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
-            <h3 className="font-bold text-base text-slate-900">
-              Update Deduction Price
-            </h3>
+      {editingOption && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setEditingOption(null);
+          }}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-base text-slate-900">
+                Update Deduction Price
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingOption(null)}
+                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <p className="text-slate-500">{editingOption.title}</p>
 
             <form onSubmit={handleUpdateDeduction} className="space-y-3">
@@ -769,7 +891,7 @@ export default function AdminDashboard({ currentUser }) {
                   required
                   value={newDeductionValue}
                   onChange={(e) => setNewDeductionValue(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-xl text-base font-bold text-rose-600"
+                  className="w-full p-2 border border-slate-300 rounded-xl text-base font-bold text-rose-600 focus:ring-2 focus:ring-[#0BAA4B] outline-none"
                 />
               </div>
 
@@ -777,26 +899,35 @@ export default function AdminDashboard({ currentUser }) {
                 <button
                   type="button"
                   onClick={() => setEditingOption(null)}
-                  className="w-1/2 border border-slate-300 py-2 rounded-xl font-bold"
+                  className="w-1/2 border border-slate-300 py-2 rounded-xl font-bold hover:bg-slate-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="w-1/2 bg-emerald-600 text-white py-2 rounded-xl font-bold hover:bg-emerald-700"
+                  className="w-1/2 bg-[#0BAA4B] text-white py-2 rounded-xl font-bold hover:bg-[#087C38] transition"
                 >
                   Save Deduction
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* End-to-End Buyback Lifecycle Trace Modal */}
-      {traceSale && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
+      {traceSale && createPortal(
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setTraceSale(null);
+          }}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
                 <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">Super Admin Lifecycle Audit Trace</span>
@@ -815,9 +946,9 @@ export default function AdminDashboard({ currentUser }) {
               </div>
               <button
                 onClick={() => setTraceSale(null)}
-                className="text-slate-400 hover:text-slate-700 text-lg font-bold p-1"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -974,7 +1105,8 @@ export default function AdminDashboard({ currentUser }) {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Receipt Modal */}
