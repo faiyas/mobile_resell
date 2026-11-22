@@ -1726,22 +1726,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  Widget _buildCatalogQuickBtn(String title, IconData icon, VoidCallback onTap) {
-    return Expanded(
-      child: GlassContainer(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Column(
+  Widget _buildCatalogQuickBtn(String title, IconData icon, VoidCallback onTap, {bool isPrimary = false}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: isPrimary ? AppTheme.primaryGreen : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isPrimary ? AppTheme.primaryGreen : Colors.grey.shade300,
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 16, color: AppTheme.primaryGreen),
-            const SizedBox(height: 3),
+            Icon(
+              icon,
+              size: 15,
+              color: isPrimary ? Colors.white : AppTheme.primaryGreen,
+            ),
+            const SizedBox(width: 5),
             Text(
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppTheme.textPrimary),
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 11,
+                color: isPrimary ? Colors.white : AppTheme.textPrimary,
+              ),
             ),
           ],
         ),
@@ -3774,19 +3797,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
+                _buildCatalogQuickBtn('+ Add Step', Icons.add_circle_outline_rounded, _showAddConditionCategoryModal, isPrimary: true),
+                const SizedBox(width: 8),
                 _buildCatalogQuickBtn('Copy from Brand', Icons.copy_all_rounded, _showCopyQuestionsModal),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 _buildCatalogQuickBtn('Categories', Icons.category_rounded, _showCategoryManager),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 _buildCatalogQuickBtn('Brands', Icons.verified_rounded, _showBrandManager),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 _buildCatalogQuickBtn('Series', Icons.view_carousel_rounded, _showSeriesManager),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 _buildCatalogQuickBtn('Models', Icons.phone_android_rounded, _showModelManager),
-                const SizedBox(width: 6),
-                _buildCatalogQuickBtn('Variants', Icons.storage_rounded, _showVariantManager),
-                const SizedBox(width: 6),
-                _buildCatalogQuickBtn('+ Add Step', Icons.add_circle_outline_rounded, _showAddConditionCategoryModal),
+                const SizedBox(width: 8),
+                _buildCatalogQuickBtn('Variants & Prices', Icons.storage_rounded, _showVariantManager),
               ],
             ),
           ),
