@@ -7,6 +7,7 @@ import '../config/theme.dart';
 import '../models/models.dart';
 import '../services/api_service.dart';
 import '../services/draft_sell_service.dart';
+import '../services/customer_cache_service.dart';
 import '../widgets/glass_container.dart';
 import 'sell_wizard/category_selection_screen.dart';
 import 'sell_wizard/questionnaire_screen.dart';
@@ -41,6 +42,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final ScrollController _brandsScrollController = ScrollController();
   Timer? _brandsAutoScrollTimer;
 
+  // Hero Carousel Controllers
+  final PageController _heroPageController = PageController();
+  int _currentHeroSlide = 0;
+  Timer? _heroAutoScrollTimer;
+
   @override
   void initState() {
     super.initState();
@@ -49,9 +55,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _heroAutoScrollTimer?.cancel();
+    _heroPageController.dispose();
     _brandsAutoScrollTimer?.cancel();
     _brandsScrollController.dispose();
     super.dispose();
+  }
+
+  void _startHeroAutoScroll() {
+    _heroAutoScrollTimer?.cancel();
+    _heroAutoScrollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!_heroPageController.hasClients) return;
+      final hero = _cmsSections.isNotEmpty
+          ? _cmsSections.firstWhere(
+              (s) => s.sectionType == 'hero_carousel',
+              orElse: () => _cmsSections.first,
+            )
+          : null;
+      int count = 1;
+      if (hero != null && hero.dataJson['slides'] is List) {
+        final list = (hero.dataJson['slides'] as List).where((s) => s['is_active'] != false).toList();
+        if (list.isNotEmpty) count = list.length;
+      }
+      if (count <= 1) return;
+      final next = (_currentHeroSlide + 1) % count;
+      _heroPageController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 550),
+        curve: Curves.easeInOut,
+      );
+    });
   }
 
   void _startBrandsAutoScroll() {
@@ -69,27 +102,66 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    setState(() => _isLoading = true);
-    try {
-      final cms = await _api.getCMSSections();
-      final cats = await _api.getDeviceCategories();
-      final br = await _api.getBrands();
-      final draft = await DraftSellService.getDraft();
+    // 1. Instant 0ms Load from Local Device Storage (No spinner if cache exists)
+    final cachedCms = await CustomerCacheService.getCachedCMSSections();
+    final cachedCats = await CustomerCacheService.getCachedCategories();
+    final cachedBrands = await CustomerCacheService.getCachedBrands();
+    final draft = await DraftSellService.getDraft();
 
-      if (mounted) {
+    final bool hasCachedContent = cachedCats.isNotEmpty || cachedBrands.isNotEmpty;
+
+    if (mounted) {
+      setState(() {
+        if (hasCachedContent) {
+          _cmsSections = cachedCms;
+          _categories = cachedCats;
+          _brands = cachedBrands;
+          _isLoading = false;
+        } else {
+          _isLoading = true;
+        }
+        _savedDraft = draft;
+      });
+
+      if (_brands.isNotEmpty) _startBrandsAutoScroll();
+      _startHeroAutoScroll();
+    }
+
+    // 2. Silent Background Delta Sync (Does NOT block user or show spinner)
+    try {
+      final bool hasChanges = await CustomerCacheService.syncCustomerDataSilently(_api);
+      if (hasChanges && mounted) {
+        final freshCms = await CustomerCacheService.getCachedCMSSections();
+        final freshCats = await CustomerCacheService.getCachedCategories();
+        final freshBrands = await CustomerCacheService.getCachedBrands();
+
         setState(() {
-          _cmsSections = cms;
-          _categories = cats;
-          _brands = br;
-          _savedDraft = draft;
+          _cmsSections = freshCms;
+          _categories = freshCats;
+          _brands = freshBrands;
           _isLoading = false;
         });
-        if (br.isNotEmpty) {
-          _startBrandsAutoScroll();
-        }
+
+        if (freshBrands.isNotEmpty) _startBrandsAutoScroll();
+        _startHeroAutoScroll();
+      } else if (!hasCachedContent && mounted) {
+        // Cold start fallback if first install and offline check returned false
+        final freshCms = await _api.getCMSSections();
+        final freshCats = await _api.getDeviceCategories();
+        final freshBrands = await _api.getBrands();
+
+        setState(() {
+          _cmsSections = freshCms;
+          _categories = freshCats;
+          _brands = freshBrands;
+          _isLoading = false;
+        });
+
+        if (freshBrands.isNotEmpty) _startBrandsAutoScroll();
+        _startHeroAutoScroll();
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted && _isLoading) setState(() => _isLoading = false);
     }
   }
 
@@ -769,10 +841,6 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         : null;
 
-    final heroTitle = hero?.title ?? 'Sell Your Old Phone for Instant Cash';
-    final heroSubtitle = hero?.subtitle ?? 'Get a rule-based valuation in 60s & instant doorstep payout.';
-    final heroBadge = hero?.dataJson['badge'] ?? '1103 RECELL · Certified Buyback';
-
     return RefreshIndicator(
       color: AppTheme.primaryGreen,
       onRefresh: _loadInitialData,
@@ -782,67 +850,8 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Promotional Hero Banner (Green Gradient Card)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppTheme.deepForest, AppTheme.darkGreen, AppTheme.primaryGreen],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primaryGreen.withOpacity(0.25),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      heroBadge,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 10,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    heroTitle,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    heroSubtitle,
-                    style: const TextStyle(
-                      color: AppTheme.lightGreen,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-
-                ],
-              ),
-            ),
+            // 1. Promotional Hero Banner Carousel (Image or Text with 1200x480 Aspect Ratio)
+            _buildPromotionalHeroCarousel(hero),
 
             const SizedBox(height: 20),
 
@@ -908,6 +917,180 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ================= DYNAMIC CATEGORIES GRID DIRECTLY FROM DATABASE =================
+  Widget _buildPromotionalHeroCarousel(CMSSectionModel? hero) {
+    List<Map<String, dynamic>> rawSlides = [];
+    if (hero != null && hero.dataJson['slides'] is List) {
+      final list = hero.dataJson['slides'] as List;
+      rawSlides = list.whereType<Map<String, dynamic>>().where((s) => s['is_active'] != false).toList();
+    }
+
+    if (rawSlides.isEmpty) {
+      rawSlides = [
+        {
+          'type': (hero != null && hero.dataJson['image_base64'] != null && hero.dataJson['image_base64'].toString().isNotEmpty) ? 'IMAGE' : 'TEXT',
+          'title': hero?.title ?? 'Sell Your Old Device',
+          'subtitle': hero?.subtitle ?? 'Get the best value for your phone with instant doorstep payout.',
+          'badge': hero?.dataJson['badge'] ?? '1103 RECELL · Certified Buyback',
+          'cta_text': 'Start Selling Now',
+          'image_base64': hero?.dataJson['image_base64'] ?? '',
+        }
+      ];
+    }
+
+    return Column(
+      children: [
+        AspectRatio(
+          aspectRatio: 2.5 / 1, // Matches 1200x480 admin banner ratio
+          child: PageView.builder(
+            controller: _heroPageController,
+            itemCount: rawSlides.length,
+            onPageChanged: (idx) {
+              setState(() => _currentHeroSlide = idx);
+            },
+            itemBuilder: (ctx, index) {
+              final slide = rawSlides[index];
+              final isImage = slide['type']?.toString().toUpperCase() == 'IMAGE';
+              final imageBase64 = slide['image_base64']?.toString() ?? '';
+              final imageBytes = ImageHelper.decodeBase64(imageBase64);
+
+              if (isImage && imageBytes != null) {
+                return ClipRRect(
+                  borderRadius: BorderRadius.circular(22),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.memory(
+                        imageBytes,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: AppTheme.darkGreen,
+                          alignment: Alignment.center,
+                          child: const Icon(Icons.broken_image_rounded, color: Colors.white, size: 36),
+                        ),
+                      ),
+                      if (slide['title'] != null && slide['title'].toString().isNotEmpty)
+                        Positioned(
+                          bottom: 10,
+                          left: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.65),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.white.withOpacity(0.2)),
+                            ),
+                            child: Text(
+                              slide['title'].toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              }
+
+              // Text & Gradient Banner Slide (Clean, no 60 mins)
+              final title = slide['title']?.toString() ?? 'Sell Your Old Phone';
+              final subtitle = slide['subtitle']?.toString() ?? 'Instant doorstep valuation and payout.';
+              final badge = slide['badge']?.toString() ?? '1103 RECELL · Buyback';
+
+              return Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppTheme.deepForest, AppTheme.darkGreen, AppTheme.primaryGreen],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(22),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryGreen.withOpacity(0.25),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        badge,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 9,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTheme.lightGreen,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+
+        // Carousel Dot Indicators
+        if (rawSlides.length > 1) ...[
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(rawSlides.length, (i) {
+              final isCurrent = i == _currentHeroSlide;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: isCurrent ? 18 : 6,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: isCurrent ? AppTheme.primaryGreen : Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
+    );
+  }
+
   Widget _buildBigCategoryGrid() {
     if (_categories.isEmpty) return const SizedBox.shrink();
 

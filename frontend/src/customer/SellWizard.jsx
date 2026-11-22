@@ -53,6 +53,17 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
   const [selectedSeriesId, setSelectedSeriesId] = useState('ALL');
   const [selectedModel, setSelectedModel] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
+  const [heroSlides, setHeroSlides] = useState([]);
+  const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
+
+  // Auto-cycle hero slides every 5 seconds
+  useEffect(() => {
+    if (heroSlides.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentSlideIdx((prev) => (prev + 1) % heroSlides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [heroSlides.length]);
   const [selectedOptionCodes, setSelectedOptionCodes] = useState([]);
   const [stepCustomNotes, setStepCustomNotes] = useState({});
   const [isCustomDevice, setIsCustomDevice] = useState(false);
@@ -249,12 +260,22 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
 
   const loadInitialData = async () => {
     try {
-      const [cats, qSteps] = await Promise.all([
+      const [cats, qSteps, cmsData] = await Promise.all([
         api.getCategories(),
         api.getConditionCategories(),
+        api.getCMSSections().catch(() => []),
       ]);
       setCategories(cats);
       setQuestionSteps(deduplicateSteps(qSteps));
+
+      const heroSec = (cmsData || []).find((s) => s.section_type === 'HERO_CAROUSEL');
+      if (heroSec && Array.isArray(heroSec.data_json?.slides)) {
+        const activeSlides = heroSec.data_json.slides.filter((s) => s.is_active);
+        if (activeSlides.length > 0) {
+          setHeroSlides(activeSlides);
+        }
+      }
+
       if (cats.length > 0) {
         handleSelectCategory(cats[0]);
       }
@@ -441,7 +462,81 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
 
       {/* ================= SCREEN 1: CATEGORY SELECTION ================= */}
       {currentScreen === 1 && (
-        <div className="space-y-4 animate-fade-in">
+        <div className="space-y-6 animate-fade-in">
+          {/* DYNAMIC PROMOTIONAL HERO CAROUSEL */}
+          {heroSlides.length > 0 && (() => {
+            const slide = heroSlides[currentSlideIdx] || heroSlides[0];
+            return (
+              <div className="relative overflow-hidden rounded-3xl shadow-xl transition-all duration-500">
+                {slide.type === 'IMAGE' && slide.image_base64 ? (
+                  <div className="relative w-full aspect-[2.5/1] max-h-[380px] bg-slate-900 overflow-hidden rounded-3xl border border-emerald-500/20">
+                    <img
+                      src={slide.image_base64}
+                      alt={slide.title || 'Promotional Banner'}
+                      className="w-full h-full object-cover transition-opacity duration-500"
+                    />
+                    {slide.title && (
+                      <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 bg-black/60 backdrop-blur-md text-white text-xs sm:text-sm font-black px-4 py-2 rounded-2xl border border-white/20">
+                        {slide.title}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] text-white p-6 sm:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-400/30">
+                    <div className="space-y-2 max-w-xl">
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 text-white px-3 py-1 rounded-full">
+                        {slide.badge || '1103 RECELL · Buyback Company'}
+                      </span>
+                      <h2 className="text-2xl sm:text-4xl font-black mt-2 leading-tight">
+                        {slide.title || 'Sell Your Old Device'}
+                      </h2>
+                      <p className="text-xs sm:text-sm text-[#E8F8ED] leading-relaxed">
+                        {slide.subtitle || 'Get the best value for your phone, tablet, laptop & more with instant doorstep payout.'}
+                      </p>
+                      <div className="pt-2 flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (categories.length > 0) {
+                              handleSelectCategory(categories[0]);
+                              setCurrentScreen(2);
+                            }
+                          }}
+                          className="bg-white text-[#087C38] font-black text-xs px-5 py-2.5 rounded-xl shadow-lg hover:bg-[#E8F8ED] transition flex items-center gap-1.5"
+                        >
+                          <span>{slide.cta_text || 'Start Selling Now'}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="w-32 h-32 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex flex-col items-center justify-center p-3 text-center text-xs shrink-0">
+                      <Smartphone className="w-10 h-10 text-white mb-2" />
+                      <span className="font-extrabold text-[11px]">Instant Payout</span>
+                      <span className="text-[9px] text-emerald-200">Doorstep Verification</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Dot Indicators */}
+                {heroSlides.length > 1 && (
+                  <div className="absolute bottom-3 right-4 flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2.5 py-1 rounded-full z-10">
+                    {heroSlides.map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setCurrentSlideIdx(i)}
+                        className={`h-2 rounded-full transition-all ${
+                          i === currentSlideIdx ? 'w-5 bg-white' : 'w-2 bg-white/50'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           <div className="text-center max-w-xl mx-auto space-y-1">
             <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-3 py-1 rounded-full border border-[#0BAA4B]/20">
               Step 1 of Buyback

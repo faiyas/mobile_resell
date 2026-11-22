@@ -4,10 +4,11 @@ import {
   Smartphone, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, 
   Search, Filter, RefreshCw, Layers, Shield, IndianRupee, 
   HelpCircle, Sparkles, ChevronRight, Check, X, ArrowRight,
-  TrendingDown, TrendingUp, History, AlertTriangle, Eye, ShieldAlert, Upload
+  TrendingDown, TrendingUp, History, AlertTriangle, Eye, ShieldAlert, Upload,
+  Image as ImageIcon, Type, Sliders, Crop, MoveVertical, ZoomIn
 } from 'lucide-react';
 import { api } from '../services/api';
-import { fileToBase64 } from '../utils/imageCompressor';
+import { fileToBase64, cropAndResizeToBanner } from '../utils/imageCompressor';
 
 function ResponsiveModal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' }) {
   if (!isOpen) return null;
@@ -119,6 +120,28 @@ export default function CataloguePricingManager() {
   const [cmsSections, setCmsSections] = useState([]);
   const [editingCmsSection, setEditingCmsSection] = useState(null);
   const [cmsForm, setCmsForm] = useState({ title: '', subtitle: '', badge: '', is_active: true });
+  const [heroSlides, setHeroSlides] = useState([
+    {
+      id: 'slide_1',
+      type: 'TEXT',
+      title: 'Sell Your Old Device',
+      subtitle: 'Get the best value for your phone, tablet, laptop & more with instant doorstep payout.',
+      badge: '1103 RECELL · Buyback Company',
+      cta_text: 'Start Selling Now',
+      image_base64: '',
+      is_active: true
+    }
+  ]);
+  const [selectedSlideIndex, setSelectedSlideIndex] = useState(0);
+
+  // Interactive 1200x480 Banner Crop Modal States
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [rawCropImage, setRawCropImage] = useState(null);
+  const [cropOffsetY, setCropOffsetY] = useState(0.5);
+  const [cropZoom, setCropZoom] = useState(1.0);
+  const [cropPreviewBase64, setCropPreviewBase64] = useState('');
+  const [isProcessingCrop, setIsProcessingCrop] = useState(false);
+
   const [selectedQuestionStep, setSelectedQuestionStep] = useState(null);
 
   const [optionModalOpen, setOptionModalOpen] = useState(false);
@@ -175,13 +198,32 @@ export default function CataloguePricingManager() {
       setCmsSections(cmsData);
 
       if (cmsData.length > 0) {
-        setEditingCmsSection(cmsData[0]);
+        const heroSec = cmsData.find(s => s.section_type === 'HERO_CAROUSEL') || cmsData[0];
+        setEditingCmsSection(heroSec);
         setCmsForm({
-          title: cmsData[0].title,
-          subtitle: cmsData[0].subtitle || '',
-          badge: cmsData[0].data_json?.badge || '',
-          is_active: cmsData[0].is_active
+          title: heroSec.title,
+          subtitle: heroSec.subtitle || '',
+          badge: heroSec.data_json?.badge || '',
+          is_active: heroSec.is_active
         });
+
+        let slides = heroSec.data_json?.slides;
+        if (!Array.isArray(slides) || slides.length === 0) {
+          slides = [
+            {
+              id: 'slide_1',
+              type: heroSec.data_json?.image_base64 ? 'IMAGE' : 'TEXT',
+              title: heroSec.title || 'Sell Your Old Device',
+              subtitle: heroSec.subtitle || 'Get the best value for your device with instant doorstep payout.',
+              badge: heroSec.data_json?.badge || '1103 RECELL · Buyback Company',
+              cta_text: 'Start Selling Now',
+              image_base64: heroSec.data_json?.image_base64 || '',
+              is_active: heroSec.is_active
+            }
+          ];
+        }
+        setHeroSlides(slides);
+        setSelectedSlideIndex(0);
       }
 
       if (cData.length > 0) {
@@ -655,28 +697,115 @@ export default function CataloguePricingManager() {
     }
   };
 
-  const handleSaveCmsSection = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
-    if (!editingCmsSection) return;
+  const handleSaveHeroCarousel = async (slidesToSave = heroSlides) => {
     try {
+      const activeSlide = slidesToSave[selectedSlideIndex] || slidesToSave[0];
       const payload = {
-        section_type: editingCmsSection.section_type,
-        title: cmsForm.title,
-        subtitle: cmsForm.subtitle,
-        display_order: editingCmsSection.display_order,
-        is_active: cmsForm.is_active,
+        section_type: 'HERO_CAROUSEL',
+        title: activeSlide?.title || 'Promotional Hero Banners',
+        subtitle: activeSlide?.subtitle || 'Doorstep Device Buyback',
+        display_order: 0,
+        is_active: slidesToSave.some(s => s.is_active),
         data_json: {
-          ...(editingCmsSection.data_json || {}),
-          badge: cmsForm.badge,
+          badge: activeSlide?.badge || '1103 RECELL · Buyback Company',
+          slides: slidesToSave,
+          image_base64: activeSlide?.type === 'IMAGE' ? (activeSlide.image_base64 || '') : ''
         }
       };
       await api.updateCMSSection(payload);
-      showFeedback('success', `CMS Section '${editingCmsSection.section_type}' saved to Database!`);
+      showFeedback('success', `✓ Hero Carousel with ${slidesToSave.length} slides saved to Database!`);
       const fresh = await api.getCMSSections();
       setCmsSections(fresh);
     } catch (err) {
-      alert(err.message || 'Failed to update CMS section');
+      alert(err.message || 'Failed to update Hero Carousel');
     }
+  };
+
+  const handleAddHeroSlide = () => {
+    const newSlide = {
+      id: `slide_${Date.now()}`,
+      type: 'TEXT',
+      title: 'Sell Your Old Device',
+      subtitle: 'Get top value with instant doorstep evaluation and payout.',
+      badge: '1103 RECELL · Special',
+      cta_text: 'Start Selling Now',
+      image_base64: '',
+      is_active: true
+    };
+    const updated = [...heroSlides, newSlide];
+    setHeroSlides(updated);
+    setSelectedSlideIndex(updated.length - 1);
+    handleSaveHeroCarousel(updated);
+  };
+
+  const handleDeleteHeroSlide = (idx) => {
+    if (heroSlides.length <= 1) {
+      alert('You must have at least one hero slide.');
+      return;
+    }
+    if (!window.confirm('Delete this banner slide?')) return;
+    const updated = heroSlides.filter((_, i) => i !== idx);
+    setHeroSlides(updated);
+    setSelectedSlideIndex(Math.max(0, idx - 1));
+    handleSaveHeroCarousel(updated);
+  };
+
+  const handleUpdateCurrentSlide = (fields) => {
+    const updated = [...heroSlides];
+    updated[selectedSlideIndex] = { ...updated[selectedSlideIndex], ...fields };
+    setHeroSlides(updated);
+  };
+
+  const handleFileSelectForCrop = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const raw = ev.target.result;
+      setRawCropImage(raw);
+      setCropOffsetY(0.5);
+      setCropZoom(1.0);
+      try {
+        const preview = await cropAndResizeToBanner(raw, 1200, 480, 0.85, 0.5, 1.0);
+        setCropPreviewBase64(preview);
+        setCropModalOpen(true);
+      } catch (err) {
+        alert('Image processing error: ' + err.message);
+      }
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleRecalculateCropPreview = async (newOffsetY, newZoom) => {
+    if (!rawCropImage) return;
+    try {
+      const preview = await cropAndResizeToBanner(rawCropImage, 1200, 480, 0.85, newOffsetY, newZoom);
+      setCropPreviewBase64(preview);
+    } catch (_) {}
+  };
+
+  const handleApplyCrop = async () => {
+    if (!rawCropImage) return;
+    try {
+      setIsProcessingCrop(true);
+      const finalCropped = await cropAndResizeToBanner(rawCropImage, 1200, 480, 0.85, cropOffsetY, cropZoom);
+      handleUpdateCurrentSlide({
+        image_base64: finalCropped,
+        type: 'IMAGE'
+      });
+      setCropModalOpen(false);
+      setIsProcessingCrop(false);
+      showFeedback('success', '✓ Banner image cropped to 1200x480 px and converted to Base64! Click Save to apply.');
+    } catch (err) {
+      setIsProcessingCrop(false);
+      alert('Error saving crop: ' + err.message);
+    }
+  };
+
+  const handleSaveCmsSection = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    handleSaveHeroCarousel();
   };
 
   // ================= 5. DEDUCTION RULE ACTIONS =================
@@ -827,153 +956,450 @@ export default function CataloguePricingManager() {
         })}
       </div>
 
-      {/* ================= CMS HOMEPAGE BUILDER (Matching Infographic) ================= */}
-      {subTab === 'cms' && (
-        <div className="space-y-6 animate-fade-in">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-            <div>
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <span>🎨 Homepage Builder (Dynamic CMS)</span>
-                <span className="text-[10px] bg-[#E8F8ED] text-[#087C38] px-2 py-0.5 rounded-full font-bold">100% Dynamic DB</span>
-              </h3>
-              <p className="text-xs text-slate-500">Configure promotional hero banners, quick service links, top brands, and security policies without touching code.</p>
-            </div>
-            <button
-              onClick={() => handleSaveCmsSection()}
-              className="bg-gradient-to-r from-[#087C38] to-[#0BAA4B] hover:brightness-105 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
-            >
-              <Check className="w-4 h-4" /> Save Changes
-            </button>
-          </div>
-
-          {/* Green Live Hero Banner Card (Exact match to Infographic preview) */}
-          <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] text-white p-6 sm:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-400/30">
-            <div className="space-y-2 max-w-xl">
-              <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 text-white px-3 py-1 rounded-full">
-                {cmsForm.badge || '1103 RECELL · Buyback Company'}
-              </span>
-              <h2 className="text-2xl sm:text-4xl font-black mt-2 leading-tight">
-                {cmsForm.title || 'Sell Your Old Device'}
-              </h2>
-              <p className="text-xs sm:text-sm text-[#E8F8ED] leading-relaxed">
-                {cmsForm.subtitle || 'Get the best value for your phone, tablet, laptop & more with instant doorstep payout.'}
-              </p>
-              <div className="pt-2 flex items-center gap-3">
-                <button type="button" className="bg-white text-[#087C38] font-black text-xs px-5 py-2.5 rounded-xl shadow-lg hover:bg-[#E8F8ED] transition flex items-center gap-1.5">
-                  <span>Start Selling Now</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-[11px] text-emerald-200 font-bold">⚡ Doorstep in 60 Mins</span>
+      {/* ================= HERO CAROUSEL & PROMOTIONAL BANNERS MANAGER ================= */}
+      {subTab === 'cms' && (() => {
+        const currentSlide = heroSlides[selectedSlideIndex] || heroSlides[0] || {};
+        return (
+          <div className="space-y-6 animate-fade-in">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <span>🎨 Hero Carousel & Promotional Banners</span>
+                  <span className="text-[10px] bg-[#E8F8ED] text-[#087C38] px-2.5 py-0.5 rounded-full font-bold">1200 × 480 px Canvas</span>
+                </h3>
+                <p className="text-xs text-slate-500">Configure promotional hero slides (Graphic Image or Custom Text) with built-in 1200×480 cropping for Web and Mobile.</p>
               </div>
+              <button
+                type="button"
+                onClick={() => handleSaveHeroCarousel()}
+                className="bg-gradient-to-r from-[#087C38] to-[#0BAA4B] hover:brightness-105 text-white font-black text-xs px-5 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" /> Save Carousel Changes
+              </button>
             </div>
 
-            <div className="w-36 h-36 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex flex-col items-center justify-center p-3 text-center text-xs shrink-0">
-              <Smartphone className="w-12 h-12 text-white mb-2" />
-              <span className="font-extrabold text-[11px]">Customer View</span>
-              <span className="text-[9px] text-emerald-200">Live Preview</span>
-            </div>
-          </div>
+            {/* LIVE PREVIEW OF SELECTED SLIDE */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[11px] font-black uppercase text-slate-500 tracking-wider flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5 text-[#0BAA4B]" />
+                  Live Customer Preview · Slide #{selectedSlideIndex + 1} ({currentSlide.type === 'IMAGE' ? '🖼️ Graphic Banner' : '✍️ Text Banner'})
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">Aspect Ratio 2.5 : 1 (1200 × 480 px)</span>
+              </div>
 
-          {/* CMS Section Blocks Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* Left: Section Selector */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">Homepage Sections ({cmsSections.length})</h4>
-              <div className="space-y-2">
-                {cmsSections.map((sec) => (
-                  <div
-                    key={sec.id}
-                    onClick={() => {
-                      setEditingCmsSection(sec);
-                      setCmsForm({
-                        title: sec.title,
-                        subtitle: sec.subtitle || '',
-                        badge: sec.data_json?.badge || '',
-                        is_active: sec.is_active
-                      });
-                    }}
-                    className={`p-3.5 rounded-2xl border cursor-pointer transition flex items-center justify-between ${
-                      editingCmsSection?.id === sec.id
-                        ? 'bg-[#E8F8ED] border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20 shadow-sm'
-                        : 'bg-white border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div>
-                      <span className="font-extrabold text-xs text-slate-900 capitalize">{sec.section_type.replace(/_/g, ' ')}</span>
-                      <p className="text-[11px] text-slate-500 truncate max-w-[160px]">{sec.title}</p>
+              {currentSlide.type === 'IMAGE' ? (
+                currentSlide.image_base64 ? (
+                  <div className="relative w-full aspect-[2.5/1] max-h-[380px] rounded-3xl overflow-hidden border border-emerald-500/30 shadow-xl bg-slate-900 group">
+                    <img
+                      src={currentSlide.image_base64}
+                      alt={currentSlide.title || 'Hero Banner'}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md text-white text-[10px] font-black px-3 py-1 rounded-full border border-white/20">
+                      ✓ Graphic Banner (1200 × 480 px)
                     </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${sec.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                      {sec.is_active ? 'Active' : 'Hidden'}
-                    </span>
+                    {currentSlide.title && (
+                      <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-xl border border-white/20">
+                        {currentSlide.title}
+                      </div>
+                    )}
                   </div>
-                ))}
-              </div>
+                ) : (
+                  <div
+                    onClick={() => document.getElementById('hero-img-upload')?.click()}
+                    className="w-full aspect-[2.5/1] max-h-[320px] rounded-3xl border-2 border-dashed border-[#0BAA4B]/40 bg-[#E8F8ED]/30 hover:bg-[#E8F8ED]/60 flex flex-col items-center justify-center p-6 text-center cursor-pointer transition"
+                  >
+                    <Upload className="w-10 h-10 text-[#0BAA4B] mb-2 animate-bounce" />
+                    <span className="font-extrabold text-sm text-slate-800">No Image Uploaded Yet for Slide #{selectedSlideIndex + 1}</span>
+                    <span className="text-xs text-slate-500 mt-1">Click to upload banner creative (Recommended 1200 × 480 px)</span>
+                  </div>
+                )
+              ) : (
+                <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] text-white p-6 sm:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 border border-emerald-400/30">
+                  <div className="space-y-2 max-w-xl">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 text-white px-3 py-1 rounded-full">
+                      {currentSlide.badge || '1103 RECELL · Buyback Company'}
+                    </span>
+                    <h2 className="text-2xl sm:text-4xl font-black mt-2 leading-tight">
+                      {currentSlide.title || 'Sell Your Old Device'}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-[#E8F8ED] leading-relaxed">
+                      {currentSlide.subtitle || 'Get the best value for your phone, tablet, laptop & more with instant doorstep payout.'}
+                    </p>
+                    <div className="pt-2 flex items-center gap-3">
+                      <button type="button" className="bg-white text-[#087C38] font-black text-xs px-5 py-2.5 rounded-xl shadow-lg hover:bg-[#E8F8ED] transition flex items-center gap-1.5">
+                        <span>{currentSlide.cta_text || 'Start Selling Now'}</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="w-32 h-32 rounded-2xl bg-white/10 backdrop-blur border border-white/20 flex flex-col items-center justify-center p-3 text-center text-xs shrink-0">
+                    <Smartphone className="w-10 h-10 text-white mb-2" />
+                    <span className="font-extrabold text-[11px]">Customer View</span>
+                    <span className="text-[9px] text-emerald-200">Text Banner</span>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Right: Section Editor */}
-            {editingCmsSection && (
+            {/* SLIDE MANAGER & EDITOR GRID */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {/* Left Column: Carousel Slides List */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">
+                    Carousel Slides ({heroSlides.length})
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={handleAddHeroSlide}
+                    className="text-xs font-black text-[#087C38] hover:text-[#0BAA4B] bg-[#E8F8ED] px-3 py-1 rounded-lg border border-[#0BAA4B]/20 flex items-center gap-1 transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Slide
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {heroSlides.map((slide, idx) => {
+                    const isSelected = selectedSlideIndex === idx;
+                    return (
+                      <div
+                        key={slide.id || idx}
+                        onClick={() => setSelectedSlideIndex(idx)}
+                        className={`p-3 rounded-2xl border cursor-pointer transition flex items-center justify-between gap-3 ${
+                          isSelected
+                            ? 'bg-[#E8F8ED] border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20 shadow-sm'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {slide.type === 'IMAGE' && slide.image_base64 ? (
+                            <img
+                              src={slide.image_base64}
+                              alt="Thumbnail"
+                              className="w-12 h-8 rounded-lg object-cover border border-slate-200 shrink-0"
+                            />
+                          ) : (
+                            <div className="w-12 h-8 rounded-lg bg-[#087C38] text-white text-[10px] font-black flex items-center justify-center shrink-0">
+                              {slide.type === 'IMAGE' ? '🖼️' : '✍️'}
+                            </div>
+                          )}
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-extrabold text-xs text-slate-900 truncate">
+                                Slide #{idx + 1}
+                              </span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">
+                                {slide.type === 'IMAGE' ? 'Image' : 'Text'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-500 truncate max-w-[140px]">
+                              {slide.title || 'Untitled Banner'}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteHeroSlide(idx);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition hover:bg-rose-50"
+                            title="Delete Slide"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Right Column: Slide Editor */}
               <div className="md:col-span-2 bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 shadow-sm space-y-4">
                 <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-                  <h4 className="font-black text-slate-900 text-sm">
-                    Edit Section: <span className="text-[#0BAA4B] capitalize">{editingCmsSection.section_type.replace(/_/g, ' ')}</span>
+                  <h4 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                    <span>Edit Slide #{selectedSlideIndex + 1}</span>
+                    <span className="text-xs text-[#0BAA4B] font-bold">
+                      ({currentSlide.type === 'IMAGE' ? 'Graphic Banner' : 'Text Banner'})
+                    </span>
                   </h4>
                   <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
                     <input
                       type="checkbox"
-                      checked={cmsForm.is_active}
-                      onChange={(e) => setCmsForm({ ...cmsForm, is_active: e.target.checked })}
+                      checked={Boolean(currentSlide.is_active)}
+                      onChange={(e) => handleUpdateCurrentSlide({ is_active: e.target.checked })}
                       className="rounded text-[#0BAA4B] focus:ring-[#0BAA4B]"
                     />
-                    <span>Visible on Customer App</span>
+                    <span>Visible to Customers</span>
                   </label>
                 </div>
 
-                <div className="space-y-3 text-xs">
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Section Title *</label>
-                    <input
-                      type="text"
-                      value={cmsForm.title}
-                      onChange={(e) => setCmsForm({ ...cmsForm, title: e.target.value })}
-                      className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#0BAA4B]"
-                    />
-                  </div>
+                {/* Banner Mode Toggle: Image vs Text */}
+                <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateCurrentSlide({ type: 'IMAGE' })}
+                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition ${
+                      currentSlide.type === 'IMAGE'
+                        ? 'bg-[#0BAA4B] text-white shadow-md'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <ImageIcon className="w-4 h-4" /> 🖼️ Graphic Image Banner
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpdateCurrentSlide({ type: 'TEXT' })}
+                    className={`flex-1 py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition ${
+                      currentSlide.type === 'TEXT'
+                        ? 'bg-[#0BAA4B] text-white shadow-md'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Type className="w-4 h-4" /> ✍️ Text & Gradient Banner
+                  </button>
+                </div>
 
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Section Subtitle</label>
-                    <input
-                      type="text"
-                      value={cmsForm.subtitle}
-                      onChange={(e) => setCmsForm({ ...cmsForm, subtitle: e.target.value })}
-                      className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#0BAA4B]"
-                    />
-                  </div>
+                {/* MODE A: IMAGE BANNER CONFIG */}
+                {currentSlide.type === 'IMAGE' && (
+                  <div className="space-y-4 pt-1 animate-fade-in">
+                    {/* Dimension Helper Badge */}
+                    <div className="p-3 bg-emerald-50/80 border border-emerald-200/80 rounded-2xl text-xs text-emerald-900 flex items-start gap-2.5">
+                      <Sparkles className="w-4 h-4 text-[#0BAA4B] shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-extrabold">Recommended Dimension: 1200 × 480 px (2.5 : 1 Ratio)</span>
+                        <p className="text-[11px] text-emerald-800/80 mt-0.5">
+                          Upload your promotional poster. The built-in cropper automatically resizes, crops, and optimizes it to Base64 for instant loading across Web and Mobile.
+                        </p>
+                      </div>
+                    </div>
 
-                  <div>
-                    <label className="block font-bold text-slate-700 mb-1">Badge Text (Optional)</label>
-                    <input
-                      type="text"
-                      value={cmsForm.badge}
-                      onChange={(e) => setCmsForm({ ...cmsForm, badge: e.target.value })}
-                      className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#0BAA4B]"
-                    />
-                  </div>
+                    {/* Upload & Crop Buttons */}
+                    <div className="space-y-2">
+                      <label className="block font-bold text-slate-700 text-xs">Banner Graphic (Base64) *</label>
+                      <div className="flex flex-col sm:flex-row items-center gap-3">
+                        <input
+                          id="hero-img-upload"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileSelectForCrop}
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById('hero-img-upload')?.click()}
+                          className="w-full sm:w-auto px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition shadow-sm"
+                        >
+                          <Upload className="w-4 h-4" /> Upload & Crop New Image
+                        </button>
 
-                  <div className="pt-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={handleSaveCmsSection}
-                      className="bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black px-6 py-2.5 rounded-xl shadow transition text-xs"
-                    >
-                      Save Section
-                    </button>
+                        {currentSlide.image_base64 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRawCropImage(currentSlide.image_base64);
+                              setCropPreviewBase64(currentSlide.image_base64);
+                              setCropOffsetY(0.5);
+                              setCropZoom(1.0);
+                              setCropModalOpen(true);
+                            }}
+                            className="w-full sm:w-auto px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-extrabold text-xs rounded-xl flex items-center justify-center gap-2 transition shadow-sm"
+                          >
+                            <Crop className="w-4 h-4 text-[#0BAA4B]" /> Adjust Crop / Alignment
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 text-xs mb-1">Banner Title / Alt Tag</label>
+                      <input
+                        type="text"
+                        value={currentSlide.title || ''}
+                        onChange={(e) => handleUpdateCurrentSlide({ title: e.target.value })}
+                        placeholder="e.g. Festival Exchange Bonus 2026"
+                        className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#0BAA4B]"
+                      />
+                    </div>
                   </div>
+                )}
+
+                {/* MODE B: TEXT BANNER CONFIG */}
+                {currentSlide.type === 'TEXT' && (
+                  <div className="space-y-3 pt-1 animate-fade-in text-xs">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Badge Tag</label>
+                      <input
+                        type="text"
+                        value={currentSlide.badge || ''}
+                        onChange={(e) => handleUpdateCurrentSlide({ badge: e.target.value })}
+                        placeholder="e.g. 1103 RECELL · Buyback Company"
+                        className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#0BAA4B]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Banner Headline / Title *</label>
+                      <input
+                        type="text"
+                        value={currentSlide.title || ''}
+                        onChange={(e) => handleUpdateCurrentSlide({ title: e.target.value })}
+                        placeholder="e.g. Sell Your Old Device"
+                        className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-black focus:ring-2 focus:ring-[#0BAA4B]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Subtitle / Customer Instruction</label>
+                      <input
+                        type="text"
+                        value={currentSlide.subtitle || ''}
+                        onChange={(e) => handleUpdateCurrentSlide({ subtitle: e.target.value })}
+                        placeholder="e.g. Get the best value for your phone with instant doorstep payout."
+                        className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#0BAA4B]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Action Button Text</label>
+                      <input
+                        type="text"
+                        value={currentSlide.cta_text || ''}
+                        onChange={(e) => handleUpdateCurrentSlide({ cta_text: e.target.value })}
+                        placeholder="e.g. Start Selling Now"
+                        className="w-full p-2.5 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-[#0BAA4B]"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Save Button */}
+                <div className="pt-3 border-t border-slate-100 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveHeroCarousel()}
+                    className="bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black px-6 py-2.5 rounded-xl shadow transition text-xs flex items-center gap-2"
+                  >
+                    <Check className="w-4 h-4" /> Save Hero Carousel
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* INTERACTIVE 1200 x 480 BANNER CROP MODAL */}
+            <ResponsiveModal
+              isOpen={cropModalOpen}
+              onClose={() => setCropModalOpen(false)}
+              title="Crop Banner Image (1200 × 480 px)"
+              maxWidth="max-w-3xl"
+            >
+              <div className="space-y-4 text-xs">
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex items-center justify-between">
+                  <span className="font-extrabold text-slate-800">Target Resolution: 1200 × 480 px (Aspect Ratio 2.5:1)</span>
+                  <span className="text-[10px] font-bold bg-[#E8F8ED] text-[#087C38] px-2 py-0.5 rounded-full">
+                    Auto-Optimized Base64
+                  </span>
+                </div>
+
+                {/* Interactive Canvas Live Preview */}
+                <div className="relative w-full aspect-[2.5/1] rounded-2xl overflow-hidden bg-slate-900 border-2 border-[#0BAA4B] shadow-inner flex items-center justify-center">
+                  {cropPreviewBase64 ? (
+                    <img
+                      src={cropPreviewBase64}
+                      alt="Crop Result"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-white">Generating preview...</span>
+                  )}
+                  <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[9px] font-mono px-2 py-0.5 rounded">
+                    1200 × 480 px
+                  </div>
+                </div>
+
+                {/* Crop & Alignment Sliders */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                  <div>
+                    <label className="font-bold text-slate-700 flex items-center justify-between mb-1">
+                      <span className="flex items-center gap-1.5"><MoveVertical className="w-3.5 h-3.5 text-[#0BAA4B]" /> Vertical Alignment</span>
+                      <span className="text-[10px] text-slate-500 font-mono">{Math.round(cropOffsetY * 100)}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={cropOffsetY}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setCropOffsetY(val);
+                        handleRecalculateCropPreview(val, cropZoom);
+                      }}
+                      className="w-full accent-[#0BAA4B]"
+                    />
+                    <div className="flex justify-between text-[9px] text-slate-400 font-bold mt-0.5">
+                      <span>Top</span>
+                      <span>Center</span>
+                      <span>Bottom</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 flex items-center justify-between mb-1">
+                      <span className="flex items-center gap-1.5"><ZoomIn className="w-3.5 h-3.5 text-[#0BAA4B]" /> Image Zoom</span>
+                      <span className="text-[10px] text-slate-500 font-mono">{cropZoom.toFixed(1)}x</span>
+                    </label>
+                    <input
+                      type="range"
+                      min="1.0"
+                      max="2.2"
+                      step="0.1"
+                      value={cropZoom}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setCropZoom(val);
+                        handleRecalculateCropPreview(cropOffsetY, val);
+                      }}
+                      className="w-full accent-[#0BAA4B]"
+                    />
+                    <div className="flex justify-between text-[9px] text-slate-400 font-bold mt-0.5">
+                      <span>1.0x (Fit)</span>
+                      <span>1.5x</span>
+                      <span>2.2x (Zoom)</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setCropModalOpen(false)}
+                    className="px-4 py-2 border border-slate-300 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-100"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyCrop}
+                    disabled={isProcessingCrop}
+                    className="px-5 py-2 bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black rounded-xl text-xs shadow flex items-center gap-1.5"
+                  >
+                    {isProcessingCrop ? 'Processing...' : '✓ Crop & Apply Banner (1200 × 480 px)'}
+                  </button>
+                </div>
+              </div>
+            </ResponsiveModal>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ================= QUESTIONNAIRE BUILDER (11 Evaluation Steps) ================= */}
       {subTab === 'questionnaire' && (
