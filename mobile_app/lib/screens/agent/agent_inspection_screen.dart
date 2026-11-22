@@ -398,7 +398,7 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
   @override
   Widget build(BuildContext context) {
     final user = _api.currentUser;
-    final isStaff = user?.role == 'COLLECTION_AGENT' || user?.role == 'ADMIN';
+    final isStaff = user?.isStaff == true;
 
     return Scaffold(
       extendBodyBehindAppBar: true,

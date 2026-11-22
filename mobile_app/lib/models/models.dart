@@ -10,6 +10,11 @@ class UserModel {
   final String pincode;
   final String defaultUpiId;
 
+  bool get isAdmin => role == 'ADMIN' || role == 'SUPER_ADMIN';
+  bool get isAgent => role == 'COLLECTION_AGENT';
+  bool get isStaff => isAdmin || isAgent;
+  bool get isCustomer => !isStaff;
+
   UserModel({
     required this.id,
     required this.email,
@@ -305,6 +310,40 @@ class ConditionCategoryModel {
   final bool isMandatory;
   final int displayOrder;
   final List<ConditionOptionModel> options;
+
+  int? get brandId => brand;
+
+  ConditionCategoryModel copyWith({
+    int? id,
+    String? name,
+    String? subtitle,
+    int? stepNumber,
+    String? selectionType,
+    String? proTip,
+    String? iconName,
+    String? imageBase64,
+    int? brand,
+    String? brandName,
+    bool? isMandatory,
+    int? displayOrder,
+    List<ConditionOptionModel>? options,
+  }) {
+    return ConditionCategoryModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      subtitle: subtitle ?? this.subtitle,
+      stepNumber: stepNumber ?? this.stepNumber,
+      selectionType: selectionType ?? this.selectionType,
+      proTip: proTip ?? this.proTip,
+      iconName: iconName ?? this.iconName,
+      imageBase64: imageBase64 ?? this.imageBase64,
+      brand: brand ?? this.brand,
+      brandName: brandName ?? this.brandName,
+      isMandatory: isMandatory ?? this.isMandatory,
+      displayOrder: displayOrder ?? this.displayOrder,
+      options: options ?? this.options,
+    );
+  }
 
   ConditionCategoryModel({
     required this.id,

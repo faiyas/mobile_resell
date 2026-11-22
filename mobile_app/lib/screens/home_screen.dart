@@ -442,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = _api.currentUser;
-    final isAdmin = user?.role == 'ADMIN';
+    final isAdmin = user?.role == 'ADMIN' || user?.role == 'SUPER_ADMIN';
     final isAgent = user?.role == 'COLLECTION_AGENT';
 
     // Strict Role-Based Screens
@@ -838,36 +838,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CategorySelectionScreen(),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: AppTheme.darkGreen,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'CHECK RESALE VALUE',
-                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
-                        ),
-                        SizedBox(width: 6),
-                        Icon(Icons.arrow_forward_rounded, size: 16),
-                      ],
-                    ),
-                  ),
+
                 ],
               ),
             ),
@@ -932,6 +903,345 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // ================= 2x2 BIG CATEGORIES GRID (Matching Reference) =================
+  Widget _buildBigCategoryGrid() {
+    final catDefs = [
+      {'name': 'Phone', 'icon': Icons.smartphone_rounded, 'match': ['mobile', 'phone']},
+      {'name': 'Tablet', 'icon': Icons.tablet_mac_rounded, 'match': ['tablet', 'ipad']},
+      {'name': 'Laptop', 'icon': Icons.laptop_mac_rounded, 'match': ['laptop', 'macbook', 'computer']},
+      {'name': 'Smartwatch', 'icon': Icons.watch_rounded, 'match': ['smartwatch', 'watch']},
+    ];
+
+    return Column(
+      children: [
+        const Text(
+          'EXCLUSIVELY',
+          style: TextStyle(
+            color: Color(0xFFD32F2F),
+            fontWeight: FontWeight.w900,
+            fontSize: 12,
+            letterSpacing: 2.0,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'From Phones to Consoles, Sell It All on 1103 RECELL!',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF1B2A20),
+            letterSpacing: -0.3,
+          ),
+        ),
+        const SizedBox(height: 16),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.05,
+          ),
+          itemCount: catDefs.length,
+          itemBuilder: (context, idx) {
+            final def = catDefs[idx];
+            return InkWell(
+              borderRadius: BorderRadius.circular(22),
+              onTap: () {
+                final match = _categories.where((c) {
+                  final cName = c.name.toLowerCase();
+                  final cSlug = c.slug.toLowerCase();
+                  final keys = (def['match'] as List<String>);
+                  return keys.any((k) => cName.contains(k) || cSlug.contains(k));
+                }).firstOrNull;
+
+                final targetCat = match ?? DeviceCategoryModel(
+                  id: idx + 1,
+                  name: def['name'] as String,
+                  slug: (def['name'] as String).toLowerCase(),
+                  iconName: (def['name'] as String).toLowerCase(),
+                  subtitle: 'Sell your ${def['name']}',
+                  displayOrder: idx + 1,
+                );
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CategorySelectionScreen(selectedCategory: targetCat),
+                  ),
+                );
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: Colors.grey.shade200),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        def['icon'] as IconData,
+                        size: 38,
+                        color: const Color(0xFF1B2A20),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      def['name'] as String,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                        color: Color(0xFF1B2A20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // ================= 3 QUICK SERVICE FEATURE BOXES =================
+  Widget _buildQuickActionBoxes() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildQuickBox(
+            icon: Icons.smartphone_rounded,
+            title: 'Instant\nValuation',
+            subtitle: 'Get 60s Quote',
+            color: AppTheme.primaryGreen,
+            bgColor: AppTheme.lightGreen.withOpacity(0.6),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CategorySelectionScreen()),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _buildQuickBox(
+            icon: Icons.local_shipping_outlined,
+            title: 'Track\nPickup',
+            subtitle: 'Agent Status',
+            color: Colors.amber.shade800,
+            bgColor: Colors.amber.shade50,
+            onTap: () {
+              setState(() => _currentIndex = 1);
+            },
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _buildQuickBox(
+            icon: Icons.account_balance_wallet_outlined,
+            title: 'My\nPayout',
+            subtitle: 'UPI Receipt',
+            color: Colors.purple.shade700,
+            bgColor: Colors.purple.shade50,
+            onTap: () {
+              setState(() => _currentIndex = 1);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickBox({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required Color bgColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 11,
+                color: AppTheme.textPrimary,
+                height: 1.2,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ================= 4. AUTO-SCROLLING TOP BRANDS MARQUEE =================
+  Widget _buildAutoScrollingBrandsMarquee() {
+    if (_brands.isEmpty) return const SizedBox.shrink();
+
+    // Multiply list so continuous loop is seamless
+    final displayList = [..._brands, ..._brands, ..._brands];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Top Brands',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CategorySelectionScreen()),
+                );
+              },
+              child: const Text('View All', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 90,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (notif) {
+              if (notif is ScrollStartNotification) {
+                _brandsAutoScrollTimer?.cancel();
+              } else if (notif is ScrollEndNotification) {
+                _startBrandsAutoScroll();
+              }
+              return false;
+            },
+            child: ListView.builder(
+              controller: _brandsScrollController,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              itemCount: displayList.length,
+              itemBuilder: (context, idx) {
+                final b = displayList[idx];
+                return Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CategorySelectionScreen(initialBrandId: b.id),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 82,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade200),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.02),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 38,
+                            height: 38,
+                            child: _buildBrandLogo(b),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            b.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -1089,6 +1399,44 @@ class _HomeScreenState extends State<HomeScreen> {
           // Stored Customer Details Editor
           _ProfileDetailsCard(user: user, onSaved: () => setState(() {})),
           const SizedBox(height: 16),
+          if (user.isAdmin) ...[
+            GlassContainer(
+              padding: const EdgeInsets.all(16),
+              borderRadius: BorderRadius.circular(20),
+              color: AppTheme.primaryGreen.withOpacity(0.08),
+              border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: AppTheme.primaryGreen, borderRadius: BorderRadius.circular(12)),
+                    child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Admin Central Desk', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
+                        SizedBox(height: 2),
+                        Text('Manage orders, field agents, payout approvals & catalog pricing rules.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryGreen,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () => setState(() => _currentIndex = 0),
+                    child: const Text('Open Desk', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           // 24x7 Support & Helpline Card
           GlassContainer(
             padding: const EdgeInsets.all(16),

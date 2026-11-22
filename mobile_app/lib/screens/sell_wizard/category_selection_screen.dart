@@ -366,7 +366,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                   _wizardStep == 0
                       ? 'Select Category'
                       : _wizardStep == 1
-                          ? 'Select Brand'
+                          ? 'Select ${_category?.name ?? "Brand"}'
                           : '${_brand?.name ?? ''} Models',
                 ),
                 leading: IconButton(
@@ -597,15 +597,60 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
           ),
         ),
         Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.95,
-            ),
-            itemCount: filtered.length,
+          child: filtered.isEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: GlassContainer(
+                      padding: const EdgeInsets.all(24),
+                      borderRadius: BorderRadius.circular(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppTheme.lightGreen,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.devices_other_rounded, size: 36, color: AppTheme.primaryGreen),
+                          ),
+                          const SizedBox(height: 14),
+                          Text(
+                            'No ${_category?.name ?? "device"} brands found',
+                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Get an instant doorstep valuation for your ${_category?.name ?? "device"} using custom specs.',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          ),
+                          const SizedBox(height: 18),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryGreen,
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            ),
+                            icon: const Icon(Icons.add_circle_outline, size: 18),
+                            label: Text('Sell Custom ${_category?.name ?? "Device"}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            onPressed: () => _showCustomDeviceModal(initialCategory: _category?.name),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              : GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
+                    childAspectRatio: 0.95,
+                  ),
+                  itemCount: filtered.length,
             itemBuilder: (context, idx) {
               final brand = filtered[idx];
               return GlassContainer(
