@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Prefetch, Q
+from django.db.models import Prefetch, Q, ProtectedError
 from decimal import Decimal
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -127,7 +127,16 @@ def condition_category_detail_view(request, pk):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         elif request.method == 'DELETE':
-            category.delete()
+            try:
+                category.delete()
+            except ProtectedError:
+                # Existing orders reference this category; soft-delete/deactivate to preserve order history
+                category.is_active = False
+                category.save()
+                return Response(
+                    {'detail': 'Category has historical orders referencing it; it has been deactivated from active quizzes.'},
+                    status=status.HTTP_200_OK
+                )
             return Response(status=status.HTTP_204_NO_CONTENT)
     except Exception as e:
         import traceback
@@ -191,7 +200,16 @@ def condition_option_detail_view(request, pk):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
-        option.delete()
+        try:
+            option.delete()
+        except ProtectedError:
+            # Existing customer orders reference this option; soft-delete to preserve audit trail
+            option.is_active = False
+            option.save()
+            return Response(
+                {'detail': 'Option is referenced in historical sales records; it has been deactivated.'},
+                status=status.HTTP_200_OK
+            )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['POST'])
