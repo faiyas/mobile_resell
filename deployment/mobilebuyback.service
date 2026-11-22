@@ -8,8 +8,13 @@ Group=user
 WorkingDirectory=/data/home/mobile_resell/backend
 ExecStart=/data/home/pondytourstravels/backend/venv/bin/gunicorn \
     --workers 3 \
+    --max-requests 1000 \
+    --max-requests-jitter 100 \
+    --timeout 60 \
     --bind 127.0.0.1:8010 \
-    --timeout 120 \
+    --access-logfile /data/home/mobile_resell/backend/logs/gunicorn_access.log \
+    --error-logfile /data/home/mobile_resell/backend/logs/gunicorn_error.log \
+    --capture-output \
     config.wsgi:application
 
 Restart=always
