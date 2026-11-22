@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Smartphone, Plus, Edit2, Trash2, CheckCircle2, AlertCircle, 
   Search, Filter, RefreshCw, Layers, Shield, IndianRupee, 
@@ -7,6 +8,46 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { fileToBase64 } from '../utils/imageCompressor';
+
+function ResponsiveModal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' }) {
+  if (!isOpen) return null;
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div 
+        className={`bg-white rounded-t-3xl sm:rounded-2xl ${maxWidth} w-full shadow-2xl border border-slate-200/90 flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden animate-slide-up sm:animate-zoom-in`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Mobile drag handle */}
+        <div className="sm:hidden pt-3 pb-1 flex justify-center">
+          <div className="w-12 h-1.5 bg-slate-300 rounded-full" />
+        </div>
+
+        {/* Fixed Header */}
+        <div className="px-5 py-3.5 border-b border-slate-150 flex items-center justify-between shrink-0 bg-white">
+          <h3 className="font-extrabold text-base text-slate-900 truncate pr-2">{title}</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Scrollable Form Body */}
+        <div className="flex-1 overflow-y-auto p-5 text-xs space-y-4">
+          {children}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 export default function CataloguePricingManager() {
   // Sub-tabs: 'brands' | 'models' | 'variants' | 'categories' | 'deductions' | 'simulator' | 'history'
@@ -2100,28 +2141,403 @@ export default function CataloguePricingManager() {
       )}
 
       {/* ================= MODAL: ADD / EDIT BRAND ================= */}
-      {brandModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
-            <h3 className="font-extrabold text-base text-slate-900">
-              {editingBrand ? `Edit Brand: ${editingBrand.name}` : 'Add New Phone Brand'}
-            </h3>
+      <ResponsiveModal
+        isOpen={brandModalOpen}
+        onClose={() => setBrandModalOpen(false)}
+        title={editingBrand ? `Edit Brand: ${editingBrand.name}` : 'Add New Phone Brand'}
+      >
+        <form onSubmit={handleSaveBrand} className="space-y-4">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Brand Name *</label>
+            <input
+              type="text"
+              required
+              value={brandForm.name}
+              onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })}
+              placeholder="e.g. Apple, Samsung, Vivo, Nothing"
+              className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-bold"
+            />
+          </div>
 
-            <form onSubmit={handleSaveBrand} className="space-y-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Brand Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={brandForm.name}
-                  onChange={(e) => setBrandForm({ ...brandForm, name: e.target.value })}
-                  placeholder="e.g. Apple, Samsung, Vivo, Nothing"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-bold"
-                />
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Upload Brand Logo (Base64) *</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async (e) => {
+                const f = e.target.files[0];
+                if (f) {
+                  const b64 = await fileToBase64(f, 400, 0.8);
+                  setBrandForm({ ...brandForm, logo_base64: b64 });
+                }
+              }}
+              className="w-full p-2 border border-slate-300 rounded-xl text-xs"
+            />
+            {brandForm.logo_base64 && (
+              <div className="mt-2 p-2 bg-slate-50 border rounded-lg flex items-center justify-center h-12">
+                <img src={brandForm.logo_base64} alt="Preview" className="max-h-8 object-contain" />
               </div>
+            )}
+          </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Upload Brand Logo (Base64) *</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Display Order</label>
+              <input
+                type="number"
+                value={brandForm.display_order}
+                onChange={(e) => setBrandForm({ ...brandForm, display_order: parseInt(e.target.value) || 0 })}
+                className="w-full p-2 border border-slate-300 rounded-xl"
+              />
+            </div>
+            <div className="flex items-center pt-5">
+              <label className="inline-flex items-center gap-2 cursor-pointer font-bold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={brandForm.is_active}
+                  onChange={(e) => setBrandForm({ ...brandForm, is_active: e.target.checked })}
+                  className="rounded text-indigo-600"
+                />
+                <span>Active in Wizard</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setBrandModalOpen(false)}
+              className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="w-1/2 bg-[#0BAA4B] hover:bg-[#087C38] text-white py-2.5 rounded-xl font-bold shadow-md transition"
+            >
+              Save Brand
+            </button>
+          </div>
+        </form>
+      </ResponsiveModal>
+
+      {/* ================= MODAL: ADD / EDIT MODEL ================= */}
+      <ResponsiveModal
+        isOpen={modelModalOpen}
+        onClose={() => setModelModalOpen(false)}
+        title={editingModel ? `Edit Model: ${editingModel.name}` : 'Add Phone Model'}
+      >
+        <form onSubmit={handleSaveModel} className="space-y-3">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Select Brand *</label>
+            <select
+              required
+              value={modelForm.brand}
+              onChange={(e) => setModelForm({ ...modelForm, brand: parseInt(e.target.value) })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+            >
+              <option value="">Select Brand</option>
+              {brands.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Brand Series (Optional)</label>
+            <select
+              value={modelForm.series || ''}
+              onChange={(e) => setModelForm({ ...modelForm, series: e.target.value ? parseInt(e.target.value) : '' })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-medium bg-white"
+            >
+              <option value="">No Series Grouping</option>
+              {seriesList
+                .filter(s => !modelForm.brand || s.brand === parseInt(modelForm.brand) || s.brand_id === parseInt(modelForm.brand))
+                .map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Model Name *</label>
+            <input
+              type="text"
+              required
+              value={modelForm.name}
+              onChange={(e) => setModelForm({ ...modelForm, name: e.target.value })}
+              placeholder="e.g. iPhone 15 Pro Max, Galaxy S24 Ultra"
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Release Year</label>
+            <input
+              type="number"
+              value={modelForm.release_year}
+              onChange={(e) => setModelForm({ ...modelForm, release_year: parseInt(e.target.value) || 2024 })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Device Illustration / Photo</label>
+            <div className="flex items-center gap-3">
+              {modelForm.image_base64 && (
+                <div className="w-16 h-16 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
+                  <img src={modelForm.image_base64} alt="" className="w-full h-full object-contain" />
+                  <button
+                    type="button"
+                    onClick={() => setModelForm(prev => ({ ...prev, image_base64: '' }))}
+                    className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
+                    title="Remove photo"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
+              <label className="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-3 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const f = e.target.files[0];
+                    if (f) {
+                      const b64 = await fileToBase64(f, 600, 0.8);
+                      setModelForm(prev => ({ ...prev, image_base64: b64 }));
+                    }
+                  }}
+                  className="hidden"
+                />
+                <Upload className="w-4 h-4 text-slate-400 mx-auto mb-1" />
+                <span className="text-xs font-bold text-slate-700 block">
+                  {modelForm.image_base64 ? 'Change Device Photo' : 'Upload Device Photo (JPG/PNG)'}
+                </span>
+                <span className="text-[10px] text-slate-400">Stores directly as Base64 in DB and renders on mobile</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="flex items-center pt-2">
+            <label className="inline-flex items-center gap-2 cursor-pointer font-bold text-slate-700">
+              <input
+                type="checkbox"
+                checked={modelForm.is_active}
+                onChange={(e) => setModelForm({ ...modelForm, is_active: e.target.checked })}
+                className="rounded text-indigo-600"
+              />
+              <span>Active & Accept Submissions</span>
+            </label>
+          </div>
+
+          <div className="flex gap-2 pt-3">
+            <button
+              type="button"
+              onClick={() => setModelModalOpen(false)}
+              className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
+            >
+              Save Model
+            </button>
+          </div>
+        </form>
+      </ResponsiveModal>
+
+      {/* ================= MODAL: ADD / EDIT VARIANT & PRICE ================= */}
+      <ResponsiveModal
+        isOpen={variantModalOpen}
+        onClose={() => setVariantModalOpen(false)}
+        title={editingVariant ? `Update Base Price: ${editingVariant.model_name}` : 'Add Storage Variant & Price'}
+      >
+        <form onSubmit={handleSaveVariant} className="space-y-3">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Phone Model *</label>
+            <select
+              required
+              disabled={!!editingVariant}
+              value={variantForm.model}
+              onChange={(e) => setVariantForm({ ...variantForm, model: parseInt(e.target.value) })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white disabled:bg-slate-100"
+            >
+              <option value="">Select Phone Model</option>
+              {models.map(m => (
+                <option key={m.id} value={m.id}>{m.brand_name} {m.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Storage *</label>
+              <input
+                type="text"
+                required
+                value={variantForm.storage}
+                onChange={(e) => setVariantForm({ ...variantForm, storage: e.target.value })}
+                placeholder="e.g. 128GB, 256GB, 1TB"
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">RAM (Optional)</label>
+              <input
+                type="text"
+                value={variantForm.ram}
+                onChange={(e) => setVariantForm({ ...variantForm, ram: e.target.value })}
+                placeholder="e.g. 6GB, 8GB, 12GB"
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Mint Condition Base Price (INR ₹) *</label>
+            <input
+              type="number"
+              step="100"
+              required
+              value={variantForm.base_price}
+              onChange={(e) => setVariantForm({ ...variantForm, base_price: e.target.value })}
+              placeholder="e.g. 26000"
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-black text-emerald-700 text-sm"
+            />
+            <span className="text-[10px] text-slate-400 mt-0.5 block">Max amount paid to customer for 100% flaw-free unit.</span>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Floor / Minimum Offer (INR ₹)</label>
+            <input
+              type="number"
+              step="50"
+              required
+              value={variantForm.min_price}
+              onChange={(e) => setVariantForm({ ...variantForm, min_price: e.target.value })}
+              className="w-full p-2 border border-slate-300 rounded-xl font-mono"
+            />
+          </div>
+
+          {editingVariant && (
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Reason for Price Revision (Audit Log) *</label>
+              <input
+                type="text"
+                required
+                value={variantForm.change_reason}
+                onChange={(e) => setVariantForm({ ...variantForm, change_reason: e.target.value })}
+                placeholder="e.g. Market price dropped post new model launch"
+                className="w-full p-2.5 border border-indigo-300 bg-indigo-50/30 rounded-xl font-semibold"
+              />
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-3">
+            <button
+              type="button"
+              onClick={() => setVariantModalOpen(false)}
+              className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold shadow-md"
+            >
+              Save Price
+            </button>
+          </div>
+        </form>
+      </ResponsiveModal>
+
+      {/* ================= MODAL: ADD / EDIT CATEGORY ================= */}
+      <ResponsiveModal
+        isOpen={categoryModalOpen}
+        onClose={() => setCategoryModalOpen(false)}
+        title={editingCategory ? `Edit Category: ${editingCategory.name}` : 'Add Condition Category'}
+      >
+        <form onSubmit={handleSaveCategory} className="space-y-3">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Category Name *</label>
+            <input
+              type="text"
+              required
+              value={categoryForm.name}
+              onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+              placeholder="e.g. Screen & Display, Battery Health"
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Description</label>
+            <textarea
+              rows={2}
+              value={categoryForm.description}
+              onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+              placeholder="e.g. Display glass, scratches, dead spots and lines"
+              className="w-full p-2 border border-slate-300 rounded-xl"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Display Order</label>
+              <input
+                type="number"
+                value={categoryForm.display_order}
+                onChange={(e) => setCategoryForm({ ...categoryForm, display_order: parseInt(e.target.value) || 0 })}
+                className="w-full p-2 border border-slate-300 rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Icon Name</label>
+              <input
+                type="text"
+                value={categoryForm.icon_name}
+                onChange={(e) => setCategoryForm({ ...categoryForm, icon_name: e.target.value })}
+                placeholder="Smartphone, Battery, Camera..."
+                className="w-full p-2 border border-slate-300 rounded-xl font-mono"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Brand-Specific Assignment</label>
+            <select
+              value={categoryForm.brand || ''}
+              onChange={(e) => setCategoryForm({ ...categoryForm, brand: e.target.value ? parseInt(e.target.value) : null })}
+              className="w-full p-2 border border-slate-300 rounded-xl bg-white"
+            >
+              <option value="">🌐 Universal (All Brands)</option>
+              {brands.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+            <span className="text-[10px] text-slate-400 mt-0.5 block">Select specific brand or leave Universal to show for all devices.</span>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Category Photo / Icon (Base64)</label>
+            <div className="flex items-center gap-3">
+              {categoryForm.image_base64 && (
+                <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
+                  <img src={categoryForm.image_base64} alt="" className="w-full h-full object-contain" />
+                  <button
+                    type="button"
+                    onClick={() => setCategoryForm(prev => ({ ...prev, image_base64: '' }))}
+                    className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
+                    title="Remove photo"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
+              <label className="border-2 border-dashed border-slate-300 hover:border-[#0BAA4B] rounded-xl p-2.5 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
                 <input
                   type="file"
                   accept="image/*"
@@ -2129,861 +2545,460 @@ export default function CataloguePricingManager() {
                     const f = e.target.files[0];
                     if (f) {
                       const b64 = await fileToBase64(f, 400, 0.8);
-                      setBrandForm({ ...brandForm, logo_base64: b64 });
+                      setCategoryForm(prev => ({ ...prev, image_base64: b64 }));
                     }
                   }}
-                  className="w-full p-2 border border-slate-300 rounded-xl text-xs"
+                  className="hidden"
                 />
-                {brandForm.logo_base64 && (
-                  <div className="mt-2 p-2 bg-slate-50 border rounded-lg flex items-center justify-center h-12">
-                    <img src={brandForm.logo_base64} alt="Preview" className="max-h-8 object-contain" />
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Display Order</label>
-                  <input
-                    type="number"
-                    value={brandForm.display_order}
-                    onChange={(e) => setBrandForm({ ...brandForm, display_order: parseInt(e.target.value) || 0 })}
-                    className="w-full p-2 border border-slate-300 rounded-xl"
-                  />
-                </div>
-                <div className="flex items-center pt-5">
-                  <label className="inline-flex items-center gap-2 cursor-pointer font-bold text-slate-700">
-                    <input
-                      type="checkbox"
-                      checked={brandForm.is_active}
-                      onChange={(e) => setBrandForm({ ...brandForm, is_active: e.target.checked })}
-                      className="rounded text-indigo-600"
-                    />
-                    <span>Active in Wizard</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setBrandModalOpen(false)}
-                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold text-slate-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
-                >
-                  Save Brand
-                </button>
-              </div>
-            </form>
+                <Upload className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
+                <span className="text-xs font-bold text-slate-700 block">
+                  {categoryForm.image_base64 ? 'Change Category Image' : 'Upload Category Image (Base64)'}
+                </span>
+                <span className="text-[9px] text-slate-400">Rendered in Mobile App and Web Buyback Home</span>
+              </label>
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* ================= MODAL: ADD / EDIT MODEL ================= */}
-      {modelModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
-            <h3 className="font-extrabold text-base text-slate-900">
-              {editingModel ? `Edit Model: ${editingModel.name}` : 'Add Phone Model'}
-            </h3>
-
-            <form onSubmit={handleSaveModel} className="space-y-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Select Brand *</label>
-                <select
-                  required
-                  value={modelForm.brand}
-                  onChange={(e) => setModelForm({ ...modelForm, brand: parseInt(e.target.value) })}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
-                >
-                  <option value="">Select Brand</option>
-                  {brands.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Brand Series (Optional)</label>
-                <select
-                  value={modelForm.series || ''}
-                  onChange={(e) => setModelForm({ ...modelForm, series: e.target.value ? parseInt(e.target.value) : '' })}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-medium bg-white"
-                >
-                  <option value="">No Series Grouping</option>
-                  {seriesList
-                    .filter(s => !modelForm.brand || s.brand === parseInt(modelForm.brand) || s.brand_id === parseInt(modelForm.brand))
-                    .map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Model Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={modelForm.name}
-                  onChange={(e) => setModelForm({ ...modelForm, name: e.target.value })}
-                  placeholder="e.g. iPhone 15 Pro Max, Galaxy S24 Ultra"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Release Year</label>
-                <input
-                  type="number"
-                  value={modelForm.release_year}
-                  onChange={(e) => setModelForm({ ...modelForm, release_year: parseInt(e.target.value) || 2024 })}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Device Illustration / Photo</label>
-                <div className="flex items-center gap-3">
-                  {modelForm.image_base64 && (
-                    <div className="w-16 h-16 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
-                      <img src={modelForm.image_base64} alt="" className="w-full h-full object-contain" />
-                      <button
-                        type="button"
-                        onClick={() => setModelForm(prev => ({ ...prev, image_base64: '' }))}
-                        className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
-                        title="Remove photo"
-                      >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  )}
-                  <label className="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-xl p-3 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const f = e.target.files[0];
-                        if (f) {
-                          const b64 = await fileToBase64(f, 600, 0.8);
-                          setModelForm(prev => ({ ...prev, image_base64: b64 }));
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <Upload className="w-4 h-4 text-slate-400 mx-auto mb-1" />
-                    <span className="text-xs font-bold text-slate-700 block">
-                      {modelForm.image_base64 ? 'Change Device Photo' : 'Upload Device Photo (JPG/PNG)'}
-                    </span>
-                    <span className="text-[10px] text-slate-400">Stores directly as Base64 in DB and renders on mobile</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex items-center pt-2">
-                <label className="inline-flex items-center gap-2 cursor-pointer font-bold text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={modelForm.is_active}
-                    onChange={(e) => setModelForm({ ...modelForm, is_active: e.target.checked })}
-                    className="rounded text-indigo-600"
-                  />
-                  <span>Active & Accept Submissions</span>
-                </label>
-              </div>
-
-              <div className="flex gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setModelModalOpen(false)}
-                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
-                >
-                  Save Model
-                </button>
-              </div>
-            </form>
+          <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+            <input
+              type="checkbox"
+              id="is_mandatory_check"
+              checked={categoryForm.is_mandatory ?? true}
+              onChange={(e) => setCategoryForm({ ...categoryForm, is_mandatory: e.target.checked })}
+              className="w-4 h-4 text-emerald-600 rounded"
+            />
+            <label htmlFor="is_mandatory_check" className="font-bold text-slate-700 text-xs cursor-pointer">
+              Mandatory Step (Customer must answer to proceed)
+            </label>
           </div>
-        </div>
-      )}
 
-      {/* ================= MODAL: ADD / EDIT VARIANT & PRICE ================= */}
-      {variantModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
-            <h3 className="font-extrabold text-base text-slate-900">
-              {editingVariant ? `Update Base Price: ${editingVariant.model_name}` : 'Add Storage Variant & Price'}
-            </h3>
-
-            <form onSubmit={handleSaveVariant} className="space-y-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Phone Model *</label>
-                <select
-                  required
-                  disabled={!!editingVariant}
-                  value={variantForm.model}
-                  onChange={(e) => setVariantForm({ ...variantForm, model: parseInt(e.target.value) })}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white disabled:bg-slate-100"
-                >
-                  <option value="">Select Phone Model</option>
-                  {models.map(m => (
-                    <option key={m.id} value={m.id}>{m.brand_name} {m.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Storage *</label>
-                  <input
-                    type="text"
-                    required
-                    value={variantForm.storage}
-                    onChange={(e) => setVariantForm({ ...variantForm, storage: e.target.value })}
-                    placeholder="e.g. 128GB, 256GB, 1TB"
-                    className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">RAM (Optional)</label>
-                  <input
-                    type="text"
-                    value={variantForm.ram}
-                    onChange={(e) => setVariantForm({ ...variantForm, ram: e.target.value })}
-                    placeholder="e.g. 6GB, 8GB, 12GB"
-                    className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Mint Condition Base Price (INR ₹) *</label>
-                <input
-                  type="number"
-                  step="100"
-                  required
-                  value={variantForm.base_price}
-                  onChange={(e) => setVariantForm({ ...variantForm, base_price: e.target.value })}
-                  placeholder="e.g. 26000"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-black text-emerald-700 text-sm"
-                />
-                <span className="text-[10px] text-slate-400 mt-0.5 block">Max amount paid to customer for 100% flaw-free unit.</span>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Floor / Minimum Offer (INR ₹)</label>
-                <input
-                  type="number"
-                  step="50"
-                  required
-                  value={variantForm.min_price}
-                  onChange={(e) => setVariantForm({ ...variantForm, min_price: e.target.value })}
-                  className="w-full p-2 border border-slate-300 rounded-xl font-mono"
-                />
-              </div>
-
-              {editingVariant && (
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Reason for Price Revision (Audit Log) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={variantForm.change_reason}
-                    onChange={(e) => setVariantForm({ ...variantForm, change_reason: e.target.value })}
-                    placeholder="e.g. Market price dropped post new model launch"
-                    className="w-full p-2.5 border border-indigo-300 bg-indigo-50/30 rounded-xl font-semibold"
-                  />
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setVariantModalOpen(false)}
-                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 rounded-xl font-bold shadow-md"
-                >
-                  Save Price
-                </button>
-              </div>
-            </form>
+          <div className="flex gap-2 pt-3">
+            <button
+              type="button"
+              onClick={() => setCategoryModalOpen(false)}
+              className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
+            >
+              Save Category
+            </button>
           </div>
-        </div>
-      )}
-
-      {/* ================= MODAL: ADD / EDIT CATEGORY ================= */}
-      {categoryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
-            <h3 className="font-extrabold text-base text-slate-900">
-              {editingCategory ? `Edit Category: ${editingCategory.name}` : 'Add Condition Category'}
-            </h3>
-
-            <form onSubmit={handleSaveCategory} className="space-y-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Category Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={categoryForm.name}
-                  onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                  placeholder="e.g. Screen & Display, Battery Health"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Description</label>
-                <textarea
-                  rows={2}
-                  value={categoryForm.description}
-                  onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
-                  placeholder="e.g. Display glass, scratches, dead spots and lines"
-                  className="w-full p-2 border border-slate-300 rounded-xl"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Display Order</label>
-                  <input
-                    type="number"
-                    value={categoryForm.display_order}
-                    onChange={(e) => setCategoryForm({ ...categoryForm, display_order: parseInt(e.target.value) || 0 })}
-                    className="w-full p-2 border border-slate-300 rounded-xl"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Icon Name</label>
-                  <input
-                    type="text"
-                    value={categoryForm.icon_name}
-                    onChange={(e) => setCategoryForm({ ...categoryForm, icon_name: e.target.value })}
-                    placeholder="Smartphone, Battery, Camera..."
-                    className="w-full p-2 border border-slate-300 rounded-xl font-mono"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Brand-Specific Assignment</label>
-                <select
-                  value={categoryForm.brand || ''}
-                  onChange={(e) => setCategoryForm({ ...categoryForm, brand: e.target.value ? parseInt(e.target.value) : null })}
-                  className="w-full p-2 border border-slate-300 rounded-xl bg-white"
-                >
-                  <option value="">🌐 Universal (All Brands)</option>
-                  {brands.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-                <span className="text-[10px] text-slate-400 mt-0.5 block">Select specific brand or leave Universal to show for all devices.</span>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Category Photo / Icon (Base64)</label>
-                <div className="flex items-center gap-3">
-                  {deviceCategoryForm.image_base64 && (
-                    <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
-                      <img src={deviceCategoryForm.image_base64} alt="" className="w-full h-full object-contain" />
-                      <button
-                        type="button"
-                        onClick={() => setDeviceCategoryForm(prev => ({ ...prev, image_base64: '' }))}
-                        className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
-                        title="Remove photo"
-                      >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  )}
-                  <label className="border-2 border-dashed border-slate-300 hover:border-[#0BAA4B] rounded-xl p-2.5 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const f = e.target.files[0];
-                        if (f) {
-                          const b64 = await fileToBase64(f, 400, 0.8);
-                          setDeviceCategoryForm(prev => ({ ...prev, image_base64: b64 }));
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <Upload className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
-                    <span className="text-xs font-bold text-slate-700 block">
-                      {deviceCategoryForm.image_base64 ? 'Change Category Image' : 'Upload Category Image (Base64)'}
-                    </span>
-                    <span className="text-[9px] text-slate-400">Rendered in Mobile App and Web Buyback Home</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
-                <input
-                  type="checkbox"
-                  id="is_mandatory_check"
-                  checked={categoryForm.is_mandatory ?? true}
-                  onChange={(e) => setCategoryForm({ ...categoryForm, is_mandatory: e.target.checked })}
-                  className="w-4 h-4 text-emerald-600 rounded"
-                />
-                <label htmlFor="is_mandatory_check" className="font-bold text-slate-700 text-xs cursor-pointer">
-                  Mandatory Step (Customer must answer to proceed)
-                </label>
-              </div>
-
-              <div className="flex gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setCategoryModalOpen(false)}
-                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
-                >
-                  Save Category
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+        </form>
+      </ResponsiveModal>
 
       {/* ================= MODAL: COPY QUESTIONS FROM BRAND ================= */}
-      {copyModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-extrabold text-base text-slate-900">Copy Questions from Brand</h3>
-                <p className="text-[11px] text-slate-500">Clone all diagnostic questions, options, Base64 images and rules to another brand.</p>
-              </div>
+      <ResponsiveModal
+        isOpen={copyModalOpen}
+        onClose={() => setCopyModalOpen(false)}
+        title="Copy Questions from Brand"
+      >
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm text-slate-900">Clone Diagnostic Flow</h3>
+              <p className="text-[11px] text-slate-500">Clone all diagnostic questions, options, Base64 images and rules to another brand.</p>
+            </div>
+          </div>
+
+          <form onSubmit={handleCopyQuestions} className="space-y-3 pt-2">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Source Brand (Copy From)</label>
+              <select
+                value={copySourceBrand}
+                onChange={(e) => setCopySourceBrand(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-xl bg-white font-medium"
+              >
+                <option value="">🌐 Universal / Default Questions</option>
+                {brands.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
             </div>
 
-            <form onSubmit={handleCopyQuestions} className="space-y-3 pt-2">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Source Brand (Copy From)</label>
-                <select
-                  value={copySourceBrand}
-                  onChange={(e) => setCopySourceBrand(e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl bg-white font-medium"
-                >
-                  <option value="">🌐 Universal / Default Questions</option>
-                  {brands.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Target Brand (Clone To) *</label>
+              <select
+                required
+                value={copyTargetBrand}
+                onChange={(e) => setCopyTargetBrand(e.target.value)}
+                className="w-full p-2.5 border border-slate-300 rounded-xl bg-white font-bold text-emerald-900"
+              >
+                <option value="">Select Target Brand...</option>
+                {brands.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Target Brand (Clone To) *</label>
-                <select
-                  required
-                  value={copyTargetBrand}
-                  onChange={(e) => setCopyTargetBrand(e.target.value)}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl bg-white font-bold text-emerald-900"
-                >
-                  <option value="">Select Target Brand...</option>
-                  {brands.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
+            <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
+              <input
+                type="checkbox"
+                id="copy_mand_check"
+                checked={copyMandatory}
+                onChange={(e) => setCopyMandatory(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded"
+              />
+              <label htmlFor="copy_mand_check" className="font-bold text-slate-700 text-xs cursor-pointer">
+                Mark Copied Questions as Mandatory
+              </label>
+            </div>
 
-              <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                <input
-                  type="checkbox"
-                  id="copy_mand_check"
-                  checked={copyMandatory}
-                  onChange={(e) => setCopyMandatory(e.target.checked)}
-                  className="w-4 h-4 text-emerald-600 rounded"
-                />
-                <label htmlFor="copy_mand_check" className="font-bold text-slate-700 text-xs cursor-pointer">
-                  Mark Copied Questions as Mandatory
-                </label>
-              </div>
-
-              <div className="flex gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setCopyModalOpen(false)}
-                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={copyLoading}
-                  className="w-1/2 bg-[#0BAA4B] hover:bg-[#087C38] text-white py-2.5 rounded-xl font-bold shadow-md transition"
-                >
-                  {copyLoading ? 'Cloning...' : 'Clone Questions'}
-                </button>
-              </div>
-            </form>
-          </div>
+            <div className="flex gap-2 pt-3">
+              <button
+                type="button"
+                onClick={() => setCopyModalOpen(false)}
+                className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={copyLoading}
+                className="w-1/2 bg-[#0BAA4B] hover:bg-[#087C38] text-white py-2.5 rounded-xl font-bold shadow-md transition"
+              >
+                {copyLoading ? 'Cloning...' : 'Clone Questions'}
+              </button>
+            </div>
+          </form>
         </div>
-      )}
+      </ResponsiveModal>
 
       {/* ================= MODAL: ADD / EDIT DEDUCTION RULE ================= */}
-      {optionModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
-            <h3 className="font-extrabold text-base text-slate-900">
-              {editingOption ? `Edit Rule: ${editingOption.title}` : 'Add Condition Deduction Rule'}
-            </h3>
-
-            <form onSubmit={handleSaveOption} className="space-y-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Category *</label>
-                <select
-                  required
-                  value={optionForm.category}
-                  onChange={(e) => setOptionForm({ ...optionForm, category: parseInt(e.target.value) })}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Defect Code *</label>
-                  <input
-                    type="text"
-                    required
-                    value={optionForm.code}
-                    onChange={(e) => setOptionForm({ ...optionForm, code: e.target.value.toUpperCase().replace(/\s+/g, '_') })}
-                    placeholder="e.g. SCREEN_CRACKED"
-                    className="w-full p-2 border border-slate-300 rounded-xl font-mono uppercase"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Exclusive Group</label>
-                  <input
-                    type="text"
-                    value={optionForm.exclusive_group}
-                    onChange={(e) => setOptionForm({ ...optionForm, exclusive_group: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
-                    placeholder="e.g. screen_glass"
-                    className="w-full p-2 border border-slate-300 rounded-xl font-mono"
-                  />
-                  <span className="text-[9px] text-slate-400">Rules in same group take max deduction</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Question / Defect Title *</label>
-                <input
-                  type="text"
-                  required
-                  value={optionForm.title}
-                  onChange={(e) => setOptionForm({ ...optionForm, title: e.target.value })}
-                  placeholder="e.g. Display glass cracked or shattered"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
-                />
-              </div>
-
-              {/* Visual Photo Upload for Customer Card */}
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Visual Defect Photo / Illustration</label>
-                <div className="flex items-center gap-3">
-                  {optionForm.image_base64 && (
-                    <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1">
-                      <img src={optionForm.image_base64} alt="" className="w-full h-full object-contain" />
-                      <button
-                        type="button"
-                        onClick={() => setOptionForm({ ...optionForm, image_base64: '' })}
-                        className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
-                      >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  )}
-                  <label className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-2.5 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          const b64 = await fileToBase64(file, 400, 0.75);
-                          setOptionForm(prev => ({ ...prev, image_base64: b64 }));
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <Upload className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
-                    <span className="text-xs font-bold text-slate-700 block">
-                      {optionForm.image_base64 ? 'Change Visual Photo' : 'Upload Visual Photo (Photo / Icon)'}
-                    </span>
-                    <span className="text-[9px] text-slate-400">Displayed to customer on condition quiz card</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">Calculation Method</label>
-                  <select
-                    value={optionForm.deduction_type}
-                    onChange={(e) => setOptionForm({ ...optionForm, deduction_type: e.target.value })}
-                    className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
-                  >
-                    <option value="FLAT">Flat Rupee Amount (₹)</option>
-                    <option value="PERCENTAGE">Percentage of Base (%)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    {optionForm.deduction_type === 'PERCENTAGE' ? 'Percentage Value (%) *' : 'Deduction Amount (₹) *'}
-                  </label>
-                  <input
-                    type="number"
-                    step="10"
-                    required
-                    value={optionForm.default_deduction_value}
-                    onChange={(e) => setOptionForm({ ...optionForm, default_deduction_value: e.target.value })}
-                    className="w-full p-2.5 border border-slate-300 rounded-xl font-black text-rose-600 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                <label className="inline-flex items-center gap-2 cursor-pointer font-bold text-amber-900">
-                  <input
-                    type="checkbox"
-                    checked={optionForm.is_rejection}
-                    onChange={(e) => setOptionForm({ ...optionForm, is_rejection: e.target.checked })}
-                    className="rounded text-rose-600"
-                  />
-                  <span>⚠️ Flag as Safety Hazard / Ownership Block (Rejection)</span>
-                </label>
-                <p className="text-[10px] text-amber-800 mt-1">
-                  If selected, sets final price to ₹0 and rejects order (e.g. Swollen battery, iCloud/Google lock).
-                </p>
-              </div>
-
-              <div className="flex gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setOptionModalOpen(false)}
-                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
-                >
-                  Save Deduction Rule
-                </button>
-              </div>
-            </form>
+      <ResponsiveModal
+        isOpen={optionModalOpen}
+        onClose={() => setOptionModalOpen(false)}
+        title={editingOption ? `Edit Rule: ${editingOption.title}` : 'Add Condition Deduction Rule'}
+      >
+        <form onSubmit={handleSaveOption} className="space-y-3">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Category *</label>
+            <select
+              required
+              value={optionForm.category}
+              onChange={(e) => setOptionForm({ ...optionForm, category: parseInt(e.target.value) })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white"
+            >
+              <option value="">Select Category</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Defect Code *</label>
+              <input
+                type="text"
+                required
+                value={optionForm.code}
+                onChange={(e) => setOptionForm({ ...optionForm, code: e.target.value.toUpperCase().replace(/\s+/g, '_') })}
+                placeholder="e.g. SCREEN_CRACKED"
+                className="w-full p-2 border border-slate-300 rounded-xl font-mono uppercase"
+              />
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Exclusive Group</label>
+              <input
+                type="text"
+                value={optionForm.exclusive_group}
+                onChange={(e) => setOptionForm({ ...optionForm, exclusive_group: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
+                placeholder="e.g. screen_glass"
+                className="w-full p-2 border border-slate-300 rounded-xl font-mono"
+              />
+              <span className="text-[9px] text-slate-400">Rules in same group take max deduction</span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Question / Defect Title *</label>
+            <input
+              type="text"
+              required
+              value={optionForm.title}
+              onChange={(e) => setOptionForm({ ...optionForm, title: e.target.value })}
+              placeholder="e.g. Display glass cracked or shattered"
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+            />
+          </div>
+
+          {/* Visual Photo Upload for Customer Card */}
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Visual Defect Photo / Illustration</label>
+            <div className="flex items-center gap-3">
+              {optionForm.image_base64 && (
+                <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1">
+                  <img src={optionForm.image_base64} alt="" className="w-full h-full object-contain" />
+                  <button
+                    type="button"
+                    onClick={() => setOptionForm({ ...optionForm, image_base64: '' })}
+                    className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
+              <label className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-2.5 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const b64 = await fileToBase64(file, 400, 0.75);
+                      setOptionForm(prev => ({ ...prev, image_base64: b64 }));
+                    }
+                  }}
+                  className="hidden"
+                />
+                <Upload className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
+                <span className="text-xs font-bold text-slate-700 block">
+                  {optionForm.image_base64 ? 'Change Visual Photo' : 'Upload Visual Photo (Photo / Icon)'}
+                </span>
+                <span className="text-[9px] text-slate-400">Displayed to customer on condition quiz card</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Calculation Method</label>
+              <select
+                value={optionForm.deduction_type}
+                onChange={(e) => setOptionForm({ ...optionForm, deduction_type: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+              >
+                <option value="FLAT">Flat Rupee Amount (₹)</option>
+                <option value="PERCENTAGE">Percentage of Base (%)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                {optionForm.deduction_type === 'PERCENTAGE' ? 'Percentage Value (%) *' : 'Deduction Amount (₹) *'}
+              </label>
+              <input
+                type="number"
+                step="10"
+                required
+                value={optionForm.default_deduction_value}
+                onChange={(e) => setOptionForm({ ...optionForm, default_deduction_value: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-black text-rose-600 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <label className="inline-flex items-center gap-2 cursor-pointer font-bold text-amber-900">
+              <input
+                type="checkbox"
+                checked={optionForm.is_rejection}
+                onChange={(e) => setOptionForm({ ...optionForm, is_rejection: e.target.checked })}
+                className="rounded text-rose-600"
+              />
+              <span>⚠️ Flag as Safety Hazard / Ownership Block (Rejection)</span>
+            </label>
+            <p className="text-[10px] text-amber-800 mt-1">
+              If selected, sets final price to ₹0 and rejects order (e.g. Swollen battery, iCloud/Google lock).
+            </p>
+          </div>
+
+          <div className="flex gap-2 pt-3">
+            <button
+              type="button"
+              onClick={() => setOptionModalOpen(false)}
+              className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
+            >
+              Save Deduction Rule
+            </button>
+          </div>
+        </form>
+      </ResponsiveModal>
 
       {/* ================= MODAL: ADD / EDIT DEVICE CATEGORY ================= */}
-      {deviceCategoryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
-            <h3 className="font-extrabold text-base text-slate-900">
-              {editingDeviceCategory ? `Edit Category: ${editingDeviceCategory.name}` : 'Add Device Category'}
-            </h3>
-
-            <form onSubmit={handleSaveDeviceCategory} className="space-y-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Category Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={deviceCategoryForm.name}
-                  onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, name: e.target.value })}
-                  placeholder="e.g. Mobile, Tablet, Gaming Console"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Subtitle</label>
-                <input
-                  type="text"
-                  value={deviceCategoryForm.subtitle}
-                  onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, subtitle: e.target.value })}
-                  placeholder="e.g. Sell used smartphones with instant valuation"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Icon Name</label>
-                <input
-                  type="text"
-                  value={deviceCategoryForm.icon_name}
-                  onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, icon_name: e.target.value })}
-                  placeholder="Smartphone, Tablet, Gamepad..."
-                  className="w-full p-2 border border-slate-300 rounded-xl font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Category Photo / Icon (Base64)</label>
-                <div className="flex items-center gap-3">
-                  {deviceCategoryForm.image_base64 && (
-                    <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
-                      <img src={deviceCategoryForm.image_base64} alt="" className="w-full h-full object-contain" />
-                      <button
-                        type="button"
-                        onClick={() => setDeviceCategoryForm(prev => ({ ...prev, image_base64: '' }))}
-                        className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
-                        title="Remove photo"
-                      >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  )}
-                  <label className="border-2 border-dashed border-slate-300 hover:border-[#0BAA4B] rounded-xl p-2.5 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const f = e.target.files[0];
-                        if (f) {
-                          const b64 = await fileToBase64(f, 400, 0.8);
-                          setDeviceCategoryForm(prev => ({ ...prev, image_base64: b64 }));
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <Upload className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
-                    <span className="text-xs font-bold text-slate-700 block">
-                      {deviceCategoryForm.image_base64 ? 'Change Category Image' : 'Upload Category Image (Base64)'}
-                    </span>
-                    <span className="text-[9px] text-slate-400">Rendered in Mobile App and Web Buyback Home</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
-                <input
-                  type="checkbox"
-                  id="dc_is_active_check"
-                  checked={deviceCategoryForm.is_active}
-                  onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, is_active: e.target.checked })}
-                  className="w-4 h-4 text-emerald-600 rounded"
-                />
-                <label htmlFor="dc_is_active_check" className="font-bold text-slate-700 text-xs cursor-pointer">
-                  Category is Active (Visible on Customer App & Web)
-                </label>
-              </div>
-
-              <div className="flex gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setDeviceCategoryModalOpen(false)}
-                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-1/2 bg-[#0BAA4B] hover:bg-[#087C38] text-white py-2.5 rounded-xl font-bold shadow-md"
-                >
-                  Save Category
-                </button>
-              </div>
-            </form>
+      <ResponsiveModal
+        isOpen={deviceCategoryModalOpen}
+        onClose={() => setDeviceCategoryModalOpen(false)}
+        title={editingDeviceCategory ? `Edit Category: ${editingDeviceCategory.name}` : 'Add Device Category'}
+      >
+        <form onSubmit={handleSaveDeviceCategory} className="space-y-3">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Category Name *</label>
+            <input
+              type="text"
+              required
+              value={deviceCategoryForm.name}
+              onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, name: e.target.value })}
+              placeholder="e.g. Mobile, Tablet, Gaming Console"
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Subtitle</label>
+            <input
+              type="text"
+              value={deviceCategoryForm.subtitle}
+              onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, subtitle: e.target.value })}
+              placeholder="e.g. Sell used smartphones with instant valuation"
+              className="w-full p-2.5 border border-slate-300 rounded-xl"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Icon Name</label>
+            <input
+              type="text"
+              value={deviceCategoryForm.icon_name}
+              onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, icon_name: e.target.value })}
+              placeholder="Smartphone, Tablet, Gamepad..."
+              className="w-full p-2 border border-slate-300 rounded-xl font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Category Photo / Icon (Base64)</label>
+            <div className="flex items-center gap-3">
+              {deviceCategoryForm.image_base64 && (
+                <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
+                  <img src={deviceCategoryForm.image_base64} alt="" className="w-full h-full object-contain" />
+                  <button
+                    type="button"
+                    onClick={() => setDeviceCategoryForm(prev => ({ ...prev, image_base64: '' }))}
+                    className="absolute top-0.5 right-0.5 bg-rose-600 text-white rounded-full p-0.5 shadow hover:bg-rose-700"
+                    title="Remove photo"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              )}
+              <label className="border-2 border-dashed border-slate-300 hover:border-[#0BAA4B] rounded-xl p-2.5 text-center cursor-pointer bg-slate-50 flex-1 transition block select-none">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const f = e.target.files[0];
+                    if (f) {
+                      const b64 = await fileToBase64(f, 400, 0.8);
+                      setDeviceCategoryForm(prev => ({ ...prev, image_base64: b64 }));
+                    }
+                  }}
+                  className="hidden"
+                />
+                <Upload className="w-4 h-4 text-slate-400 mx-auto mb-0.5" />
+                <span className="text-xs font-bold text-slate-700 block">
+                  {deviceCategoryForm.image_base64 ? 'Change Category Image' : 'Upload Category Image (Base64)'}
+                </span>
+                <span className="text-[9px] text-slate-400">Rendered in Mobile App and Web Buyback Home</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+            <input
+              type="checkbox"
+              id="dc_is_active_check"
+              checked={deviceCategoryForm.is_active}
+              onChange={(e) => setDeviceCategoryForm({ ...deviceCategoryForm, is_active: e.target.checked })}
+              className="w-4 h-4 text-emerald-600 rounded"
+            />
+            <label htmlFor="dc_is_active_check" className="font-bold text-slate-700 text-xs cursor-pointer">
+              Category is Active (Visible on Customer App & Web)
+            </label>
+          </div>
+
+          <div className="flex gap-2 pt-3">
+            <button
+              type="button"
+              onClick={() => setDeviceCategoryModalOpen(false)}
+              className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="w-1/2 bg-[#0BAA4B] hover:bg-[#087C38] text-white py-2.5 rounded-xl font-bold shadow-md"
+            >
+              Save Category
+            </button>
+          </div>
+        </form>
+      </ResponsiveModal>
 
       {/* ================= MODAL: ADD / EDIT SERIES ================= */}
-      {seriesModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 text-xs space-y-4 max-h-[92vh] overflow-y-auto">
-            <h3 className="font-extrabold text-base text-slate-900">
-              {editingSeries ? `Edit Series: ${editingSeries.name}` : 'Add Brand Series'}
-            </h3>
-
-            <form onSubmit={handleSaveSeries} className="space-y-3">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Brand *</label>
-                <select
-                  required
-                  value={seriesForm.brand}
-                  onChange={(e) => setSeriesForm({ ...seriesForm, brand: parseInt(e.target.value) })}
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white"
-                >
-                  <option value="">Select Brand</option>
-                  {brands.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Series Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={seriesForm.name}
-                  onChange={(e) => setSeriesForm({ ...seriesForm, name: e.target.value })}
-                  placeholder="e.g. Galaxy S Series, iPhone 15 Series"
-                  className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Display Order</label>
-                <input
-                  type="number"
-                  value={seriesForm.display_order}
-                  onChange={(e) => setSeriesForm({ ...seriesForm, display_order: parseInt(e.target.value) || 0 })}
-                  className="w-full p-2 border border-slate-300 rounded-xl"
-                />
-              </div>
-
-              <div className="flex gap-2 pt-3">
-                <button
-                  type="button"
-                  onClick={() => setSeriesModalOpen(false)}
-                  className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
-                >
-                  Save Series
-                </button>
-              </div>
-            </form>
+      <ResponsiveModal
+        isOpen={seriesModalOpen}
+        onClose={() => setSeriesModalOpen(false)}
+        title={editingSeries ? `Edit Series: ${editingSeries.name}` : 'Add Brand Series'}
+      >
+        <form onSubmit={handleSaveSeries} className="space-y-3">
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Brand *</label>
+            <select
+              required
+              value={seriesForm.brand}
+              onChange={(e) => setSeriesForm({ ...seriesForm, brand: parseInt(e.target.value) })}
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white"
+            >
+              <option value="">Select Brand</option>
+              {brands.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Series Name *</label>
+            <input
+              type="text"
+              required
+              value={seriesForm.name}
+              onChange={(e) => setSeriesForm({ ...seriesForm, name: e.target.value })}
+              placeholder="e.g. Galaxy S Series, iPhone 15 Series"
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Display Order</label>
+            <input
+              type="number"
+              value={seriesForm.display_order}
+              onChange={(e) => setSeriesForm({ ...seriesForm, display_order: parseInt(e.target.value) || 0 })}
+              className="w-full p-2 border border-slate-300 rounded-xl"
+            />
+          </div>
+
+          <div className="flex gap-2 pt-3">
+            <button
+              type="button"
+              onClick={() => setSeriesModalOpen(false)}
+              className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold hover:bg-slate-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
+            >
+              Save Series
+            </button>
+          </div>
+        </form>
+      </ResponsiveModal>
 
     </div>
   );

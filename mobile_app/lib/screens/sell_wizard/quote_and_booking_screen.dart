@@ -67,6 +67,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
   late DateTime _pickupDate;
   bool _pincodeLoading = false;
   Map<String, dynamic>? _pincodeInfo;
+  bool _isEditingAddress = false;
 
   static DateTime _getEarliestPickupDate() {
     final now = DateTime.now();
@@ -386,7 +387,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
             ),
           ),
         ),
-        title: const Text('Your Estimated Quote', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text('Doorstep Buyback Valuation', style: TextStyle(fontWeight: FontWeight.w900)),
       ),
       body: GlassBackgroundMesh(
         child: SafeArea(
@@ -397,659 +398,569 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. Device Info Frosted Glass Card
-                  GlassContainer(
-                    padding: const EdgeInsets.all(16),
-                    borderRadius: BorderRadius.circular(22),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFFE8F8ED), Color(0xFFD1FAE5)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
-                          ),
-                          child: Builder(
-                            builder: (context) {
-                              if (widget.model.imageBase64 != null && widget.model.imageBase64!.trim().isNotEmpty) {
-                                final bytes = ImageHelper.decodeBase64(widget.model.imageBase64);
-                                if (bytes != null) {
-                                  return ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.memory(bytes, width: 32, height: 32, fit: BoxFit.contain),
-                                  );
-                                }
-                              }
-                              return const Icon(Icons.phone_iphone_rounded, size: 28, color: AppTheme.primaryGreen);
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                  // ================= 1. TOP SECTION: DOORSTEP ADDRESS & PICKUP BOOKING =================
+                  if (_api.currentUser != null) ...[
+                    // Saved Address Card
+                    GlassContainer(
+                      padding: const EdgeInsets.all(16),
+                      borderRadius: BorderRadius.circular(22),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                '${widget.brand.name} ${widget.model.name}',
-                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                '${widget.variant.storage} Storage Variant · Year ${widget.model.releaseYear}',
-                                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // 2. High-Impact Emerald Frosted Buyback Value Card
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF0BAA4B), Color(0xFF06612A)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(26),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryGreen.withOpacity(0.35),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                      border: Border.all(color: Colors.white.withOpacity(0.35), width: 1.5),
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.18),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withOpacity(0.3)),
-                          ),
-                          child: const Text(
-                            'ESTIMATED BUYBACK OFFER',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          '₹${_estimatedPrice.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontSize: 42,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            letterSpacing: -1.0,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.verified_rounded, size: 16, color: Colors.green.shade200),
-                            const SizedBox(width: 6),
-                            const Text(
-                              'Instant UPI Payout · Free Doorstep Pickup',
-                              style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  // 3. Itemized Price Summary Frosted Card
-                  GlassContainer(
-                    padding: const EdgeInsets.all(18),
-                    borderRadius: BorderRadius.circular(22),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryGreen.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.receipt_long_rounded, size: 18, color: AppTheme.primaryGreen),
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'Price Summary Breakdown',
-                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        _buildPriceRow('Base Catalog Value (Mint)', '₹${widget.variant.basePrice.toStringAsFixed(0)}', isPositive: true),
-                        Divider(height: 18, color: AppTheme.border.withOpacity(0.6)),
-                        _buildPriceRow(
-                          'Condition Deductions (Calculated)',
-                          (widget.variant.basePrice - _estimatedPrice) > 0
-                              ? '-₹${(widget.variant.basePrice - _estimatedPrice).toStringAsFixed(0)}'
-                              : '₹0 (Flawless)',
-                          isNegative: (widget.variant.basePrice - _estimatedPrice) > 0,
-                        ),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: AppTheme.lightGreen.withOpacity(0.5),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.verified_user_outlined, size: 16, color: AppTheme.primaryGreen),
-                              SizedBox(width: 8),
                               Expanded(
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      _nameController.text.isNotEmpty ? _nameController.text : _api.currentUser!.fullName,
+                                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
+                                    ),
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 6),
+                                      child: Text('|', style: TextStyle(color: Colors.grey)),
+                                    ),
+                                    Text(
+                                      _phoneController.text.isNotEmpty ? _phoneController.text : _api.currentUser!.phone,
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textSecondary),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () => setState(() => _isEditingAddress = !_isEditingAddress),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
                                 child: Text(
-                                  'Field Agent will perform doorstep physical verification and confirm final valuation before payout.',
-                                  style: TextStyle(fontSize: 10, color: AppTheme.darkGreen, fontWeight: FontWeight.w600),
+                                  _isEditingAddress ? 'Done' : 'Change',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        Divider(height: 18, color: AppTheme.border.withOpacity(0.6)),
-                        _buildPriceRow(
-                          'Net Doorstep Payout',
-                          '₹${_estimatedPrice.toStringAsFixed(0)}',
-                          isBold: true,
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          if (!_isEditingAddress)
+                            Text(
+                              _addressController.text.isNotEmpty
+                                  ? '${_addressController.text}, ${_cityController.text} ${_pincodeController.text}'
+                                  : (_api.currentUser!.defaultAddress.isNotEmpty
+                                      ? '${_api.currentUser!.defaultAddress}, ${_api.currentUser!.city} ${_api.currentUser!.pincode}'
+                                      : 'No saved address. Tap Change to enter address.'),
+                              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.3),
+                            ),
+                          if (_isEditingAddress) ...[
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _addressController,
+                              maxLines: 2,
+                              decoration: const InputDecoration(labelText: 'Doorstep Address *', isDense: true),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _cityController,
+                                    decoration: const InputDecoration(labelText: 'City *', isDense: true),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _pincodeController,
+                                    keyboardType: TextInputType.number,
+                                    maxLength: 6,
+                                    decoration: const InputDecoration(labelText: 'Pincode *', counterText: '', isDense: true),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _upiController,
+                              decoration: const InputDecoration(labelText: 'UPI ID (Optional)', isDense: true),
+                            ),
+                          ],
+                        ],
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
 
-                  // Custom Other Defects Noted
-                  if ((widget.otherDefectsNotes != null && widget.otherDefectsNotes!.isNotEmpty) ||
-                      (widget.customStepNotes != null && widget.customStepNotes!.isNotEmpty)) ...[
-                    const SizedBox(height: 14),
+                    // Pickup Booking Section
                     GlassContainer(
-                      padding: const EdgeInsets.all(14),
-                      borderRadius: BorderRadius.circular(18),
+                      padding: const EdgeInsets.all(16),
+                      borderRadius: BorderRadius.circular(22),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.edit_note_rounded, color: AppTheme.primaryGreen, size: 18),
-                              SizedBox(width: 8),
-                              Text(
-                                'Other Defects & Notes Reported:',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textPrimary),
-                              ),
-                            ],
+                          const Text(
+                            'Pickup Booking',
+                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.textPrimary),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Choose a pickup date',
+                            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Horizontal Scrolling Date Cards
+                          SizedBox(
+                            height: 82,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: 7,
+                              separatorBuilder: (_, __) => const SizedBox(width: 8),
+                              itemBuilder: (ctx, idx) {
+                                final date = _getEarliestPickupDate().add(Duration(days: idx));
+                                final isSelected = date.year == _pickupDate.year &&
+                                    date.month == _pickupDate.month &&
+                                    date.day == _pickupDate.day;
+                                final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                final days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+                                return GestureDetector(
+                                  onTap: () => setState(() => _pickupDate = date),
+                                  child: Container(
+                                    width: 72,
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isSelected ? const Color(0xFF17251C) : Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: isSelected ? const Color(0xFF17251C) : AppTheme.glassBorder,
+                                        width: 1.5,
+                                      ),
+                                      boxShadow: isSelected
+                                          ? [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 4))]
+                                          : null,
+                                    ),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          months[date.month - 1],
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color: isSelected ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          date.day.toString().padLeft(2, '0'),
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w900,
+                                            color: isSelected ? Colors.white : AppTheme.textPrimary,
+                                            height: 1.0,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          days[date.weekday % 7],
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: isSelected ? Colors.grey.shade300 : AppTheme.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          const SizedBox(height: 14),
+                          const Text(
+                            'Choose a pickup slot',
+                            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
-                          if (widget.customStepNotes != null)
-                            ...widget.customStepNotes!.entries.map(
-                              (e) => Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Text('• ${e.key}: "${e.value}"', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+
+                          // Slot Selector Chips
+                          Row(
+                            children: [
+                              _buildSlotChip('Morning (10:00 AM - 1:00 PM)', 'Morning\n10AM - 1PM'),
+                              const SizedBox(width: 6),
+                              _buildSlotChip('Afternoon (1:00 PM - 5:00 PM)', 'Afternoon\n1PM - 5PM'),
+                              const SizedBox(width: 6),
+                              _buildSlotChip('Evening (5:00 PM - 8:00 PM)', 'Evening\n5PM - 8PM'),
+                            ],
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Book Pickup Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: _submitting ? null : _submitBooking,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryGreen,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
+                              child: _submitting
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                    )
+                                  : const Text(
+                                      'Book Pickup',
+                                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
+                                    ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    // Guest / Not Logged In View
+                    GlassContainer(
+                      padding: const EdgeInsets.all(20),
+                      borderRadius: BorderRadius.circular(24),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: const BoxDecoration(
+                              color: AppTheme.lightGreen,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.local_shipping_outlined, color: AppTheme.primaryGreen, size: 28),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Doorstep Pickup & Instant Payout',
+                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Sign in to book doorstep pickup slot and receive instant cash / UPI payout.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                showModalBottomSheet(
+                                  context: context,
+                                  isScrollControlled: true,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (ctx) => AuthModalSheet(
+                                    onSuccess: () {
+                                      setState(() {
+                                        _prefillFromUser();
+                                      });
+                                    },
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primaryGreen,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text('Login to Proceed / Book Pickup', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
+                                  SizedBox(width: 6),
+                                  Icon(Icons.arrow_forward_rounded, size: 18, color: Colors.white),
+                                ],
                               ),
                             ),
-                          if (widget.otherDefectsNotes != null && widget.otherDefectsNotes!.isNotEmpty && widget.customStepNotes?.isEmpty != false)
-                            Text(widget.otherDefectsNotes!, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                          ),
                         ],
                       ),
                     ),
                   ],
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // 4. Doorstep Pickup & Instant Payout Form
-                  const Text(
-                    'Schedule Free Doorstep Pickup',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Our verified agent arrives at your door, checks device, and transfers cash/UPI instantly.',
-                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                  ),
-                  const SizedBox(height: 14),
-
-                  GlassContainer(
-                    padding: const EdgeInsets.all(18),
-                    borderRadius: BorderRadius.circular(24),
-                    child: Column(
-                      children: [
-                        if (_api.currentUser != null)
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 14),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryGreen.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Logged in as ${_api.currentUser!.fullName.isNotEmpty ? _api.currentUser!.fullName : _api.currentUser!.email}. Saved profile details applied!',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.darkGreen),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        else
-                          InkWell(
-                            onTap: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                backgroundColor: Colors.transparent,
-                                builder: (ctx) => AuthModalSheet(
-                                  onSuccess: () {
-                                    setState(() {
-                                      _prefillFromUser();
-                                    });
-                                  },
-                                ),
-                              );
-                            },
-                            borderRadius: BorderRadius.circular(16),
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 14),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.shade50.withOpacity(0.9),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.amber.shade400),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(Icons.lock_person_rounded, color: Colors.amber.shade900, size: 20),
-                                  const SizedBox(width: 8),
-                                  const Expanded(
-                                    child: Text(
-                                      'Sign In / Register to auto-fill saved address & track orders.',
-                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black87),
-                                    ),
-                                  ),
-                                  Text(
-                                    'Sign In →',
-                                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: Colors.amber.shade900),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                        TextFormField(
-                          controller: _nameController,
-                          decoration: InputDecoration(
-                            labelText: 'Your Full Name *',
-                            prefixIcon: const Icon(Icons.person_outline_rounded, color: AppTheme.primaryGreen),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.85),
-                          ),
-                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter your full name' : null,
-                        ),
-                        const SizedBox(height: 12),
-
-                        TextFormField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          decoration: InputDecoration(
-                            labelText: '10-Digit Mobile Number *',
-                            prefixIcon: const Icon(Icons.phone_outlined, color: AppTheme.primaryGreen),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.85),
-                          ),
-                          validator: (val) => val == null || val.trim().length < 10 ? 'Enter valid 10-digit number' : null,
-                        ),
-                        const SizedBox(height: 12),
-
-                        TextFormField(
-                          controller: _addressController,
-                          maxLines: 2,
-                          decoration: InputDecoration(
-                            labelText: 'Doorstep Pickup Address *',
-                            prefixIcon: const Icon(Icons.location_on_outlined, color: AppTheme.primaryGreen),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.85),
-                          ),
-                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter complete address' : null,
-                        ),
-                        const SizedBox(height: 12),
-
-                        Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: TextFormField(
-                                controller: _cityController,
-                                decoration: InputDecoration(
-                                  labelText: 'City *',
-                                  prefixIcon: const Icon(Icons.location_city_rounded, color: AppTheme.primaryGreen),
-                                  filled: true,
-                                  fillColor: Colors.white.withOpacity(0.85),
-                                ),
-                                validator: (val) => val == null || val.trim().isEmpty ? 'Enter city' : null,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              flex: 2,
-                              child: TextFormField(
-                                controller: _pincodeController,
-                                keyboardType: TextInputType.number,
-                                maxLength: 6,
-                                onChanged: (val) {
-                                  if (val.trim().length == 6) {
-                                    _verifyPincode(val);
-                                  } else if (_pincodeInfo != null) {
-                                    setState(() => _pincodeInfo = null);
-                                  }
-                                },
-                                decoration: InputDecoration(
-                                  labelText: 'Pincode *',
-                                  counterText: '',
-                                  prefixIcon: const Icon(Icons.pin_drop_outlined, color: AppTheme.primaryGreen),
-                                  filled: true,
-                                  fillColor: Colors.white.withOpacity(0.85),
-                                ),
-                                validator: (val) => val == null || val.trim().length < 6 ? 'Enter 6-digit pincode' : null,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        if (_pincodeLoading) ...[
-                          const SizedBox(height: 6),
-                          const Row(
-                            children: [
-                              SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryGreen)),
-                              SizedBox(width: 8),
-                              Text('Verifying postal coverage...', style: TextStyle(fontSize: 11, color: AppTheme.darkGreen, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ] else if (_pincodeInfo != null) ...[
-                          const SizedBox(height: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryGreen.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.4)),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 16),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    '✓ Verified: ${_pincodeInfo!['city']}, ${_pincodeInfo!['state']} · Doorstep Service Active',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.darkGreen),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 12),
-
-                        TextFormField(
-                          controller: _upiController,
-                          decoration: InputDecoration(
-                            labelText: 'UPI ID for Instant Transfer (e.g. name@okhdfcbank)',
-                            prefixIcon: const Icon(Icons.account_balance_wallet_outlined, color: AppTheme.primaryGreen),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.85),
-                          ),
-                          validator: (val) => val == null || val.trim().isEmpty ? 'Please enter UPI ID' : null,
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Doorstep Pickup Date Selector (Restricted to Tomorrow Onwards / Cutoff Aware)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.85),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppTheme.glassBorder),
-                          ),
-                          child: InkWell(
-                            onTap: () async {
-                              final earliest = _getEarliestPickupDate();
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: _pickupDate.isBefore(earliest) ? earliest : _pickupDate,
-                                firstDate: earliest,
-                                lastDate: DateTime.now().add(const Duration(days: 30)),
-                                builder: (context, child) {
-                                  return Theme(
-                                    data: Theme.of(context).copyWith(
-                                      colorScheme: const ColorScheme.light(
-                                        primary: AppTheme.primaryGreen,
-                                        onPrimary: Colors.white,
-                                        onSurface: AppTheme.textPrimary,
-                                      ),
-                                    ),
-                                    child: child!,
-                                  );
-                                },
-                              );
-                              if (picked != null) {
-                                setState(() => _pickupDate = picked);
-                              }
-                            },
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    const Icon(Icons.event_available_rounded, color: AppTheme.primaryGreen, size: 20),
-                                    const SizedBox(width: 8),
-                                    const Expanded(
-                                      child: Text(
-                                        'Doorstep Pickup Date',
-                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primaryGreen.withOpacity(0.12),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        DateTime.now().hour >= 20 ? '+2 Days Lead' : 'From Tomorrow',
-                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.darkGreen),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      _formatPickupDate(_pickupDate),
-                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
-                                    ),
-                                    const Text(
-                                      'Change 📅',
-                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateTime.now().hour >= 20
-                                      ? '⚡ Booked after 8:00 PM: Earliest doorstep pickup is Day After Tomorrow.'
-                                      : '⚡ Same-day slots are closed. Earliest doorstep pickup is tomorrow.',
-                                  style: const TextStyle(fontSize: 10, color: AppTheme.darkGreen, fontWeight: FontWeight.w600),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        DropdownButtonFormField<String>(
-                          value: _pickupSlot,
-                          decoration: InputDecoration(
-                            labelText: 'Preferred Time Slot',
-                            prefixIcon: const Icon(Icons.access_time_rounded, color: AppTheme.primaryGreen),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.85),
-                          ),
-                          items: const [
-                            DropdownMenuItem(value: 'Morning (10:00 AM - 1:00 PM)', child: Text('Morning (10 AM - 1 PM)')),
-                            DropdownMenuItem(value: 'Afternoon (1:00 PM - 5:00 PM)', child: Text('Afternoon (1 PM - 5 PM)')),
-                            DropdownMenuItem(value: 'Evening (5:00 PM - 8:00 PM)', child: Text('Evening (5 PM - 8 PM)')),
-                          ],
-                          onChanged: (val) => setState(() => _pickupSlot = val!),
-                        ),
-                        const SizedBox(height: 14),
-
-                        // Payout Mode Toggle
-                        Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => setState(() => _payoutType = 'UPI'),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: _payoutType == 'UPI' ? AppTheme.primaryGreen.withOpacity(0.15) : Colors.white.withOpacity(0.6),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: _payoutType == 'UPI' ? AppTheme.primaryGreen : AppTheme.glassBorder,
-                                      width: _payoutType == 'UPI' ? 2 : 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.bolt_rounded, size: 18, color: _payoutType == 'UPI' ? AppTheme.primaryGreen : AppTheme.textSecondary),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Instant UPI',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: _payoutType == 'UPI' ? AppTheme.primaryGreen : AppTheme.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => setState(() => _payoutType = 'BANK'),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: _payoutType == 'BANK' ? AppTheme.primaryGreen.withOpacity(0.15) : Colors.white.withOpacity(0.6),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: _payoutType == 'BANK' ? AppTheme.primaryGreen : AppTheme.glassBorder,
-                                      width: _payoutType == 'BANK' ? 2 : 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.account_balance_rounded, size: 18, color: _payoutType == 'BANK' ? AppTheme.primaryGreen : AppTheme.textSecondary),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Bank IMPS',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: _payoutType == 'BANK' ? AppTheme.primaryGreen : AppTheme.textSecondary,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                  // ================= 2. LOWER SECTION: SELL NOW FOR AMAZING PRICE =================
+                  Center(
+                    child: Text(
+                      'Sell Now For Amazing price',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.grey.shade900),
                     ),
                   ),
+                  const SizedBox(height: 10),
 
-                  const SizedBox(height: 24),
-
-                  // Primary Glass Glow CTA Button
+                  // White Card with Phone image, name, price, note, and assurances
                   Container(
                     width: double.infinity,
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(18),
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.grey.shade200),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryGreen.withOpacity(0.35),
-                          blurRadius: 16,
-                          offset: const Offset(0, 8),
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: ElevatedButton(
-                      onPressed: _submitting ? null : _submitBooking,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(56),
-                        backgroundColor: AppTheme.primaryGreen,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                      ),
-                      child: _submitting
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                            )
-                          : const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Confirm Free Doorstep Pickup',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
-                                ),
-                                SizedBox(width: 8),
-                                Icon(Icons.arrow_forward_rounded, size: 20, color: Colors.white),
-                              ],
+                    child: Column(
+                      children: [
+                        // Centered Device Image
+                        SizedBox(
+                          height: 90,
+                          child: Builder(
+                            builder: (context) {
+                              if (widget.model.imageBase64 != null && widget.model.imageBase64!.trim().isNotEmpty) {
+                                final bytes = ImageHelper.decodeBase64(widget.model.imageBase64);
+                                if (bytes != null) {
+                                  return Image.memory(bytes, fit: BoxFit.contain);
+                                }
+                              }
+                              return const Icon(Icons.phone_iphone_rounded, size: 64, color: Colors.grey);
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        Text(
+                          '${widget.brand.name} ${widget.model.name} (${widget.variant.storage})',
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Instantly Sell And Get',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '₹ ${_estimatedPrice.toStringAsFixed(0)}',
+                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+                        ),
+                        const SizedBox(height: 6),
+
+                        // Thin readable disclaimer text
+                        const Text(
+                          '* Note: Final buyback price may vary during doorstep physical evaluation based on actual device inspection.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w400,
+                            color: Colors.grey,
+                            height: 1.3,
+                          ),
+                        ),
+
+                        const SizedBox(height: 16),
+                        const Divider(height: 1),
+                        const SizedBox(height: 12),
+
+                        // BEST PRICE Section
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'BEST PRICE',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.pink.shade700,
+                              letterSpacing: 0.8,
                             ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Get Value', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                            Text('₹ ${_estimatedPrice.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Get value', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                            Text('₹ ${_estimatedPrice.toStringAsFixed(0)}', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+
+                        const SizedBox(height: 14),
+
+                        // View Evaluation Summary Button
+                        OutlinedButton(
+                          onPressed: () => _showEvaluationSummaryModal(context),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(42),
+                            side: BorderSide(color: Colors.grey.shade300),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('View Evaluation Summary', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                              SizedBox(width: 4),
+                              Icon(Icons.chevron_right_rounded, size: 18, color: Colors.grey),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 18),
+
+                        // Our assurance win your trust
+                        const Text(
+                          'Our assurance win your trust',
+                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary),
+                        ),
+                        const SizedBox(height: 12),
+
+                        Row(
+                          children: [
+                            Expanded(child: _buildAssuranceCard(Icons.local_shipping_outlined, 'Hassle-Less\nDoorstep Free Pickup')),
+                            const SizedBox(width: 8),
+                            Expanded(child: _buildAssuranceCard(Icons.support_agent_rounded, 'Services\noffered across India')),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(child: _buildAssuranceCard(Icons.trending_up_rounded, 'Unbeatable\nMarket Value')),
+                            const SizedBox(width: 8),
+                            Expanded(child: _buildAssuranceCard(Icons.payments_outlined, 'Instant Cash\nin Hand')),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSlotChip(String slotValue, String label) {
+    final isSelected = _pickupSlot == slotValue;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _pickupSlot = slotValue),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppTheme.lightGreen : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? AppTheme.primaryGreen : AppTheme.glassBorder,
+              width: isSelected ? 1.5 : 1,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                color: isSelected ? AppTheme.darkGreen : AppTheme.textSecondary,
+                height: 1.2,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAssuranceCard(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: Colors.grey.shade800),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textPrimary, height: 1.2),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEvaluationSummaryModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Evaluation Summary', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                IconButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: const Icon(Icons.close_rounded),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _buildPriceRow('Base Catalog Value (Mint)', '₹${widget.variant.basePrice.toStringAsFixed(0)}'),
+            _buildPriceRow(
+              'Condition Deductions',
+              (widget.variant.basePrice - _estimatedPrice) > 0
+                  ? '-₹${(widget.variant.basePrice - _estimatedPrice).toStringAsFixed(0)}'
+                  : '₹0 (Flawless)',
+              isNegative: (widget.variant.basePrice - _estimatedPrice) > 0,
+            ),
+            const Divider(height: 20),
+            _buildPriceRow('Calculated Net Offer', '₹${_estimatedPrice.toStringAsFixed(0)}', isBold: true),
+            const SizedBox(height: 12),
+            const Text(
+              '* Verified at doorstep by certified technician before instant payment.',
+              style: TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: Colors.grey),
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Close', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            ),
+          ],
         ),
       ),
     );

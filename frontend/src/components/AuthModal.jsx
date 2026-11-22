@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Lock, Mail, User, Phone, ShieldCheck, ArrowRight, Check, UserCheck, Sparkles } from 'lucide-react';
 import { api, setAuthToken, setCurrentUser } from '../services/api';
 
@@ -38,10 +39,22 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="glass-panel rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-white/80 my-auto max-h-[92vh] flex flex-col">
-        
+  return createPortal(
+    <div 
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div 
+        className="glass-panel rounded-t-3xl sm:rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-white/80 max-h-[90vh] sm:max-h-[85vh] flex flex-col animate-slide-up sm:animate-zoom-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Mobile drag handle */}
+        <div className="sm:hidden pt-3 pb-1 flex justify-center bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B]">
+          <div className="w-12 h-1.5 bg-white/30 rounded-full" />
+        </div>
+
         {/* Header (1103 RECELL Green Gradient) */}
         <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between shrink-0 border-b border-white/20">
           <div>
@@ -55,10 +68,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
             </p>
           </div>
           <button 
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition shrink-0"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -172,6 +186,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         </form>
 
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

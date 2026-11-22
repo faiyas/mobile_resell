@@ -1,13 +1,41 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Smartphone, Tablet, Laptop, Watch, AlertOctagon, Layers,
   Search, ArrowRight, ArrowLeft, Check, CheckCircle2, ChevronRight,
   Sparkles, ShieldCheck, MapPin, Calendar, Clock, CreditCard, Banknote,
-  HelpCircle, AlertTriangle, Copy, Truck, Gift, FileText
+  HelpCircle, AlertTriangle, Copy, Truck, Gift, FileText, X
 } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function SellWizard({ onOrderCreated, currentUser }) {
+function ResponsiveModal({ isOpen, onClose, title, children }) {
+  if (!isOpen) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+      <div 
+        className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] sm:max-h-[85vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between shrink-0 bg-slate-50/50">
+          <h3 className="font-extrabold text-base text-slate-900">{title}</h3>
+          <button 
+            type="button" 
+            onClick={onClose} 
+            className="p-1.5 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-700 transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+          {children}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) {
   // Navigation: 1=Category, 2=Brand, 3=Model&Variant, 4=Questionnaire(Steps 2-10), 5=Quote, 6=PickupBooking, 7=Success
   const [currentScreen, setCurrentScreen] = useState(1);
   const [questionStepIndex, setQuestionStepIndex] = useState(0);
@@ -143,13 +171,63 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
   // Payout Method
   const [beneficiaryType, setBeneficiaryType] = useState('UPI');
   const [beneficiaryName, setBeneficiaryName] = useState(currentUser?.full_name || '');
-  const [beneficiaryUpiId, setBeneficiaryUpiId] = useState('');
+  const [beneficiaryUpiId, setBeneficiaryUpiId] = useState(currentUser?.default_upi_id || '');
   const [beneficiaryAccountNo, setBeneficiaryAccountNo] = useState('');
   const [beneficiaryIfsc, setBeneficiaryIfsc] = useState('');
 
   const [submitting, setSubmitting] = useState(false);
   const [createdOrder, setCreatedOrder] = useState(null);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // Modal & Address Toggle States
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+  const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+
+  // Helper: Deduplicate condition categories/steps by trimmed name
+  const deduplicateSteps = (steps) => {
+    if (!Array.isArray(steps)) return [];
+    const seen = new Set();
+    const result = [];
+    for (const s of steps) {
+      const key = (s.name || '').trim().toLowerCase();
+      if (!key) continue;
+      if (!seen.has(key)) {
+        seen.add(key);
+        result.push(s);
+      }
+    }
+    return result;
+  };
+
+  // Helper: Get upcoming 7 pickup date slots
+  const getUpcomingDates = () => {
+    const list = [];
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
+    const isLate = istDate.getHours() >= 20;
+    const startOffset = isLate ? 2 : 1;
+    
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
+      d.setDate(d.getDate() + startOffset + i);
+      const isoStr = d.toISOString().split('T')[0];
+      const monthStr = months[d.getMonth()];
+      const dayNum = String(d.getDate()).padStart(2, '0');
+      const dayOfWeek = days[d.getDay()];
+      list.push({
+        iso: isoStr,
+        month: monthStr,
+        dayNum: dayNum,
+        dayOfWeek: dayOfWeek,
+        formatted: `${monthStr} ${dayNum} ${dayOfWeek}`
+      });
+    }
+    return list;
+  };
 
   // Initial Load: Categories & Dynamic Questionnaire from DB
   useEffect(() => {
@@ -161,7 +239,11 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
       if (!customerName) setCustomerName(currentUser.full_name || '');
       if (!customerPhone) setCustomerPhone(currentUser.phone || '');
       if (!customerEmail) setCustomerEmail(currentUser.email || '');
+      if (!pickupAddress) setPickupAddress(currentUser.default_address || '');
+      if (!pickupCity) setPickupCity(currentUser.city || '');
+      if (!pickupPincode) setPickupPincode(currentUser.pincode || '');
       if (!beneficiaryName) setBeneficiaryName(currentUser.full_name || '');
+      if (!beneficiaryUpiId && currentUser.default_upi_id) setBeneficiaryUpiId(currentUser.default_upi_id);
     }
   }, [currentUser]);
 
@@ -172,7 +254,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
         api.getConditionCategories(),
       ]);
       setCategories(cats);
-      setQuestionSteps(qSteps);
+      setQuestionSteps(deduplicateSteps(qSteps));
       if (cats.length > 0) {
         handleSelectCategory(cats[0]);
       }
@@ -207,7 +289,7 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
       setModels(modelsData);
       setSeriesList(seriesData);
       if (brandSteps && brandSteps.length > 0) {
-        setQuestionSteps(brandSteps);
+        setQuestionSteps(deduplicateSteps(brandSteps));
       }
       setCurrentScreen(3);
     } catch (e) {
@@ -264,8 +346,21 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
   };
 
   const handleSubmitBooking = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!selectedVariant) return;
+
+    if (!currentUser) {
+      if (onOpenAuth) onOpenAuth();
+      return;
+    }
+
+    const addr = pickupAddress || currentUser.default_address;
+    if (!addr || !addr.trim()) {
+      setIsEditingAddress(true);
+      alert("Please provide your doorstep pickup address.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const combinedNotes = Object.entries(stepCustomNotes)
@@ -283,17 +378,17 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
         other_defects_notes: combinedNotes,
         custom_step_notes: stepCustomNotes,
         selected_option_codes: selectedOptionCodes,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_email: customerEmail,
-        pickup_address: pickupAddress,
-        pickup_city: pickupCity,
-        pickup_pincode: pickupPincode,
+        customer_name: customerName || currentUser.full_name || 'Customer',
+        customer_phone: customerPhone || currentUser.phone || '',
+        customer_email: customerEmail || currentUser.email || '',
+        pickup_address: addr.trim(),
+        pickup_city: (pickupCity || currentUser.city || 'Doorstep Pickup').trim(),
+        pickup_pincode: (pickupPincode || currentUser.pincode || '').trim(),
         pickup_date: pickupDate,
         pickup_slot: pickupSlot,
         beneficiary_type: beneficiaryType,
-        beneficiary_name: beneficiaryName,
-        beneficiary_upi_id: beneficiaryUpiId,
+        beneficiary_name: beneficiaryName || customerName || currentUser.full_name || '',
+        beneficiary_upi_id: beneficiaryUpiId || currentUser.default_upi_id || '',
         beneficiary_account_no: beneficiaryAccountNo,
         beneficiary_ifsc: beneficiaryIfsc,
       };
@@ -759,331 +854,366 @@ export default function SellWizard({ onOrderCreated, currentUser }) {
         </div>
       )}
 
-      {/* ================= SCREEN 5: GET ESTIMATED QUOTE ================= */}
+      {/* ================= SCREEN 5: FINAL VALUATION & DOORSTEP BOOKING ================= */}
       {currentScreen === 5 && valuationResult && (
-        <div className="max-w-xl mx-auto space-y-5 animate-fade-in">
+        <div className="max-w-xl mx-auto space-y-6 animate-fade-in text-xs">
 
-          {/* Emerald Gradient Hero Quote Banner */}
-          <div className="bg-gradient-to-br from-[#0BAA4B] via-[#087C38] to-[#0D4722] text-white rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-3 border border-white/30">
-            <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 backdrop-blur px-3 py-1 rounded-full inline-block border border-white/20">
-              Indicative Buyback Valuation
-            </span>
-            <h3 className="text-xl sm:text-2xl font-black">
-              {valuationResult.brand} {valuationResult.model} ({valuationResult.variant})
-            </h3>
-
-            <div className="py-2">
-              <span className="text-xs text-[#E8F8ED] block font-bold">Estimated Buyback Value</span>
-              <span className="text-4xl sm:text-5xl font-black tracking-tight text-white drop-shadow">
-                ₹{Number(valuationResult.estimated_price).toLocaleString('en-IN')}
-              </span>
-            </div>
-
-            <p className="text-[11px] text-[#E8F8ED] max-w-sm mx-auto">
-              Subject to physical doorstep verification by our 1103 RECELL collection specialist before payout.
-            </p>
-          </div>
-
-          {/* Transparent Price Summary Frosted Card */}
-          <div className="glass-panel rounded-3xl p-5 sm:p-6 space-y-3 text-xs shadow-sm">
-            <h4 className="font-black text-sm text-[#17251C] border-b border-white/80 pb-2">
-              Price Summary Breakdown:
-            </h4>
-
-            <div className="flex justify-between items-center py-1">
-              <span className="text-[#7B8980]">Base Catalog Value (Mint):</span>
-              <strong className="text-[#17251C] font-black">₹{Number(valuationResult.base_price).toLocaleString('en-IN')}</strong>
-            </div>
-
-            <div className="flex justify-between items-center py-1">
-              <span className="text-[#7B8980]">Condition Deductions (Calculated):</span>
-              <strong className="text-rose-600 font-black">
-                {Number(valuationResult.base_price) - Number(valuationResult.estimated_price) > 0
-                  ? `-₹${(Number(valuationResult.base_price) - Number(valuationResult.estimated_price)).toLocaleString('en-IN')}`
-                  : '₹0 (Flawless)'}
-              </strong>
-            </div>
-
-            <div className="bg-emerald-50/80 border border-emerald-200/80 p-2.5 rounded-xl text-[11px] text-[#087C38] font-medium leading-relaxed">
-              ✓ Our certified Field Agent will verify your device physical condition at your doorstep and confirm the final offer price before instant payout.
-            </div>
-
-            <div className="flex justify-between items-center pt-3 border-t border-white/80 text-sm">
-              <span className="font-black text-[#17251C]">Net Doorstep Payout:</span>
-              <span className="text-xl font-black text-[#0BAA4B]">
-                ₹{Number(valuationResult.estimated_price).toLocaleString('en-IN')}
-              </span>
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setCurrentScreen(4)}
-              className="w-1/3 glass-card hover:bg-white text-[#17251C] font-black py-3.5 rounded-2xl transition text-xs"
-            >
-              ← Edit Answers
-            </button>
-            <button
-              onClick={() => setCurrentScreen(6)}
-              className="w-2/3 bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black py-3.5 rounded-2xl shadow-xl shadow-[#0BAA4B]/20 transition flex items-center justify-center gap-2 text-sm"
-            >
-              Proceed to Doorstep Pickup <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-
-        </div>
-      )}
-
-      {/* ================= SCREEN 6: DOORSTEP BOOKING & PAYOUT DETAILS ================= */}
-      {currentScreen === 6 && (
-        <form onSubmit={handleSubmitBooking} className="max-w-xl mx-auto glass-panel rounded-3xl p-5 sm:p-7 shadow-sm space-y-5 animate-fade-in text-xs">
-
-          <div className="border-b border-white/80 pb-3">
-            <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-2.5 py-0.5 rounded-full border border-[#0BAA4B]/20">
-              Final Step
-            </span>
-            <h3 className="text-lg sm:text-xl font-black text-[#17251C] mt-1">Book Free Doorstep Pickup</h3>
-            <p className="text-xs text-[#7B8980]">Our certified agent will visit your home and disburse instant cash</p>
-          </div>
-
-          {/* Personal Info */}
-          <div className="space-y-3">
-            <h4 className="font-black text-[#17251C] text-sm">1. Customer Information</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block font-bold text-[#17251C] mb-1">Full Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="e.g. Mohamed K."
-                  className="w-full p-2.5 glass-input rounded-xl font-bold"
-                />
-              </div>
-              <div>
-                <label className="block font-bold text-[#17251C] mb-1">Mobile Number *</label>
-                <input
-                  type="tel"
-                  required
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  placeholder="e.g. 9876543210"
-                  className="w-full p-2.5 glass-input rounded-xl font-bold"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Address */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
-                <MapPin className="w-4 h-4 text-[#0BAA4B]" /> 2. Pickup Address
-              </h4>
-              <button
-                type="button"
-                onClick={handleDetectLocation}
-                disabled={detectingLocation}
-                className="text-xs font-bold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded-lg border border-emerald-300/80 transition flex items-center gap-1"
-              >
-                {detectingLocation ? (
-                  <>
-                    <span className="w-3 h-3 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin"></span>
-                    Detecting GPS...
-                  </>
-                ) : (
-                  <>📍 Use Current Location</>
-                )}
-              </button>
-            </div>
-            <textarea
-              required
-              rows={2}
-              value={pickupAddress}
-              onChange={(e) => setPickupAddress(e.target.value)}
-              placeholder="Door No, Flat/House Name, Street Name, Landmark"
-              className="w-full p-2.5 glass-input rounded-xl font-medium"
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block font-bold text-[#17251C] mb-1">City / Region</label>
-                <input
-                  type="text"
-                  required
-                  value={pickupCity}
-                  onChange={(e) => setPickupCity(e.target.value)}
-                  placeholder="e.g. Chennai"
-                  className="w-full p-2.5 glass-input rounded-xl font-bold"
-                />
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block font-bold text-[#17251C]">PIN Code</label>
-                  {pincodeLoading && <span className="text-[10px] text-emerald-600 animate-pulse font-bold">Checking...</span>}
+          {/* ================= TOP SECTION: DOORSTEP ADDRESS & PICKUP BOOKING ================= */}
+          {currentUser ? (
+            <div className="bg-white rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-200/80 space-y-4">
+              {/* Address Header */}
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-extrabold text-sm sm:text-base text-slate-900">
+                      {customerName || currentUser.full_name || 'Customer'}
+                    </span>
+                    <span className="text-slate-300">|</span>
+                    <span className="font-bold text-xs text-slate-600">
+                      {customerPhone || currentUser.phone}
+                    </span>
+                  </div>
+                  {!isEditingAddress ? (
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      {pickupAddress
+                        ? `${pickupAddress}, ${pickupCity} ${pickupPincode}`
+                        : `${currentUser.default_address || ''}, ${currentUser.city || ''} ${currentUser.pincode || ''}` || 'Doorstep Pickup Address'}
+                    </p>
+                  ) : null}
                 </div>
-                <input
-                  type="text"
-                  required
-                  maxLength={6}
-                  value={pickupPincode}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                    setPickupPincode(val);
-                    if (val.length === 6) {
-                      verifyPincode(val);
-                    } else {
-                      setPincodeInfo(null);
-                    }
-                  }}
-                  onBlur={() => {
-                    if (pickupPincode && pickupPincode.length === 6) verifyPincode(pickupPincode);
-                  }}
-                  placeholder="e.g. 600028"
-                  className="w-full p-2.5 glass-input rounded-xl font-bold font-mono tracking-wider"
-                />
+                <button
+                  type="button"
+                  onClick={() => setIsEditingAddress(!isEditingAddress)}
+                  className="text-xs font-bold text-[#0BAA4B] hover:text-[#087C38] px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 transition shrink-0"
+                >
+                  {isEditingAddress ? 'Done' : 'Change Address'}
+                </button>
+              </div>
+
+              {/* Address Edit Form (if toggled) */}
+              {isEditingAddress && (
+                <div className="space-y-2.5 pt-1 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-600">Doorstep Street Address</label>
+                    <button
+                      type="button"
+                      onClick={handleDetectLocation}
+                      disabled={detectingLocation}
+                      className="text-[10px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-200 transition"
+                    >
+                      {detectingLocation ? 'Detecting GPS...' : '📍 Use GPS Location'}
+                    </button>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={pickupAddress}
+                    onChange={(e) => setPickupAddress(e.target.value)}
+                    placeholder="Door No, Flat/House Name, Street Name, Landmark"
+                    className="w-full p-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#0BAA4B]/30 font-medium"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={pickupCity}
+                      onChange={(e) => setPickupCity(e.target.value)}
+                      placeholder="City"
+                      className="p-2 text-xs rounded-xl border border-slate-200 font-bold"
+                    />
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={pickupPincode}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setPickupPincode(val);
+                        if (val.length === 6) verifyPincode(val);
+                      }}
+                      placeholder="PIN Code (e.g. 605008)"
+                      className="p-2 text-xs rounded-xl border border-slate-200 font-mono font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Instant UPI ID for Doorstep Transfer (Optional)</label>
+                    <input
+                      type="text"
+                      value={beneficiaryUpiId}
+                      onChange={(e) => setBeneficiaryUpiId(e.target.value)}
+                      placeholder="e.g. name@okaxis or 9876543210@paytm"
+                      className="w-full p-2 text-xs rounded-xl border border-slate-200 font-mono"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Pickup Booking */}
+              <div className="space-y-3 pt-1">
+                <div>
+                  <h4 className="font-black text-sm text-[#17251C]">Pickup Booking</h4>
+                  <p className="text-[11px] font-bold text-slate-500 mt-0.5">Choose a pickup date</p>
+                </div>
+
+                {/* Horizontal Date Pills */}
+                <div className="flex gap-2.5 overflow-x-auto pb-1.5 scrollbar-none">
+                  {getUpcomingDates().map((dt) => {
+                    const isSelected = pickupDate === dt.iso;
+                    return (
+                      <button
+                        key={dt.iso}
+                        type="button"
+                        onClick={() => setPickupDate(dt.iso)}
+                        className={`flex-shrink-0 w-20 py-2.5 px-1.5 rounded-2xl border-2 flex flex-col items-center justify-center transition active:scale-95 ${
+                          isSelected
+                            ? 'border-slate-900 bg-slate-900 text-white shadow-md'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${isSelected ? 'text-emerald-400' : 'text-slate-400'}`}>
+                          {dt.month}
+                        </span>
+                        <span className="text-xl font-black my-0.5 leading-none">
+                          {dt.dayNum}
+                        </span>
+                        <span className={`text-[10px] font-extrabold uppercase ${isSelected ? 'text-slate-200' : 'text-slate-500'}`}>
+                          {dt.dayOfWeek}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Pickup Slot Selector */}
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-[11px] font-bold text-slate-500">Choose a pickup slot</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {[
+                      { id: 'Morning (10:00 AM - 1:00 PM)', label: 'Morning', time: '10 AM - 1 PM' },
+                      { id: 'Afternoon (1:00 PM - 5:00 PM)', label: 'Afternoon', time: '1 PM - 5 PM' },
+                      { id: 'Evening (5:00 PM - 8:00 PM)', label: 'Evening', time: '5 PM - 8 PM' },
+                    ].map((slot) => {
+                      const isSelected = pickupSlot === slot.id;
+                      return (
+                        <button
+                          key={slot.id}
+                          type="button"
+                          onClick={() => setPickupSlot(slot.id)}
+                          className={`p-2.5 rounded-xl border-2 font-bold text-left transition flex flex-col justify-center ${
+                            isSelected
+                              ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38]'
+                              : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                          }`}
+                        >
+                          <span className="text-xs font-black">{slot.label}</span>
+                          <span className="text-[10px] opacity-75">{slot.time}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Book Pickup Button */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSubmitBooking}
+                    disabled={submitting}
+                    className="w-full bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black py-3.5 rounded-2xl shadow-lg shadow-[#0BAA4B]/20 transition flex items-center justify-center gap-2 text-sm"
+                  >
+                    {submitting ? 'Booking Pickup...' : 'Book Pickup'}
+                  </button>
+                </div>
               </div>
             </div>
-
-            {/* Pincode Resolution Status Banner */}
-            {pincodeInfo && (
-              <div className={`p-2 rounded-xl text-xs font-bold flex items-center gap-1.5 ${pincodeInfo.valid ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'}`}>
-                {pincodeInfo.valid ? (
-                  <>
-                    <span>✓</span>
-                    <span>Verified: {pincodeInfo.city}, {pincodeInfo.state} &middot; Doorstep Service Active</span>
-                  </>
-                ) : (
-                  <>
-                    <span>⚠️</span>
-                    <span>{pincodeInfo.message || 'Invalid PIN code'}</span>
-                  </>
-                )}
+          ) : (
+            /* Guest / Not Logged In View */
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 text-center space-y-4">
+              <div className="w-12 h-12 bg-[#E8F8ED] text-[#0BAA4B] rounded-2xl flex items-center justify-center mx-auto shadow-sm">
+                <Truck className="w-6 h-6" />
               </div>
-            )}
-          </div>
-
-          {/* Date & Slot */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-[#0BAA4B]" /> 3. Preferred Date & Time
-              </h4>
-              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-300/60">
-                {isAfter8PMCutoff() ? 'Late Night: +2 Days Lead' : 'Earliest: Tomorrow'}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <input
-                  type="date"
-                  required
-                  min={getEarliestPickupDateStr()}
-                  value={pickupDate}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const minDate = getEarliestPickupDateStr();
-                    if (val < minDate) {
-                      setPickupDate(minDate);
-                    } else {
-                      setPickupDate(val);
-                    }
-                  }}
-                  className="w-full p-2.5 glass-input rounded-xl font-bold"
-                />
-                <p className="text-[10px] text-emerald-700 font-semibold mt-1">
-                  {isAfter8PMCutoff()
-                    ? '⚡ Booked after 8:00 PM: Dispatched for day after tomorrow.'
-                    : '⚡ Same-day slots closed for dispatch. Earliest: Tomorrow.'}
+                <h3 className="text-base font-extrabold text-[#17251C]">Doorstep Pickup & Instant Payout</h3>
+                <p className="text-xs text-[#7B8980] mt-1 max-w-sm mx-auto">
+                  Login to book your doorstep pickup slot, save delivery address, and receive cash or UPI directly.
                 </p>
               </div>
-              <div>
-                <select
-                  value={pickupSlot}
-                  onChange={(e) => setPickupSlot(e.target.value)}
-                  className="w-full p-2.5 glass-input rounded-xl font-bold"
-                >
-                  <option value="Morning (10:00 AM - 1:00 PM)">Morning (10:00 AM - 1:00 PM)</option>
-                  <option value="Afternoon (1:00 PM - 5:00 PM)">Afternoon (1:00 PM - 5:00 PM)</option>
-                  <option value="Evening (5:00 PM - 8:00 PM)">Evening (5:00 PM - 8:00 PM)</option>
-                </select>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onOpenAuth) onOpenAuth();
+                }}
+                className="w-full py-3.5 px-6 rounded-2xl bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black text-sm shadow-lg shadow-[#0BAA4B]/20 transition flex items-center justify-center gap-2"
+              >
+                Login to Proceed / Book Pickup <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
-          </div>
+          )}
 
-          {/* Payment Method */}
+          {/* ================= LOWER SECTION: SELL NOW FOR AMAZING PRICE ================= */}
           <div className="space-y-3">
-            <h4 className="font-black text-[#17251C] text-sm flex items-center gap-1.5">
-              <Banknote className="w-4 h-4 text-[#0BAA4B]" /> 4. Instant Payment Details
-            </h4>
+            <h3 className="text-center font-extrabold text-base sm:text-lg text-[#17251C]">
+              Sell Now For Amazing price
+            </h3>
 
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setBeneficiaryType('UPI')}
-                className={`p-3 rounded-2xl border-2 font-black transition ${beneficiaryType === 'UPI'
-                    ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38]'
-                    : 'glass-card text-[#7B8980]'
-                  }`}
-              >
-                Instant UPI (GPay / PhonePe)
-              </button>
-              <button
-                type="button"
-                onClick={() => setBeneficiaryType('BANK')}
-                className={`p-3 rounded-2xl border-2 font-black transition ${beneficiaryType === 'BANK'
-                    ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38]'
-                    : 'glass-card text-[#7B8980]'
-                  }`}
-              >
-                Direct Bank Transfer
-              </button>
-            </div>
+            <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-sm border border-slate-200/80 text-center space-y-4">
+              {/* Centered Device Graphic */}
+              <div className="w-24 h-24 mx-auto flex items-center justify-center">
+                {selectedModel?.image_base64 ? (
+                  <img
+                    src={selectedModel.image_base64}
+                    alt={selectedModel.name}
+                    className="max-h-full max-w-full object-contain drop-shadow"
+                  />
+                ) : (
+                  <Smartphone className="w-16 h-16 text-slate-400 stroke-1" />
+                )}
+              </div>
 
-            {beneficiaryType === 'UPI' ? (
               <div>
-                <label className="block font-bold text-[#17251C] mb-1">UPI ID (e.g. mobile@okaxis) *</label>
-                <input
-                  type="text"
-                  required
-                  value={beneficiaryUpiId}
-                  onChange={(e) => setBeneficiaryUpiId(e.target.value)}
-                  placeholder="e.g. 9876543210@paytm"
-                  className="w-full p-2.5 glass-input rounded-xl font-bold"
-                />
+                <h4 className="font-extrabold text-base text-[#17251C]">
+                  {selectedBrand?.name || valuationResult.brand} {selectedModel?.name || valuationResult.model} ({selectedVariant?.storage || valuationResult.variant})
+                </h4>
+                <p className="text-xs text-slate-500 font-semibold mt-1">
+                  Instantly Sell And Get
+                </p>
+                <div className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mt-1">
+                  ₹ {Number(valuationResult.estimated_price).toLocaleString('en-IN')}
+                </div>
+                {/* Thin readable disclaimer text */}
+                <p className="text-[11px] font-normal text-slate-400 mt-1.5 max-w-sm mx-auto leading-normal">
+                  * Note: Final buyback price may vary during doorstep physical evaluation based on actual device inspection.
+                </p>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  required
-                  placeholder="Bank Account Number"
-                  value={beneficiaryAccountNo}
-                  onChange={(e) => setBeneficiaryAccountNo(e.target.value)}
-                  className="p-2.5 glass-input rounded-xl font-bold"
-                />
-                <input
-                  type="text"
-                  required
-                  placeholder="IFSC Code"
-                  value={beneficiaryIfsc}
-                  onChange={(e) => setBeneficiaryIfsc(e.target.value.toUpperCase())}
-                  className="p-2.5 glass-input rounded-xl font-bold font-mono"
-                />
+
+              {/* BEST PRICE Section */}
+              <div className="border-t border-slate-100 pt-3 text-left space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-rose-500 block">
+                  BEST PRICE
+                </span>
+                <div className="flex items-center justify-between text-xs py-0.5">
+                  <span className="text-slate-500">Get Value</span>
+                  <span className="font-black text-slate-800">₹ {Number(valuationResult.estimated_price).toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs py-0.5">
+                  <span className="text-slate-500 font-medium">Get value</span>
+                  <span className="font-black text-slate-800">₹ {Number(valuationResult.estimated_price).toLocaleString('en-IN')}</span>
+                </div>
               </div>
-            )}
+
+              {/* View Evaluation Summary Link / Button */}
+              <button
+                type="button"
+                onClick={() => setSummaryModalOpen(true)}
+                className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 transition flex items-center justify-center gap-1.5"
+              >
+                <span>View Evaluation Summary</span>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {/* Our assurance win your trust */}
+              <div className="pt-4 border-t border-slate-100 text-left space-y-3">
+                <h5 className="font-extrabold text-xs sm:text-sm text-center text-slate-900">
+                  Our assurance win your trust
+                </h5>
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50/80 border border-slate-100">
+                    <Truck className="w-6 h-6 text-slate-700 shrink-0 stroke-[1.5]" />
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 leading-tight">
+                      Hassle-Less Doorstep Free Pickup
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50/80 border border-slate-100">
+                    <ShieldCheck className="w-6 h-6 text-slate-700 shrink-0 stroke-[1.5]" />
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 leading-tight">
+                      Services offered across India
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50/80 border border-slate-100">
+                    <Sparkles className="w-6 h-6 text-slate-700 shrink-0 stroke-[1.5]" />
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 leading-tight">
+                      Unbeatable Market Value
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50/80 border border-slate-100">
+                    <Banknote className="w-6 h-6 text-slate-700 shrink-0 stroke-[1.5]" />
+                    <span className="text-[10px] sm:text-[11px] font-bold text-slate-700 leading-tight">
+                      Instant Cash in Hand
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Edit Answers link */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentScreen(4)}
+                  className="text-xs font-bold text-slate-500 hover:text-slate-800 transition"
+                >
+                  ← Edit Questionnaire Answers
+                </button>
+              </div>
+            </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black py-4 rounded-2xl shadow-xl shadow-[#0BAA4B]/25 transition flex items-center justify-center gap-2 text-sm"
-          >
-            {submitting ? 'Confirming Doorstep Pickup...' : 'Confirm Free Doorstep Pickup Booking →'}
-          </button>
+          {/* Evaluation Summary Modal */}
+          {summaryModalOpen && (
+            <ResponsiveModal
+              isOpen={summaryModalOpen}
+              onClose={() => setSummaryModalOpen(false)}
+              title="Evaluation Summary"
+            >
+              <div className="space-y-4 text-xs">
+                <div className="p-3 bg-slate-50 rounded-xl space-y-2 border border-slate-100">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-600">Base Catalog Price (Flawless):</span>
+                    <strong className="text-slate-900 font-bold">₹{Number(valuationResult.base_price).toLocaleString('en-IN')}</strong>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-600">Condition Deductions:</span>
+                    <strong className="text-rose-600 font-bold">
+                      {Number(valuationResult.base_price) - Number(valuationResult.estimated_price) > 0
+                        ? `-₹${(Number(valuationResult.base_price) - Number(valuationResult.estimated_price)).toLocaleString('en-IN')}`
+                        : '₹0 (Mint condition)'}
+                    </strong>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-200 text-sm">
+                    <span className="font-black text-slate-900">Calculated Offer:</span>
+                    <span className="font-black text-[#0BAA4B]">₹{Number(valuationResult.estimated_price).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
 
-        </form>
+                <div>
+                  <h6 className="font-bold text-slate-700 mb-1.5">Selected Condition Details:</h6>
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {selectedOptionCodes.length === 0 ? (
+                      <p className="text-slate-400 italic">No defects selected (Device in excellent condition).</p>
+                    ) : (
+                      selectedOptionCodes.map((code) => (
+                        <div key={code} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 text-[11px]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                          <span className="font-mono text-slate-700 font-semibold">{code.replace(/_/g, ' ')}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-slate-400 leading-relaxed italic">
+                  * All evaluations are verified at doorstep by an authorized 1103 RECELL technician prior to instant payment disbursement.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setSummaryModalOpen(false)}
+                  className="w-full py-2.5 bg-[#0BAA4B] text-white font-bold rounded-xl text-xs"
+                >
+                  Close Summary
+                </button>
+              </div>
+            </ResponsiveModal>
+          )}
+
+        </div>
       )}
 
       {/* ================= SCREEN 7: ORDER CONFIRMATION & TRACKING TIMELINE ================= */}

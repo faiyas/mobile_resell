@@ -267,6 +267,7 @@ export default function App() {
               <SellWizard 
                 onOrderCreated={handleOrderCreated}
                 currentUser={currentUser}
+                onOpenAuth={() => setAuthModalOpen(true)}
               />
             </div>
           );

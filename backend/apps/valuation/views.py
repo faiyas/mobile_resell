@@ -40,6 +40,36 @@ def condition_categories_view(request):
         categories = categories.prefetch_related(
             Prefetch('options', queryset=ConditionOption.objects.filter(is_active=True).order_by('display_order'))
         ).order_by('step_number', 'display_order')
+
+        if not show_all:
+            # Smart Deduplication for Customer Questionnaire:
+            # 1. Separate brand-specific vs universal steps
+            # 2. If a brand-specific step exists for a given step name, it overrides the universal step
+            # 3. Discard any duplicate steps having the same normalized step name
+            brand_specific = [c for c in categories if c.brand_id]
+            universal = [c for c in categories if not c.brand_id]
+
+            final_categories = []
+            seen_names = set()
+
+            # First, add brand-specific steps
+            for cat in brand_specific:
+                key = cat.name.strip().lower()
+                if key not in seen_names:
+                    seen_names.add(key)
+                    final_categories.append(cat)
+
+            # Next, add universal steps ONLY if not overridden by a brand-specific step
+            for cat in universal:
+                key = cat.name.strip().lower()
+                if key not in seen_names:
+                    seen_names.add(key)
+                    final_categories.append(cat)
+
+            final_categories.sort(key=lambda c: (c.step_number, c.display_order))
+            serializer = ConditionCategorySerializer(final_categories, many=True)
+            return Response(serializer.data)
+
         serializer = ConditionCategorySerializer(categories, many=True)
         return Response(serializer.data)
     

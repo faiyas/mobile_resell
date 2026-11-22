@@ -82,6 +82,19 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
             .where((cat) => cat.options.isNotEmpty && !cat.name.toLowerCase().contains('warranty'))
             .toList();
       }
+
+      // Deduplicate condition steps by name to prevent repeated questions
+      final seenStepNames = <String>{};
+      final uniqueSteps = <ConditionCategoryModel>[];
+      for (var cat in data) {
+        final key = cat.name.trim().toLowerCase();
+        if (key.isNotEmpty && !seenStepNames.contains(key)) {
+          seenStepNames.add(key);
+          uniqueSteps.add(cat);
+        }
+      }
+      data = uniqueSteps;
+
       setState(() {
         _steps = data;
         _loading = false;
