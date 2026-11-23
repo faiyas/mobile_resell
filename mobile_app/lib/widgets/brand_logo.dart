@@ -160,11 +160,17 @@ class RecellLogoIcon extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(
-        painter: RecellLogoPainter(
-          primaryColor: primaryColor ?? AppTheme.primaryGreen,
-          secondaryColor: secondaryColor ?? AppTheme.darkGreen,
-          orbitRotation: orbitRotation,
+      child: Image.asset(
+        'assets/images/dolly_icon.png',
+        width: size,
+        height: size,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) => CustomPaint(
+          painter: RecellLogoPainter(
+            primaryColor: primaryColor ?? AppTheme.primaryGreen,
+            secondaryColor: secondaryColor ?? AppTheme.darkGreen,
+            orbitRotation: orbitRotation,
+          ),
         ),
       ),
     );
@@ -190,26 +196,29 @@ class RecellBrandLogo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        RecellLogoIcon(size: size),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              'DOLLY',
-              style: TextStyle(
-                fontSize: size * 0.36,
-                fontWeight: FontWeight.w900,
-                color: AppTheme.primaryGreen,
-                letterSpacing: 2.0,
+        Image.asset(
+          'assets/images/dolly_logo.png',
+          width: size * 2.4,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RecellLogoIcon(size: size),
+              const SizedBox(height: 12),
+              Text(
+                'DOLLY',
+                style: TextStyle(
+                  fontSize: size * 0.36,
+                  fontWeight: FontWeight.w900,
+                  color: AppTheme.primaryGreen,
+                  letterSpacing: 2.0,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         if (showTagline) ...[
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
             decoration: BoxDecoration(

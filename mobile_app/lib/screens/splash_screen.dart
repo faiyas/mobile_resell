@@ -151,25 +151,45 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const RecellLogoIcon(size: 96),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: const [
-                            Text(
-                              'DOLLY',
-                              style: TextStyle(
-                                fontSize: 34,
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.primaryGreen,
-                                letterSpacing: 2.0,
+                        Container(
+                          width: 108,
+                          height: 108,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(26),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryGreen.withOpacity(0.28),
+                                blurRadius: 28,
+                                offset: const Offset(0, 10),
                               ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(26),
+                            child: Image.asset(
+                              'assets/images/dolly_icon.png',
+                              fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const RecellLogoIcon(size: 96),
                             ),
-                          ],
+                          ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 18),
+                        Image.asset(
+                          'assets/images/dolly_logo.png',
+                          width: 190,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) => const Text(
+                            'DOLLY',
+                            style: TextStyle(
+                              fontSize: 34,
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.primaryGreen,
+                              letterSpacing: 2.0,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         Transform.translate(
                           offset: Offset(0, _taglineSlideAnimation.value),
                           child: Container(

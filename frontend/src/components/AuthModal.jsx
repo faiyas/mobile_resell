@@ -40,13 +40,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   };
 
   return createPortal(
-    <div 
+    <div
       className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-fade-in overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div 
+      <div
         className="glass-panel rounded-t-3xl sm:rounded-3xl max-w-md w-full shadow-2xl overflow-hidden border border-white/80 max-h-[90vh] sm:max-h-[85vh] flex flex-col animate-slide-up sm:animate-zoom-in"
         onClick={(e) => e.stopPropagation()}
       >
@@ -59,7 +59,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between shrink-0 border-b border-white/20">
           <div>
             <div className="flex items-center gap-1.5 mb-1">
-              <span className="px-1.5 py-0.5 rounded-lg bg-white/20 backdrop-blur text-white flex items-center justify-center font-black text-xs border border-white/30">Dolly</span>
+              <img src="/dolly_icon.png" alt="Dolly" className="w-7 h-7 rounded-lg object-contain shadow-sm border border-white/40" />
               <span className="text-[11px] font-black uppercase tracking-wider text-emerald-200">DOLLY BUYBACK</span>
             </div>
             <h3 className="font-black text-base sm:text-lg">{isRegister ? 'Create Your Account' : 'Welcome to Dolly'}</h3>
@@ -67,7 +67,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               {isRegister ? 'Register to evaluate, sell devices & receive instant payouts' : 'Sign in to Customer, Admin or Field Agent workspace'}
             </p>
           </div>
-          <button 
+          <button
             type="button"
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition shrink-0"

@@ -42,7 +42,7 @@ export default function ReceiptModal({ receiptData, onClose }) {
           <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-3 border-b border-slate-200 pb-4 sm:pb-5">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Dolly</span>
+                <img src="/dolly_logo.png" alt="Dolly" className="h-7 sm:h-8 object-contain" />
                 <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">VERIFIED BUYBACK</span>
               </div>
               <p className="text-[11px] sm:text-xs text-slate-500 mt-1">Dolly Buyback Services · 1103 TechStudios</p>

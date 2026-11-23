@@ -55,14 +55,11 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             onClick={() => setActiveTab((currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN') ? 'admin' : currentUser?.role === 'COLLECTION_AGENT' ? 'inspection' : 'sell')}
             className="flex items-center gap-2.5 cursor-pointer group shrink-0 select-none"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] flex items-center justify-center text-white shadow-lg shadow-[#0BAA4B]/25 group-hover:scale-105 transition-transform border border-white/40">
-              <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10" />
-                <path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10" strokeDasharray="3 3" />
-                <rect x="9" y="7" width="6" height="10" rx="1.5" fill="currentColor" fillOpacity="0.2" />
-                <circle cx="12" cy="14.5" r="0.75" fill="currentColor" />
-              </svg>
-            </div>
+            <img 
+              src="/dolly_icon.png" 
+              alt="Dolly Emblem" 
+              className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl object-cover shadow-lg shadow-[#0BAA4B]/20 group-hover:scale-105 transition-transform border border-emerald-200/50" 
+            />
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xl sm:text-2xl font-black tracking-tight text-[#17251C]">
