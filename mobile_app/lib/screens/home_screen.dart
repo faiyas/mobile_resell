@@ -622,7 +622,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 backgroundColor: Colors.white.withOpacity(0.70),
                 elevation: 0,
                 title: Text(
-                  isAdmin ? '1103 RECELL · Admin Profile' : '1103 RECELL · Agent Profile',
+                  isAdmin ? 'Dolly · Admin Profile' : 'Dolly · Agent Profile',
                   style: const TextStyle(fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
                 ),
                 actions: [
@@ -684,12 +684,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                           child: const Text(
-                            '1103 RECELL',
+                            'DOLLY',
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w900,
-                              fontSize: 13,
-                              letterSpacing: 0.5,
+                              fontSize: 14,
+                              letterSpacing: 1.5,
                             ),
                           ),
                         ),
@@ -828,7 +828,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 60),
-          child: RecellBrandLoader(message: 'Loading 1103 RECELL catalog...'),
+          child: RecellBrandLoader(message: 'Loading Dolly catalog...'),
         ),
       );
     }
@@ -930,7 +930,7 @@ class _HomeScreenState extends State<HomeScreen> {
           'type': (hero != null && hero.dataJson['image_base64'] != null && hero.dataJson['image_base64'].toString().isNotEmpty) ? 'IMAGE' : 'TEXT',
           'title': hero?.title ?? 'Sell Your Old Device',
           'subtitle': hero?.subtitle ?? 'Get the best value for your phone with instant doorstep payout.',
-          'badge': hero?.dataJson['badge'] ?? '1103 RECELL · Certified Buyback',
+          'badge': hero?.dataJson['badge'] ?? 'Dolly · Certified Buyback',
           'cta_text': 'Start Selling Now',
           'image_base64': hero?.dataJson['image_base64'] ?? '',
         }
@@ -997,7 +997,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Text & Gradient Banner Slide (Clean, no 60 mins)
               final title = slide['title']?.toString() ?? 'Sell Your Old Phone';
               final subtitle = slide['subtitle']?.toString() ?? 'Instant doorstep valuation and payout.';
-              final badge = slide['badge']?.toString() ?? '1103 RECELL · Buyback';
+              final badge = slide['badge']?.toString() ?? 'Dolly · Buyback';
 
               return Container(
                 width: double.infinity,
@@ -1107,7 +1107,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 6),
         const Text(
-          'From Phones to Consoles, Sell It All on 1103 RECELL!',
+          'From Phones to Consoles, Sell It All on Dolly!',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: 17,
@@ -1487,7 +1487,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Icon(Icons.account_circle_outlined, size: 64, color: AppTheme.primaryGreen),
                 const SizedBox(height: 12),
                 const Text(
-                  'Welcome to 1103 RECELL',
+                  'Welcome to Dolly',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 6),
@@ -1699,11 +1699,38 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 14),
               ),
               subtitle: const Text(
-                'Safely disconnect this device from your 1103 session',
+                'Safely disconnect this device from your Dolly session',
                 style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
               ),
               trailing: const Icon(Icons.chevron_right_rounded, color: Colors.red),
               onTap: _confirmLogout,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Official Copyright & Version Footer
+          Center(
+            child: Column(
+              children: [
+                const Text(
+                  'Copyrights reserved to 1103 TechStudios',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.textSecondary,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Dolly Platform · Version 2.4.0 (Build 1103)',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade400,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 110),
@@ -1717,7 +1744,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirm Logout', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text('Are you sure you want to log out from 1103 RECELL?'),
+        content: const Text('Are you sure you want to log out from Dolly?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),

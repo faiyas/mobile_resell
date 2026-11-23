@@ -725,7 +725,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                               'utr_number': utr,
                               'payment_proof_base64': paymentProofBase64 ??
                                   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-                              'admin_notes': 'Disbursed via 1103 RECELL Admin Desk',
+                              'admin_notes': 'Disbursed via Dolly Admin Desk',
                             });
                             if (!mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -889,7 +889,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
             ),
           ),
         ),
-        title: const Text('1103 RECELL · Admin Desk', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text('Dolly · Admin Desk', style: TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryGreen),
@@ -906,7 +906,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
       body: GlassBackgroundMesh(
         child: SafeArea(
           child: _isLoading
-              ? const RecellBrandLoader(message: 'Loading 1103 Central Admin metrics...')
+              ? const RecellBrandLoader(message: 'Loading Dolly Central Admin metrics...')
               : RefreshIndicator(
                   color: AppTheme.primaryGreen,
                   onRefresh: _loadAdminData,
@@ -953,7 +953,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            '1103 RECELL Central Control',
+                                            'Dolly Central Control',
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.w900,

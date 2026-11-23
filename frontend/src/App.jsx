@@ -244,7 +244,7 @@ export default function App() {
                           </span>
                         </div>
                         <p className="text-xs text-[#7B8980]">
-                          1103 RECELL Smart Buyback Engine · Instant Valuation & Doorstep Payout
+                          Dolly Smart Buyback Engine · Instant Valuation & Doorstep Payout · 1103 TechStudios
                         </p>
                       </div>
                     </div>

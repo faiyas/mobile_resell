@@ -198,21 +198,11 @@ class RecellBrandLogo extends StatelessWidget {
           textBaseline: TextBaseline.alphabetic,
           children: [
             Text(
-              '1103',
+              'DOLLY',
               style: TextStyle(
-                fontSize: size * 0.32,
+                fontSize: size * 0.36,
                 fontWeight: FontWeight.w900,
                 color: AppTheme.primaryGreen,
-                letterSpacing: 1.2,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              'RECELL',
-              style: TextStyle(
-                fontSize: size * 0.32,
-                fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white : AppTheme.textPrimary,
                 letterSpacing: 2.0,
               ),
             ),
@@ -227,7 +217,7 @@ class RecellBrandLogo extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: const Text(
-              'INSTANT VALUATION · SPOT PAYOUT',
+              'INSTANT DEVICE BUYBACK · 1103 TECHSTUDIOS',
               style: TextStyle(
                 fontSize: 9,
                 fontWeight: FontWeight.w800,

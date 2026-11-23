@@ -55,14 +55,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
           <div className="w-12 h-1.5 bg-white/30 rounded-full" />
         </div>
 
-        {/* Header (1103 RECELL Green Gradient) */}
+        {/* Header (Dolly Green Gradient) */}
         <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] px-5 sm:px-6 py-4 sm:py-5 text-white flex items-center justify-between shrink-0 border-b border-white/20">
           <div>
             <div className="flex items-center gap-1.5 mb-1">
-              <span className="px-1.5 py-0.5 rounded-lg bg-white/20 backdrop-blur text-white flex items-center justify-center font-black text-xs border border-white/30">1103</span>
-              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-200">1103 RECELL BUYBACK</span>
+              <span className="px-1.5 py-0.5 rounded-lg bg-white/20 backdrop-blur text-white flex items-center justify-center font-black text-xs border border-white/30">Dolly</span>
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-200">DOLLY BUYBACK</span>
             </div>
-            <h3 className="font-black text-base sm:text-lg">{isRegister ? 'Create Your Account' : 'Welcome to 1103 RECELL'}</h3>
+            <h3 className="font-black text-base sm:text-lg">{isRegister ? 'Create Your Account' : 'Welcome to Dolly'}</h3>
             <p className="text-[11px] sm:text-xs text-[#E8F8ED] mt-0.5">
               {isRegister ? 'Register to evaluate, sell devices & receive instant payouts' : 'Sign in to Customer, Admin or Field Agent workspace'}
             </p>
@@ -163,7 +163,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
               <span>Authenticating...</span>
             ) : isRegister ? (
               <>
-                <span>Create 1103 RECELL Account</span>
+                <span>Create Dolly Account</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             ) : (

@@ -42,10 +42,10 @@ export default function ReceiptModal({ receiptData, onClose }) {
           <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-3 border-b border-slate-200 pb-4 sm:pb-5">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">ReCell</span>
+                <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">Dolly</span>
                 <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">VERIFIED BUYBACK</span>
               </div>
-              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">ReCell Buyback Services India Pvt. Ltd.</p>
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-1">Dolly Buyback Services · 1103 TechStudios</p>
               <p className="text-[11px] sm:text-xs text-slate-500">GSTIN: 29AAAAA0000A1Z5 · Bengaluru, KA</p>
             </div>
             <div className="text-left sm:text-right bg-slate-50 sm:bg-transparent p-2.5 sm:p-0 rounded-lg">

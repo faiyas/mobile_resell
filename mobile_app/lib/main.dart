@@ -14,7 +14,7 @@ class RecellApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '1103 RECELL',
+      title: 'Dolly',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
       home: const SplashScreen(),

@@ -442,7 +442,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    '1103 RECELL ORDER ID',
+                    'DOLLY ORDER ID',
                     style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.textSecondary, letterSpacing: 0.8),
                   ),
                   const SizedBox(height: 3),
@@ -645,7 +645,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               const SizedBox(height: 18),
               _buildTimelineStep(
                 title: '1. Request Submitted',
-                subtitle: 'Order recorded in 1103 RECELL operations desk',
+                subtitle: 'Order recorded in Dolly operations desk',
                 isCompleted: currentStage >= 1,
                 isCurrent: currentStage == 1,
               ),
@@ -869,7 +869,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                             children: [
                               Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen),
                               SizedBox(width: 8),
-                              Text('1103 RECELL Order Concierge', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                              Text('Dolly Order Concierge', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                             ],
                           ),
                           const SizedBox(height: 14),
@@ -923,7 +923,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                 Icon(Icons.headset_mic_outlined, size: 18, color: AppTheme.primaryGreen),
                 SizedBox(width: 8),
                 Text(
-                  'Need Help? Contact 1103 RECELL Support',
+                  'Need Help? Contact Dolly Support',
                   style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 13),
                 ),
               ],

@@ -72,11 +72,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
   Future<void> _loadBrands() async {
     setState(() => _loading = true);
     try {
-      var brands = await _api.getBrands(categoryId: _category?.id);
-      if (brands.isEmpty) {
-        // Fallback to all brands so category is never empty
-        brands = await _api.getBrands();
-      }
+      final brands = await _api.getBrands(categoryId: _category?.id, forceRefresh: true);
       setState(() {
         _brands = brands;
         _loading = false;

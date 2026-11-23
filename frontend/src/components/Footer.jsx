@@ -57,12 +57,12 @@ export default function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs">
           <div className="flex items-center gap-2">
             <Smartphone className="w-4 h-4 text-emerald-400" />
-            <span className="font-bold text-white text-sm">ReCell Buyback Platform</span>
+            <span className="font-bold text-white text-sm">Dolly Buyback Platform</span>
             <span className="text-slate-500">· Strictly One-Way Buyback (No Retail Purchasing)</span>
           </div>
 
           <p className="text-slate-500 text-center">
-            © 2026 ReCell Mobile Buyback Ltd. All rights reserved. Registered under Indian IT & Electronic Waste Guidelines.
+            Copyrights reserved to 1103 TechStudios · Dolly Platform. Registered under Indian IT & Electronic Waste Guidelines.
           </p>
 
           <div className="flex gap-4">

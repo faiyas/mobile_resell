@@ -50,25 +50,30 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-18">
 
-          {/* 1103 RECELL Brand Logo */}
+          {/* Dolly Brand Logo */}
           <div
             onClick={() => setActiveTab((currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN') ? 'admin' : currentUser?.role === 'COLLECTION_AGENT' ? 'inspection' : 'sell')}
             className="flex items-center gap-2.5 cursor-pointer group shrink-0 select-none"
           >
-            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] flex items-center justify-center text-white shadow-lg shadow-[#0BAA4B]/25 group-hover:scale-105 transition-transform font-black text-sm border border-white/40">
-              1103
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] flex items-center justify-center text-white shadow-lg shadow-[#0BAA4B]/25 group-hover:scale-105 transition-transform border border-white/40">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a10 10 0 0 1 10 10 10 10 0 0 1-10 10" />
+                <path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10" strokeDasharray="3 3" />
+                <rect x="9" y="7" width="6" height="10" rx="1.5" fill="currentColor" fillOpacity="0.2" />
+                <circle cx="12" cy="14.5" r="0.75" fill="currentColor" />
+              </svg>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xl sm:text-2xl font-black tracking-tight text-[#17251C]">
-                  1103 RECELL
+                  Dolly
                 </span>
                 <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider bg-[#E8F8ED] text-[#087C38] px-1.5 py-0.5 rounded-full border border-[#0BAA4B]/20">
                   Buyback
                 </span>
               </div>
               <p className="text-[9px] sm:text-[10px] text-[#7B8980] font-bold tracking-wider uppercase -mt-0.5 hidden xs:block">
-                The Device Buyback Company
+                Device Buyback Platform · 1103 TechStudios
               </p>
             </div>
           </div>

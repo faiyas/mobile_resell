@@ -209,7 +209,7 @@ export default function AdminDashboard({ currentUser }) {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#087C38] via-[#0BAA4B] to-[#0D4722] text-white p-5 sm:p-8 rounded-3xl shadow-xl">
         <div>
           <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#E8F8ED] bg-white/20 border border-white/20 px-2.5 py-0.5 rounded-full inline-block">
-            Super Admin Control Center · 1103 RECELL Platform
+            Super Admin Control Center · Dolly Platform · 1103 TechStudios
           </span>
           <h1 className="text-xl sm:text-3xl font-black mt-2">
             Operations & Dynamic CMS Desk

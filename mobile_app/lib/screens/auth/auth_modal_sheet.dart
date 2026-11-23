@@ -127,7 +127,7 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _isRegister ? 'Join 1103 RECELL' : 'Welcome to 1103 RECELL',
+                            _isRegister ? 'Join Dolly' : 'Welcome to Dolly',
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
                           ),
                           const SizedBox(height: 3),
@@ -271,7 +271,7 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
                     child: TextButton(
                       onPressed: () => setState(() => _isRegister = !_isRegister),
                       child: Text(
-                        _isRegister ? 'Already have an account? Sign In' : 'New to 1103 RECELL? Create Account',
+                        _isRegister ? 'Already have an account? Sign In' : 'New to Dolly? Create Account',
                         style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 12),
                       ),
                     ),

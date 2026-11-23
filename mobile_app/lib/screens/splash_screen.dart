@@ -159,22 +159,12 @@ class _SplashScreenState extends State<SplashScreen>
                           textBaseline: TextBaseline.alphabetic,
                           children: const [
                             Text(
-                              '1103',
+                              'DOLLY',
                               style: TextStyle(
-                                fontSize: 32,
+                                fontSize: 34,
                                 fontWeight: FontWeight.w900,
                                 color: AppTheme.primaryGreen,
-                                letterSpacing: 1.5,
-                              ),
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'RECELL',
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w900,
-                                color: AppTheme.textPrimary,
-                                letterSpacing: 2.2,
+                                letterSpacing: 2.0,
                               ),
                             ),
                           ],

@@ -126,7 +126,7 @@ export default function CataloguePricingManager() {
       type: 'TEXT',
       title: 'Sell Your Old Device',
       subtitle: 'Get the best value for your phone, tablet, laptop & more with instant doorstep payout.',
-      badge: '1103 RECELL · Buyback Company',
+      badge: 'Dolly · Buyback Platform',
       cta_text: 'Start Selling Now',
       image_base64: '',
       is_active: true
@@ -727,7 +727,7 @@ export default function CataloguePricingManager() {
       type: 'TEXT',
       title: 'Sell Your Old Device',
       subtitle: 'Get top value with instant doorstep evaluation and payout.',
-      badge: '1103 RECELL · Special',
+      badge: 'Dolly · Special',
       cta_text: 'Start Selling Now',
       image_base64: '',
       is_active: true

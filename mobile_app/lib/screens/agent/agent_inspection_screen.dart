@@ -415,7 +415,7 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
             ),
           ),
         ),
-        title: const Text('1103 RECELL · Agent Desk', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text('Dolly · Agent Desk', style: TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             icon: const Icon(Icons.support_agent_rounded, color: AppTheme.primaryGreen),

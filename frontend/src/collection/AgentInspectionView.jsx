@@ -261,7 +261,7 @@ export default function AgentInspectionView({ currentUser }) {
         <div className="min-w-0 pr-2">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-200 bg-white/10 border border-white/20 px-2 py-0.5 rounded-lg">
-              1103 RECELL Field Agent
+              Dolly Field Agent
             </span>
             <span className="text-[9px] sm:text-[10px] text-emerald-100">
               {assignedSales.length} {assignedSales.length === 1 ? 'Pickup' : 'Pickups'} In Queue

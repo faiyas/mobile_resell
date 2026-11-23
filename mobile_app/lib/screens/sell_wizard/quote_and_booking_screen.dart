@@ -307,7 +307,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
         body: GlassBackgroundMesh(
           child: Center(
             child: RecellBrandLoader(
-              message: 'Calculating highest fair market offer...\n1103 Dynamic Valuation Engine',
+              message: 'Calculating highest fair market offer...\nDolly Dynamic Valuation Engine',
             ),
           ),
         ),

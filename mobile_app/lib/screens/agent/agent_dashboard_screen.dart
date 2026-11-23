@@ -257,7 +257,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
             ),
           ),
         ),
-        title: const Text('1103 RECELL · Agent Desk', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text('Dolly · Agent Desk', style: TextStyle(fontWeight: FontWeight.w900)),
         actions: [
           IconButton(
             icon: const Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen),
