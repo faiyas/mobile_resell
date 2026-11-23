@@ -69,6 +69,10 @@ export const api = {
   getMe: () => request('/auth/me/'),
   getAgents: () => request('/auth/agents/'),
   createAgent: (data) => request('/auth/agents/', { method: 'POST', body: JSON.stringify(data) }),
+  getCustomers: (search = '') => request(`/auth/customers/${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  createCustomer: (data) => request('/auth/customers/', { method: 'POST', body: JSON.stringify(data) }),
+  updateCustomer: (id, data) => request(`/auth/customers/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+  toggleCustomerActive: (id) => request(`/auth/customers/${id}/`, { method: 'DELETE' }),
 
   // Catalog & Categories
   getCategories: (all = false) => request(`/catalog/categories/?all=${all}`),

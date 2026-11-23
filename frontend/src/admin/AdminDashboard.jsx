@@ -4,7 +4,7 @@ import {
   IndianRupee, Smartphone, Clock, CheckCircle2, AlertCircle, 
   Search, Filter, QrCode, Upload, Eye, UserPlus, RefreshCw, 
   Layers, ShieldAlert, Award, FileText, ChevronRight, Sparkles,
-  Truck, X, MapPin, Calendar, UserCheck, User
+  Truck, X, MapPin, Calendar, UserCheck, User, Users, Phone, Mail, Edit3, Building, ShieldCheck
 } from 'lucide-react';
 import { api } from '../services/api';
 import PayoutModal from './PayoutModal';
@@ -18,6 +18,8 @@ export default function AdminDashboard({ currentUser }) {
   const [paymentsList, setPaymentsList] = useState({ total_count: 0, total_disbursed: 0, payments: [] });
   const [conditionCategories, setConditionCategories] = useState([]);
   const [agents, setAgents] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [customerSearch, setCustomerSearch] = useState('');
   
   const [loading, setLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState('');
@@ -92,6 +94,140 @@ export default function AdminDashboard({ currentUser }) {
     }
   };
 
+  // Customer Management Modals & Handlers
+  const [createCustomerModalOpen, setCreateCustomerModalOpen] = useState(false);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  
+  // New Customer form
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+  const [newCustEmail, setNewCustEmail] = useState('');
+  const [newCustPassword, setNewCustPassword] = useState('');
+  const [newCustAddress, setNewCustAddress] = useState('');
+  const [newCustCity, setNewCustCity] = useState('');
+  const [newCustPincode, setNewCustPincode] = useState('');
+  const [newCustUpi, setNewCustUpi] = useState('');
+  const [creatingCustLoading, setCreatingCustLoading] = useState(false);
+  const [custError, setCustError] = useState('');
+
+  // Edit Customer form
+  const [editCustName, setEditCustName] = useState('');
+  const [editCustPhone, setEditCustPhone] = useState('');
+  const [editCustEmail, setEditCustEmail] = useState('');
+  const [editCustAddress, setEditCustAddress] = useState('');
+  const [editCustCity, setEditCustCity] = useState('');
+  const [editCustPincode, setEditCustPincode] = useState('');
+  const [editCustUpi, setEditCustUpi] = useState('');
+  const [editCustActive, setEditCustActive] = useState(true);
+  const [editCustLoading, setEditCustLoading] = useState(false);
+
+  const handleCreateCustomer = async (e) => {
+    e.preventDefault();
+    if (!newCustName.trim() || !newCustPhone.trim() || !newCustEmail.trim() || !newCustPassword) {
+      setCustError('Please complete required fields (Name, Phone, Email, Password).');
+      return;
+    }
+    if (newCustPhone.trim().length !== 10) {
+      setCustError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    setCreatingCustLoading(true);
+    setCustError('');
+    try {
+      await api.createCustomer({
+        full_name: newCustName.trim(),
+        phone: newCustPhone.trim(),
+        email: newCustEmail.trim(),
+        password: newCustPassword,
+        default_address: newCustAddress.trim(),
+        city: newCustCity.trim(),
+        pincode: newCustPincode.trim(),
+        default_upi_id: newCustUpi.trim(),
+      });
+      setSuccessToast(`✓ Customer "${newCustName}" registered successfully!`);
+      setNewCustName('');
+      setNewCustPhone('');
+      setNewCustEmail('');
+      setNewCustPassword('');
+      setNewCustAddress('');
+      setNewCustCity('');
+      setNewCustPincode('');
+      setNewCustUpi('');
+      setCreateCustomerModalOpen(false);
+      const freshCusts = await api.getCustomers().catch(() => []);
+      setCustomers(freshCusts);
+    } catch (err) {
+      setCustError(err.message || 'Failed to create customer account.');
+    } finally {
+      setCreatingCustLoading(false);
+    }
+  };
+
+  const handleOpenEditCustomer = (c) => {
+    setEditingCustomer(c);
+    setEditCustName(c.full_name || '');
+    setEditCustPhone(c.phone || '');
+    setEditCustEmail(c.email || '');
+    setEditCustAddress(c.default_address || '');
+    setEditCustCity(c.city || '');
+    setEditCustPincode(c.pincode || '');
+    setEditCustUpi(c.default_upi_id || '');
+    setEditCustActive(c.is_active !== false);
+  };
+
+  const handleSaveCustomer = async (e) => {
+    e.preventDefault();
+    if (!editingCustomer) return;
+    setEditCustLoading(true);
+    try {
+      await api.updateCustomer(editingCustomer.id, {
+        full_name: editCustName.trim(),
+        phone: editCustPhone.trim(),
+        email: editCustEmail.trim(),
+        default_address: editCustAddress.trim(),
+        city: editCustCity.trim(),
+        pincode: editCustPincode.trim(),
+        default_upi_id: editCustUpi.trim(),
+        is_active: editCustActive,
+      });
+      setSuccessToast(`✓ Customer "${editCustName}" updated successfully!`);
+      setEditingCustomer(null);
+      const freshCusts = await api.getCustomers().catch(() => []);
+      setCustomers(freshCusts);
+    } catch (err) {
+      alert(err.message || 'Failed to update customer');
+    } finally {
+      setEditCustLoading(false);
+    }
+  };
+
+  const handlePromoteToAgent = async (c) => {
+    if (!window.confirm(`Are you sure you want to promote customer "${c.full_name || c.phone}" to a Field Collection Agent?`)) return;
+    try {
+      await api.updateCustomer(c.id, { role: 'COLLECTION_AGENT' });
+      setSuccessToast(`✓ ${c.full_name || c.phone} is now a Field Collection Agent!`);
+      const [freshCusts, freshAgents] = await Promise.all([
+        api.getCustomers().catch(() => []),
+        api.getAgents().catch(() => []),
+      ]);
+      setCustomers(freshCusts);
+      setAgents(freshAgents);
+    } catch (err) {
+      alert(err.message || 'Failed to promote customer');
+    }
+  };
+
+  const handleToggleCustomerActive = async (c) => {
+    try {
+      await api.toggleCustomerActive(c.id);
+      setSuccessToast(`✓ Customer account status updated!`);
+      const freshCusts = await api.getCustomers().catch(() => []);
+      setCustomers(freshCusts);
+    } catch (err) {
+      alert(err.message || 'Failed to toggle status');
+    }
+  };
+
   // History tab date filters
   const [historyPeriod, setHistoryPeriod] = useState('all');
   const [historyStartDate, setHistoryStartDate] = useState('');
@@ -124,16 +260,18 @@ export default function AdminDashboard({ currentUser }) {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [salesData, paymentsData, catsData, agentsData] = await Promise.all([
+      const [salesData, paymentsData, catsData, agentsData, customersData] = await Promise.all([
         api.getSales(),
         api.getPaymentsList().catch(() => ({ total_count: 0, total_disbursed: 0, payments: [] })),
         api.getConditionCategories(),
         api.getAgents().catch(() => []),
+        api.getCustomers().catch(() => []),
       ]);
       setSales(salesData);
       setPaymentsList(paymentsData);
       setConditionCategories(catsData);
       setAgents(agentsData);
+      setCustomers(customersData);
     } catch (e) {
       console.error(e);
     } finally {
@@ -379,6 +517,18 @@ export default function AdminDashboard({ currentUser }) {
         >
           <UserCheck className="w-3.5 h-3.5" />
           Field Agents ({agents.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('customers')}
+          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
+            activeTab === 'customers'
+              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
+              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          Customers ({customers.length})
         </button>
       </div>
 
@@ -814,6 +964,198 @@ export default function AdminDashboard({ currentUser }) {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ================= TAB 6: CUSTOMER MANAGEMENT ================= */}
+      {activeTab === 'customers' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in p-5 sm:p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base sm:text-lg font-black text-slate-900">Customer Directory & Accounts</h3>
+                <span className="text-xs font-black bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  {customers.length} Registered Clients
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Manage registered buyback customers, inspect verified contact numbers, default doorstep addresses, and payout UPI IDs.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setCreateCustomerModalOpen(true)}
+              className="bg-gradient-to-r from-[#087C38] to-[#0BAA4B] hover:brightness-105 text-white font-black py-2.5 px-4 rounded-xl text-xs shadow-md shadow-[#0BAA4B]/20 transition flex items-center gap-2 active:scale-98"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>+ Add Customer</span>
+            </button>
+          </div>
+
+          {/* Search bar */}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              <input
+                type="text"
+                value={customerSearch}
+                onChange={(e) => setCustomerSearch(e.target.value)}
+                placeholder="Search customers by name, phone, email, city, or UPI handle..."
+                className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            {customerSearch && (
+              <button
+                onClick={() => setCustomerSearch('')}
+                className="text-xs font-bold text-slate-500 hover:text-slate-800 px-3 py-2 bg-slate-100 rounded-xl"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* Customers Table */}
+          {customers.length === 0 ? (
+            <div className="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-10 text-center space-y-3">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 text-[#087C38] flex items-center justify-center">
+                <Users className="w-7 h-7" />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800">No Customers Registered Yet</h4>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Customer accounts created through the mobile app, web sell portal, or manual admin entry will appear here.
+              </p>
+              <button
+                onClick={() => setCreateCustomerModalOpen(true)}
+                className="mt-2 inline-flex items-center gap-2 bg-[#0BAA4B] text-white px-5 py-2.5 rounded-xl font-black text-xs shadow-md hover:bg-[#087C38] transition"
+              >
+                <UserPlus className="w-4 h-4" />
+                Add First Customer
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider border-y border-slate-200">
+                  <tr>
+                    <th className="py-3 px-3">Customer</th>
+                    <th className="py-3 px-3">Contact (Phone / Email)</th>
+                    <th className="py-3 px-3">Doorstep Address</th>
+                    <th className="py-3 px-3">Saved UPI ID</th>
+                    <th className="py-3 px-3">Lifetime Buyback</th>
+                    <th className="py-3 px-3">Status</th>
+                    <th className="py-3 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {customers
+                    .filter(c => {
+                      if (!customerSearch) return true;
+                      const q = customerSearch.toLowerCase();
+                      return (c.full_name || '').toLowerCase().includes(q) ||
+                             (c.phone || '').includes(q) ||
+                             (c.email || '').toLowerCase().includes(q) ||
+                             (c.city || '').toLowerCase().includes(q) ||
+                             (c.default_upi_id || '').toLowerCase().includes(q);
+                    })
+                    .map((c) => (
+                      <tr key={c.id} className="hover:bg-slate-50/80 transition">
+                        <td className="py-3.5 px-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] text-white flex items-center justify-center font-black text-xs shadow-sm shrink-0">
+                              {c.full_name ? c.full_name[0].toUpperCase() : 'C'}
+                            </div>
+                            <div>
+                              <p className="font-extrabold text-slate-900 text-xs">{c.full_name || 'Anonymous Customer'}</p>
+                              <span className="text-[10px] text-slate-400">ID: #{c.id} · Joined {c.created_at ? new Date(c.created_at).toLocaleDateString() : 'Recent'}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-3">
+                          <p className="font-mono font-bold text-slate-800 text-xs">{c.phone || '—'}</p>
+                          <p className="text-slate-500 text-[11px] truncate max-w-[160px]">{c.email || '—'}</p>
+                        </td>
+
+                        <td className="py-3.5 px-3 max-w-[200px]">
+                          {c.default_address || c.city || c.pincode ? (
+                            <div>
+                              <p className="truncate text-slate-800 font-medium">{c.default_address || 'Address provided'}</p>
+                              <span className="text-[10px] text-slate-400">{[c.city, c.pincode].filter(Boolean).join(' - ')}</span>
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">No address saved</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-3">
+                          {c.default_upi_id ? (
+                            <span className="font-mono font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg text-[11px]">
+                              {c.default_upi_id}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">None</span>
+                          )}
+                        </td>
+
+                        <td className="py-3.5 px-3">
+                          <p className="font-black text-slate-900">₹{Number(c.total_sales_value || 0).toLocaleString('en-IN')}</p>
+                          <span className="text-[10px] text-slate-500 font-bold">{c.orders_count || 0} Orders</span>
+                        </td>
+
+                        <td className="py-3.5 px-3">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleCustomerActive(c)}
+                            title="Click to toggle active status"
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border cursor-pointer transition ${
+                              c.is_active !== false
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                : 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100'
+                            }`}
+                          >
+                            {c.is_active !== false ? 'Active' : 'Disabled'}
+                          </button>
+                        </td>
+
+                        <td className="py-3.5 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveTab('sales');
+                                setSearchQuery(c.phone || c.full_name);
+                              }}
+                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold transition"
+                              title="View all device sales by this customer"
+                            >
+                              Orders
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditCustomer(c)}
+                              className="p-1 text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition"
+                              title="Edit Customer"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handlePromoteToAgent(c)}
+                              className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[10px] font-extrabold transition"
+                              title="Promote this customer to a Field Collection Agent"
+                            >
+                              Make Agent
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -1395,6 +1737,310 @@ export default function AdminDashboard({ currentUser }) {
                       <UserPlus className="w-3.5 h-3.5" />
                       <span>Create Agent Account</span>
                     </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Create Customer Modal */}
+      {createCustomerModalOpen && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col">
+            <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] text-white p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                  <UserPlus className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base">Register New Customer</h3>
+                  <p className="text-[11px] text-emerald-100">Create a customer profile with contact & payout details</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCreateCustomerModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCustomer} className="p-5 overflow-y-auto space-y-3.5">
+              {custError && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                  <span>{custError}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Customer Name"
+                    value={newCustName}
+                    onChange={(e) => setNewCustName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">10-Digit Mobile *</label>
+                  <input
+                    type="tel"
+                    required
+                    maxLength={10}
+                    placeholder="9876543210"
+                    value={newCustPhone}
+                    onChange={(e) => setNewCustPhone(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="customer@email.com"
+                    value={newCustEmail}
+                    onChange={(e) => setNewCustEmail(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Initial Password *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Password"
+                    value={newCustPassword}
+                    onChange={(e) => setNewCustPassword(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Doorstep Address (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="House / Street / Area"
+                  value={newCustAddress}
+                  onChange={(e) => setNewCustAddress(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">City (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Bengaluru"
+                    value={newCustCity}
+                    onChange={(e) => setNewCustCity(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Pincode (Optional)</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="560001"
+                    value={newCustPincode}
+                    onChange={(e) => setNewCustPincode(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Default Payout UPI ID (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. customer@okhdfcbank"
+                  value={newCustUpi}
+                  onChange={(e) => setNewCustUpi(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setCreateCustomerModalOpen(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingCustLoading}
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#087C38] to-[#0BAA4B] hover:brightness-105 text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#0BAA4B]/20 transition flex items-center gap-2 disabled:opacity-50 active:scale-98"
+                >
+                  {creatingCustLoading ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Register Customer</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Edit Customer Modal */}
+      {editingCustomer && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in max-h-[90vh] flex flex-col">
+            <div className="bg-slate-900 text-white p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center">
+                  <Edit3 className="w-5 h-5 text-emerald-400" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base">Edit Customer: {editingCustomer.full_name || editingCustomer.phone}</h3>
+                  <p className="text-[11px] text-slate-400">Update verified contact, address, or payment details</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingCustomer(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCustomer} className="p-5 overflow-y-auto space-y-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={editCustName}
+                    onChange={(e) => setEditCustName(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">10-Digit Mobile</label>
+                  <input
+                    type="tel"
+                    required
+                    maxLength={10}
+                    value={editCustPhone}
+                    onChange={(e) => setEditCustPhone(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  value={editCustEmail}
+                  onChange={(e) => setEditCustEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Doorstep Address</label>
+                <input
+                  type="text"
+                  value={editCustAddress}
+                  onChange={(e) => setEditCustAddress(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">City</label>
+                  <input
+                    type="text"
+                    value={editCustCity}
+                    onChange={(e) => setEditCustCity(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Pincode</label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={editCustPincode}
+                    onChange={(e) => setEditCustPincode(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Default Payout UPI ID</label>
+                <input
+                  type="text"
+                  placeholder="e.g. mobile@upi"
+                  value={editCustUpi}
+                  onChange={(e) => setEditCustUpi(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="editCustActiveCheckbox"
+                  checked={editCustActive}
+                  onChange={(e) => setEditCustActive(e.target.checked)}
+                  className="w-4 h-4 text-[#0BAA4B] rounded focus:ring-[#0BAA4B]"
+                />
+                <label htmlFor="editCustActiveCheckbox" className="text-xs font-bold text-slate-700">
+                  Account Active (Uncheck to suspend customer login)
+                </label>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setEditingCustomer(null)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editCustLoading}
+                  className="px-5 py-2.5 bg-slate-900 hover:bg-black text-white font-extrabold rounded-xl text-xs shadow-md transition flex items-center gap-2 disabled:opacity-50 active:scale-98"
+                >
+                  {editCustLoading ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
                   )}
                 </button>
               </div>

@@ -1,15 +1,39 @@
+from django.db import models
 from rest_framework import serializers
 from .models import User
 
 class UserSerializer(serializers.ModelSerializer):
+    orders_count = serializers.SerializerMethodField(read_only=True)
+    total_sales_value = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = User
         fields = [
             'id', 'email', 'phone', 'full_name', 'role',
             'default_address', 'city', 'pincode', 'default_upi_id',
-            'is_staff', 'is_superuser', 'created_at'
+            'is_active', 'is_staff', 'is_superuser', 'created_at',
+            'orders_count', 'total_sales_value'
         ]
-        read_only_fields = ['id', 'email', 'role', 'is_staff', 'is_superuser', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+    def get_orders_count(self, obj):
+        try:
+            from apps.sales.models import SaleOrder
+            return SaleOrder.objects.filter(models.Q(customer=obj) | models.Q(customer_phone=obj.phone)).count()
+        except Exception:
+            return 0
+
+    def get_total_sales_value(self, obj):
+        try:
+            from apps.sales.models import SaleOrder
+            from django.db.models import Sum
+            res = SaleOrder.objects.filter(
+                models.Q(customer=obj) | models.Q(customer_phone=obj.phone),
+                status__in=['OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED']
+            ).aggregate(Sum('final_price'))['final_price__sum']
+            return float(res or 0)
+        except Exception:
+            return 0.0
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)

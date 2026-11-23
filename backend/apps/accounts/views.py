@@ -107,3 +107,98 @@ def collection_agents_view(request):
 
     agents = User.objects.filter(role__in=['COLLECTION_AGENT', 'AGENT', 'FIELD_AGENT'], is_active=True)
     return Response(UserSerializer(agents, many=True).data)
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def customers_view(request):
+    """List and manage registered customers (Admin only)"""
+    is_admin = bool(
+        getattr(request.user, 'role', '') in ['ADMIN', 'SUPER_ADMIN'] or 
+        getattr(request.user, 'is_staff', False) or 
+        getattr(request.user, 'is_superuser', False)
+    )
+    if not is_admin:
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method == 'POST':
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        data['role'] = 'CUSTOMER'
+        serializer = RegisterSerializer(data=data, context={'is_admin': True})
+        if serializer.is_valid():
+            customer = serializer.save()
+            for field in ['default_address', 'city', 'pincode', 'default_upi_id']:
+                if field in data and data[field]:
+                    setattr(customer, field, str(data[field]).strip())
+            customer.save()
+            return Response({
+                'message': 'Customer account created successfully',
+                'customer': UserSerializer(customer).data
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    search = request.GET.get('search', '').strip()
+    customers = User.objects.filter(role='CUSTOMER')
+    if search:
+        from django.db.models import Q
+        customers = customers.filter(
+            Q(full_name__icontains=search) |
+            Q(phone__icontains=search) |
+            Q(email__icontains=search) |
+            Q(city__icontains=search)
+        )
+    customers = customers.order_by('-created_at')
+    return Response(UserSerializer(customers, many=True).data)
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def customer_detail_view(request, user_id):
+    """View, update or toggle active state of a customer (Admin only)"""
+    is_admin = bool(
+        getattr(request.user, 'role', '') in ['ADMIN', 'SUPER_ADMIN'] or 
+        getattr(request.user, 'is_staff', False) or 
+        getattr(request.user, 'is_superuser', False)
+    )
+    if not is_admin:
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        customer = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return Response({'detail': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(UserSerializer(customer).data)
+
+    if request.method in ['PUT', 'PATCH']:
+        data = request.data
+        if 'role' in data and data['role'] in ['CUSTOMER', 'COLLECTION_AGENT', 'ADMIN', 'SUPER_ADMIN']:
+            customer.role = data['role']
+        if 'is_active' in data:
+            customer.is_active = bool(data['is_active'])
+        if 'full_name' in data and data['full_name']:
+            customer.full_name = str(data['full_name']).strip()
+        if 'phone' in data and data['phone']:
+            customer.phone = str(data['phone']).strip()
+        if 'email' in data and data['email']:
+            customer.email = str(data['email']).strip().lower()
+        if 'default_address' in data:
+            customer.default_address = str(data['default_address']).strip()
+        if 'city' in data:
+            customer.city = str(data['city']).strip()
+        if 'pincode' in data:
+            customer.pincode = str(data['pincode']).strip()
+        if 'default_upi_id' in data:
+            customer.default_upi_id = str(data['default_upi_id']).strip()
+        customer.save()
+        return Response({
+            'message': 'Customer details updated successfully',
+            'customer': UserSerializer(customer).data
+        })
+
+    if request.method == 'DELETE':
+        customer.is_active = not customer.is_active
+        customer.save()
+        return Response({
+            'message': f"Customer {'activated' if customer.is_active else 'deactivated'} successfully",
+            'is_active': customer.is_active
+        })
