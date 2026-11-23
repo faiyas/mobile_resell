@@ -68,6 +68,7 @@ export const api = {
   register: (payload) => request('/auth/register/', { method: 'POST', body: JSON.stringify(payload) }),
   getMe: () => request('/auth/me/'),
   getAgents: () => request('/auth/agents/'),
+  createAgent: (data) => request('/auth/agents/', { method: 'POST', body: JSON.stringify(data) }),
 
   // Catalog & Categories
   getCategories: (all = false) => request(`/catalog/categories/?all=${all}`),

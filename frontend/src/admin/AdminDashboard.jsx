@@ -45,6 +45,53 @@ export default function AdminDashboard({ currentUser }) {
   const [assigningLoading, setAssigningLoading] = useState(false);
   const [successToast, setSuccessToast] = useState('');
 
+  // Add Field Agent Modal State
+  const [createAgentModalOpen, setCreateAgentModalOpen] = useState(false);
+  const [newAgentName, setNewAgentName] = useState('');
+  const [newAgentPhone, setNewAgentPhone] = useState('');
+  const [newAgentEmail, setNewAgentEmail] = useState('');
+  const [newAgentPassword, setNewAgentPassword] = useState('');
+  const [creatingAgentLoading, setCreatingAgentLoading] = useState(false);
+  const [agentCreateError, setAgentCreateError] = useState('');
+
+  const handleCreateAgent = async (e) => {
+    e.preventDefault();
+    if (!newAgentName.trim() || !newAgentPhone.trim() || !newAgentEmail.trim() || !newAgentPassword) {
+      setAgentCreateError('Please complete all fields.');
+      return;
+    }
+    if (newAgentPhone.trim().length !== 10) {
+      setAgentCreateError('Please enter a valid 10-digit mobile number.');
+      return;
+    }
+    setCreatingAgentLoading(true);
+    setAgentCreateError('');
+    try {
+      await api.createAgent({
+        full_name: newAgentName.trim(),
+        phone: newAgentPhone.trim(),
+        email: newAgentEmail.trim(),
+        password: newAgentPassword,
+      });
+      setSuccessToast(`✓ Field Agent "${newAgentName}" created successfully!`);
+      setNewAgentName('');
+      setNewAgentPhone('');
+      setNewAgentEmail('');
+      setNewAgentPassword('');
+      setCreateAgentModalOpen(false);
+      // Refresh agents list
+      const freshAgents = await api.getAgents().catch(() => []);
+      setAgents(freshAgents);
+      if (freshAgents.length > 0 && !selectedAgentId) {
+        setSelectedAgentId(String(freshAgents[0].id));
+      }
+    } catch (err) {
+      setAgentCreateError(err.message || 'Failed to create field agent.');
+    } finally {
+      setCreatingAgentLoading(false);
+    }
+  };
+
   // History tab date filters
   const [historyPeriod, setHistoryPeriod] = useState('all');
   const [historyStartDate, setHistoryStartDate] = useState('');
@@ -321,6 +368,18 @@ export default function AdminDashboard({ currentUser }) {
           <CheckCircle2 className="w-3.5 h-3.5" />
           Payout History ({paymentsList.total_count})
         </button>
+
+        <button
+          onClick={() => setActiveTab('agents')}
+          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
+            activeTab === 'agents'
+              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
+              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
+          }`}
+        >
+          <UserCheck className="w-3.5 h-3.5" />
+          Field Agents ({agents.length})
+        </button>
       </div>
 
       {/* ================= TAB 1: PAYOUT DESK ================= */}
@@ -397,8 +456,8 @@ export default function AdminDashboard({ currentUser }) {
       {/* ================= TAB 2: ALL CUSTOMER SALES ================= */}
       {activeTab === 'sales' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in space-y-4 p-5">
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          {/* Filters, Search & Add Agent Action */}
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
@@ -410,19 +469,30 @@ export default function AdminDashboard({ currentUser }) {
               />
             </div>
 
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="">All Statuses</option>
-              <option value="SUBMITTED">Submitted</option>
-              <option value="PICKUP_SCHEDULED">Pickup Scheduled</option>
-              <option value="FINAL_OFFER_SENT">Final Offer Sent</option>
-              <option value="CUSTOMER_ACCEPTED">Offer Confirmed by Customer</option>
-              <option value="OWNERSHIP_TRANSFERRED">Pickup Completed (In Custody)</option>
-              <option value="PAYMENT_COMPLETED">Payment Completed (Paid)</option>
-            </select>
+            <div className="flex items-center gap-2">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">All Statuses</option>
+                <option value="SUBMITTED">Submitted</option>
+                <option value="PICKUP_SCHEDULED">Pickup Scheduled</option>
+                <option value="FINAL_OFFER_SENT">Final Offer Sent</option>
+                <option value="CUSTOMER_ACCEPTED">Offer Confirmed by Customer</option>
+                <option value="OWNERSHIP_TRANSFERRED">Pickup Completed (In Custody)</option>
+                <option value="PAYMENT_COMPLETED">Payment Completed (Paid)</option>
+              </select>
+
+              <button
+                type="button"
+                onClick={() => setCreateAgentModalOpen(true)}
+                className="px-3.5 py-2 bg-gradient-to-r from-[#087C38] to-[#0BAA4B] hover:brightness-105 text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#0BAA4B]/20 transition flex items-center gap-1.5 shrink-0 active:scale-98"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                <span>+ Add Field Agent</span>
+              </button>
+            </div>
           </div>
 
           {/* Table */}
@@ -660,6 +730,95 @@ export default function AdminDashboard({ currentUser }) {
         </div>
       )}
 
+      {/* ================= TAB 5: FIELD AGENTS MANAGEMENT ================= */}
+      {activeTab === 'agents' && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-fade-in p-5 sm:p-6 space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-5">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base sm:text-lg font-black text-slate-900">Field Collection Specialists</h3>
+                <span className="text-xs font-black bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  {agents.length} Active Staff
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Manage field collection agents responsible for doorstep gadget inspection, IMEI testing, and customer handovers.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setCreateAgentModalOpen(true)}
+              className="bg-gradient-to-r from-[#087C38] to-[#0BAA4B] hover:brightness-105 text-white font-black py-2.5 px-4 rounded-xl text-xs shadow-md shadow-[#0BAA4B]/20 transition flex items-center gap-2 active:scale-98"
+            >
+              <UserPlus className="w-4 h-4" />
+              <span>+ Add Field Agent</span>
+            </button>
+          </div>
+
+          {agents.length === 0 ? (
+            <div className="bg-slate-50 border border-dashed border-slate-300 rounded-2xl p-10 text-center space-y-3">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-100 text-[#087C38] flex items-center justify-center">
+                <UserCheck className="w-7 h-7" />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800">No Field Agents Configured Yet</h4>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Create field agent accounts so you can schedule doorstep inspections and assign pickup requests across your service zones.
+              </p>
+              <button
+                onClick={() => setCreateAgentModalOpen(true)}
+                className="mt-2 inline-flex items-center gap-2 bg-[#0BAA4B] text-white px-5 py-2.5 rounded-xl font-black text-xs shadow-md hover:bg-[#087C38] transition"
+              >
+                <UserPlus className="w-4 h-4" />
+                Create First Field Agent
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {agents.map((ag) => {
+                const assignedPickups = sales.filter(s => String(s.assigned_agent) === String(ag.id) && ['PICKUP_SCHEDULED', 'PICKED_UP', 'INSPECTION_PENDING'].includes(s.status)).length;
+                return (
+                  <div key={ag.id} className="border border-slate-200 rounded-2xl p-4 bg-gradient-to-br from-white to-slate-50 shadow-sm space-y-3 hover:border-emerald-300 transition">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] text-white flex items-center justify-center font-black text-sm shadow-sm">
+                          {ag.full_name ? ag.full_name[0].toUpperCase() : 'A'}
+                        </div>
+                        <div>
+                          <h4 className="font-black text-sm text-slate-900">{ag.full_name}</h4>
+                          <p className="text-xs text-slate-500 font-mono">{ag.phone}</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                        Active Staff
+                      </span>
+                    </div>
+
+                    <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-xl border border-slate-100 space-y-1">
+                      <p className="truncate"><strong className="text-slate-700">Email:</strong> {ag.email}</p>
+                      <p><strong className="text-slate-700">Role:</strong> {ag.role || 'COLLECTION_AGENT'}</p>
+                      <p><strong className="text-slate-700">Active Queue:</strong> <span className="font-bold text-amber-600">{assignedPickups} Pending Pickups</span></p>
+                    </div>
+
+                    <div className="pt-1 flex items-center justify-between text-xs">
+                      <span className="text-[10px] text-slate-400">ID: #{ag.id}</span>
+                      <button
+                        onClick={() => {
+                          setActiveTab('sales');
+                          setSearchQuery(ag.full_name);
+                        }}
+                        className="text-[#087C38] hover:underline font-bold text-[11px] flex items-center gap-1"
+                      >
+                        View Assigned Orders →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Payout Modal */}
       {payoutSale && (
         <PayoutModal
@@ -757,9 +916,22 @@ export default function AdminDashboard({ currentUser }) {
                       <UserCheck className="w-3.5 h-3.5 text-[#0BAA4B]" />
                       <span>Assign Field Collection Specialist</span>
                     </label>
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                      {agents.length} Staff Available
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                        {agents.length} Staff Available
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAssignSale(null);
+                          setCreateAgentModalOpen(true);
+                        }}
+                        className="text-[10px] font-extrabold text-[#087C38] bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded-full transition flex items-center gap-1"
+                      >
+                        <UserPlus className="w-3 h-3" />
+                        + Add Agent
+                      </button>
+                    </div>
                   </div>
                   <select
                     required
@@ -1115,6 +1287,121 @@ export default function AdminDashboard({ currentUser }) {
           receiptData={receiptData}
           onClose={() => setReceiptData(null)}
         />
+      )}
+
+      {/* Create Field Agent Modal */}
+      {createAgentModalOpen && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-100 overflow-hidden animate-zoom-in">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-[#0D4722] via-[#087C38] to-[#0BAA4B] text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center">
+                  <UserPlus className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base">Add New Field Agent</h3>
+                  <p className="text-[11px] text-emerald-100">Create staff login for doorstep inspection app</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCreateAgentModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleCreateAgent} className="p-5 space-y-4">
+              {agentCreateError && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-500" />
+                  <span>{agentCreateError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Rahul Sharma"
+                  value={newAgentName}
+                  onChange={(e) => setNewAgentName(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">10-Digit Mobile Number *</label>
+                <input
+                  type="tel"
+                  required
+                  maxLength={10}
+                  placeholder="e.g. 9876543210"
+                  value={newAgentPhone}
+                  onChange={(e) => setNewAgentPhone(e.target.value.replace(/\D/g, ''))}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Agent will use this mobile number to log into the field app.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Official Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. rahul.agent@dolly.com"
+                  value={newAgentEmail}
+                  onChange={(e) => setNewAgentEmail(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Initial Password *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Agent@2026"
+                  value={newAgentPassword}
+                  onChange={(e) => setNewAgentPassword(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setCreateAgentModalOpen(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingAgentLoading}
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#087C38] to-[#0BAA4B] hover:brightness-105 text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#0BAA4B]/20 transition flex items-center gap-2 disabled:opacity-50 active:scale-98"
+                >
+                  {creatingAgentLoading ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Creating Agent...</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>Create Agent Account</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
       )}
 
     </div>
