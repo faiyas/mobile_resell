@@ -11,7 +11,11 @@ from .authentication import generate_jwt_token
 @permission_classes([AllowAny])
 def register_view(request):
     data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-    is_admin = bool(request.user and request.user.is_authenticated and getattr(request.user, 'role', '') == 'ADMIN')
+    is_admin = bool(request.user and request.user.is_authenticated and (
+        getattr(request.user, 'role', '') in ['ADMIN', 'SUPER_ADMIN'] or
+        getattr(request.user, 'is_staff', False) or
+        getattr(request.user, 'is_superuser', False)
+    ))
     if not is_admin:
         data['role'] = 'CUSTOMER'
 
@@ -77,12 +81,29 @@ def me_view(request):
         'user': UserSerializer(request.user).data
     })
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def collection_agents_view(request):
-    """List collection agents for assignment (Admin only)"""
-    if request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+    """List or create collection agents (Admin only)"""
+    is_admin = bool(
+        getattr(request.user, 'role', '') in ['ADMIN', 'SUPER_ADMIN'] or 
+        getattr(request.user, 'is_staff', False) or 
+        getattr(request.user, 'is_superuser', False)
+    )
+    if not is_admin:
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
     
-    agents = User.objects.filter(role='COLLECTION_AGENT', is_active=True)
+    if request.method == 'POST':
+        data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
+        data['role'] = 'COLLECTION_AGENT'
+        serializer = RegisterSerializer(data=data, context={'is_admin': True})
+        if serializer.is_valid():
+            agent = serializer.save()
+            return Response({
+                'message': 'Collection Agent created successfully',
+                'agent': UserSerializer(agent).data
+            }, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    agents = User.objects.filter(role__in=['COLLECTION_AGENT', 'AGENT', 'FIELD_AGENT'], is_active=True)
     return Response(UserSerializer(agents, many=True).data)

@@ -29,12 +29,13 @@ export default function App() {
     const user = getCurrentUser();
     if (user) {
       setCurrentUser(user);
+      const role = (user.role || '').toUpperCase();
       // Auto-route to dedicated workspace on load (never show guest landing page if logged in)
-      if ((user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) {
+      if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
         setActiveTab('admin');
-      } else if (user.role === 'COLLECTION_AGENT') {
+      } else if (role === 'COLLECTION_AGENT' || role === 'AGENT' || role === 'FIELD_AGENT') {
         setActiveTab('inspection');
-      } else if (user.role === 'CUSTOMER') {
+      } else if (role === 'CUSTOMER') {
         setActiveTab('track');
       }
     }
@@ -72,10 +73,11 @@ export default function App() {
 
   const handleAuthSuccess = (user) => {
     setCurrentUser(user);
+    const role = (user?.role || '').toUpperCase();
     // Strict automatic role-based redirection
-    if ((user.role === 'ADMIN' || user.role === 'SUPER_ADMIN')) {
+    if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
       setActiveTab('admin');
-    } else if (user.role === 'COLLECTION_AGENT') {
+    } else if (role === 'COLLECTION_AGENT' || role === 'AGENT' || role === 'FIELD_AGENT') {
       setActiveTab('inspection');
     } else {
       setActiveTab('track');
@@ -83,8 +85,9 @@ export default function App() {
   };
 
   // Route security guard: enforce permissions
-  const canAccessAdmin = (currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN');
-  const canAccessAgent = currentUser?.role === 'COLLECTION_AGENT' || (currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN');
+  const userRole = (currentUser?.role || '').toUpperCase();
+  const canAccessAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+  const canAccessAgent = canAccessAdmin || userRole === 'COLLECTION_AGENT' || userRole === 'AGENT' || userRole === 'FIELD_AGENT';
 
   return (
     <div className="min-h-screen flex flex-col bg-mesh-canvas text-[#17251C] selection:bg-[#0BAA4B] selection:text-white antialiased">

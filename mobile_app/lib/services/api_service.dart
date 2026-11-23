@@ -114,6 +114,34 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> createAgent(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/agents/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 201) {
+      final data = jsonDecode(res.body);
+      return data;
+    } else {
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map) {
+          if (err['detail'] != null) throw Exception(err['detail']);
+          if (err['message'] != null) throw Exception(err['message']);
+          final firstVal = err.values.isNotEmpty ? err.values.first : null;
+          if (firstVal is List && firstVal.isNotEmpty) throw Exception(firstVal.first.toString());
+          if (firstVal != null) throw Exception(firstVal.toString());
+        }
+      } catch (e) {
+        if (e is Exception && !e.toString().contains('FormatException')) rethrow;
+      }
+      throw Exception('Failed to create agent account.');
+    }
+  }
+
   Future<UserModel> getProfile() async {
     final url = Uri.parse('${ApiConfig.baseUrl}/auth/me/');
     final res = await http.get(url, headers: _headers);

@@ -10,8 +10,8 @@ class UserModel {
   final String pincode;
   final String defaultUpiId;
 
-  bool get isAdmin => role == 'ADMIN' || role == 'SUPER_ADMIN';
-  bool get isAgent => role == 'COLLECTION_AGENT';
+  bool get isAdmin => role.toUpperCase() == 'ADMIN' || role.toUpperCase() == 'SUPER_ADMIN';
+  bool get isAgent => role.toUpperCase() == 'COLLECTION_AGENT' || role.toUpperCase() == 'AGENT' || role.toUpperCase() == 'FIELD_AGENT';
   bool get isStaff => isAdmin || isAgent;
   bool get isCustomer => !isStaff;
 

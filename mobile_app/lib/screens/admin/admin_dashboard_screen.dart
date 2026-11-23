@@ -265,12 +265,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
 
                           Navigator.pop(ctx);
                           try {
-                            await _api.register({
+                            await _api.createAgent({
                               'full_name': name,
                               'phone': phone,
                               'email': email,
                               'password': pass,
-                              'role': 'COLLECTION_AGENT',
                             });
                             _loadAdminData();
                             ScaffoldMessenger.of(context).showSnackBar(

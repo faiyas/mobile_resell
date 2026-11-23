@@ -113,7 +113,7 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
             )}
 
             {/* Show Agent Portal ONLY to Collection Staff & Admin */}
-            {(currentUser?.role === 'COLLECTION_AGENT' || (currentUser?.role === 'ADMIN' || currentUser?.role === 'SUPER_ADMIN')) && (
+            {(['COLLECTION_AGENT', 'AGENT', 'FIELD_AGENT', 'ADMIN', 'SUPER_ADMIN'].includes((currentUser?.role || '').toUpperCase())) && (
               <button
                 onClick={() => setActiveTab('inspection')}
                 className={`px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 font-extrabold ${activeTab === 'inspection'

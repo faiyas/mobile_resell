@@ -515,8 +515,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = _api.currentUser;
-    final isAdmin = user?.role == 'ADMIN' || user?.role == 'SUPER_ADMIN';
-    final isAgent = user?.role == 'COLLECTION_AGENT';
+    final isAdmin = user?.isAdmin ?? false;
+    final isAgent = user?.isAgent ?? false;
 
     // Strict Role-Based Screens
     Widget body;
