@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../services/api_service.dart';
+import '../services/customer_cache_service.dart';
 import '../services/draft_sell_service.dart';
 import '../widgets/brand_logo.dart';
 import 'home_screen.dart';
@@ -66,7 +67,7 @@ class _SplashScreenState extends State<SplashScreen>
         await api.init();
 
         // Step B: Pre-warm backend and delta-sync fresh CMS content in parallel
-        await Future.wait([
+        await Future.wait<dynamic>([
           api.pingHealth().catchError((_) => false),
           CustomerCacheService.syncCustomerDataSilently(api).catchError((_) => false),
           DraftSellService.getDraft().catchError((_) => null),
