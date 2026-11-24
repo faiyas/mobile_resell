@@ -102,6 +102,8 @@ export const api = {
 
   getCMSSections: () => request('/catalog/cms/sections/'),
   updateCMSSection: (data) => request('/catalog/cms/sections/', { method: 'POST', body: JSON.stringify(data) }),
+  getSystemSettings: () => request('/catalog/settings/'),
+  updateSystemSettings: (data) => request('/catalog/settings/', { method: 'POST', body: JSON.stringify(data) }),
 
   getVariants: (modelId, all = false) => request(`/catalog/variants/?${modelId ? `model=${modelId}&` : ''}all=${all}`),
   createVariant: (data) => request('/catalog/variants/', { method: 'POST', body: JSON.stringify(data) }),

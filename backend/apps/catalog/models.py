@@ -102,6 +102,7 @@ class CMSHomeSection(models.Model):
         ('CATEGORIES', 'Device Categories'),
         ('SECURITY_BANNER', 'Security & Trust Banner'),
         ('CUSTOM_BANNER', 'Custom Promotional Banner'),
+        ('SYSTEM_SETTINGS', 'System Operations Settings'),
     )
     section_type = models.CharField(max_length=50, choices=SECTION_TYPES, unique=True)
     title = models.CharField(max_length=150)

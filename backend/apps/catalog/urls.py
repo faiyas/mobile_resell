@@ -5,7 +5,7 @@ from .views import (
     series_list_view, series_detail_view,
     models_list_view, model_detail_view, 
     variants_list_create_view, variant_detail_view,
-    cms_sections_view
+    cms_sections_view, system_settings_view
 )
 
 urlpatterns = [
@@ -31,4 +31,7 @@ urlpatterns = [
 
     # Dynamic CMS Home Sections
     path('cms/sections/', cms_sections_view, name='catalog-cms-sections'),
+
+    # System Operational Settings
+    path('settings/', system_settings_view, name='catalog-system-settings'),
 ]

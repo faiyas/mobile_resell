@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings, ShieldCheck, CheckCircle2, Clock, IndianRupee, 
-  MapPin, Bell, Globe, Save, RefreshCw, Key, Shield, UserCheck
+  MapPin, Bell, Globe, Save, RefreshCw, Key, Shield, UserCheck, AlertCircle
 } from 'lucide-react';
+import { api } from '../services/api';
 
 export default function SystemSettingsView({ mode = 'settings' }) {
   const [activeTab, setActiveTab] = useState(mode); // 'settings' | 'roles'
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Settings form state
   const [form, setForm] = useState({
@@ -21,10 +25,44 @@ export default function SystemSettingsView({ mode = 'settings' }) {
     companyName: 'Dolly Buyback Services Pvt Ltd'
   });
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    setActiveTab(mode);
+  }, [mode]);
+
+  useEffect(() => {
+    loadSettingsFromBackend();
+  }, []);
+
+  const loadSettingsFromBackend = async () => {
+    setLoading(true);
+    try {
+      const data = await api.getSystemSettings();
+      if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+        setForm(prev => ({ ...prev, ...data }));
+      }
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
+    setSaving(true);
+    setErrorMsg('');
+    try {
+      const updated = await api.updateSystemSettings(form);
+      if (updated) {
+        setForm(prev => ({ ...prev, ...updated }));
+      }
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4000);
+    } catch (err) {
+      setErrorMsg(err.message || 'Failed to save system settings.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -150,13 +188,21 @@ export default function SystemSettingsView({ mode = 'settings' }) {
             </div>
           </div>
 
+          {errorMsg && (
+            <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2 animate-fade-in">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
           <div className="flex justify-end">
             <button
               type="submit"
-              className="bg-[#0BAA4B] hover:bg-[#087C38] text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition flex items-center gap-2"
+              disabled={saving}
+              className="bg-[#0BAA4B] hover:bg-[#087C38] disabled:opacity-50 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition flex items-center gap-2"
             >
-              <Save className="w-4 h-4" />
-              <span>Save System Settings</span>
+              {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              <span>{saving ? 'Saving Settings...' : 'Save System Settings'}</span>
             </button>
           </div>
         </form>

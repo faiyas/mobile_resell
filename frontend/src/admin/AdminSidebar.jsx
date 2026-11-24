@@ -55,9 +55,7 @@ export default function AdminSidebar({
     {
       title: 'WEBSITE CMS',
       items: [
-        { id: 'cms', label: 'Homepage (CMS)', icon: Monitor, count: counts.cms },
-        { id: 'hero_banners', label: 'Hero Banners', icon: Image },
-        { id: 'promotions', label: 'Promotional Banners', icon: Megaphone }
+        { id: 'cms', label: 'Hero Banners (CMS)', icon: Image, count: counts.cms }
       ]
     },
     {
@@ -78,9 +76,11 @@ export default function AdminSidebar({
       {/* Brand Header */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-[#0D442B] shrink-0 bg-[#062617]/70">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#10B981] to-[#0BAA4B] text-white flex items-center justify-center font-black shadow-md shadow-[#10B981]/20 shrink-0">
-            <span className="text-sm tracking-tighter">1103</span>
-          </div>
+          <img 
+            src="/dolly_icon.png" 
+            alt="Dolly" 
+            className="w-9 h-9 rounded-xl object-contain shadow-md shrink-0 bg-white/10 p-0.5 border border-emerald-400/20" 
+          />
           {!collapsed && (
             <div className="flex items-center gap-2 truncate">
               <span className="font-black text-lg text-white tracking-tight">Dolly</span>

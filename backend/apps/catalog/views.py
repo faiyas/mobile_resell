@@ -313,3 +313,40 @@ def cms_sections_view(request):
             }
         )
         return Response(CMSHomeSectionSerializer(section).data)
+
+# ================= 7. SYSTEM SETTINGS =================
+@api_view(['GET', 'POST', 'PUT'])
+@permission_classes([AllowAny])
+def system_settings_view(request):
+    if request.method == 'GET':
+        section, created = CMSHomeSection.objects.get_or_create(
+            section_type='SYSTEM_SETTINGS',
+            defaults={
+                'title': 'Operations & Buyback Settings',
+                'data_json': {
+                    'minPayoutFloor': 500,
+                    'doorstepFee': 0,
+                    'inspectionWindowHours': 24,
+                    'autoAssignAgents': True,
+                    'whatsappAlerts': True,
+                    'pincodesServed': '605001, 605002, 605003, 605004, 605005, 605006, 605007, 605008, 605009, 605010, 605014',
+                    'supportPhone': '+91 99885 52211',
+                    'companyName': 'Dolly Buyback Services Pvt Ltd'
+                }
+            }
+        )
+        return Response(section.data_json or {})
+
+    if not is_admin_user(request.user):
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    data = request.data if isinstance(request.data, dict) else {}
+    section, _ = CMSHomeSection.objects.update_or_create(
+        section_type='SYSTEM_SETTINGS',
+        defaults={
+            'title': 'Operations & Buyback Settings',
+            'data_json': data
+        }
+    )
+    return Response(section.data_json)
+
