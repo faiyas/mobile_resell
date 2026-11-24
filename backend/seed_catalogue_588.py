@@ -13,6 +13,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from django.db import transaction
+from django.db.models import Q
+from django.utils.text import slugify
 from apps.catalog.models import DeviceCategory, Brand, DeviceSeries, PhoneModel, StorageVariant
 
 
@@ -81,28 +83,40 @@ def seed_catalogue():
                 warranty_status = row['Warranty Status'].strip()
                 has_warranty = 'possible' in warranty_status.lower() or launch_year >= 2025
 
-                # 1. Brand
+                # 1. Brand (case-insensitive & slug-safe lookup)
                 if brand_name not in brand_cache:
-                    brand_obj, created = Brand.objects.get_or_create(
-                        name=brand_name,
-                        defaults={
-                            'category': mobile_cat,
-                            'display_order': brand_order.get(brand_name, 50),
-                            'is_active': True,
-                        }
-                    )
-                    if not brand_obj.category:
-                        brand_obj.category = mobile_cat
-                        brand_obj.save(update_fields=['category'])
-                    brand_cache[brand_name] = brand_obj
-                    if created:
+                    brand_slug = slugify(brand_name)
+                    brand_obj = Brand.objects.filter(
+                        Q(name__iexact=brand_name) | Q(slug=brand_slug)
+                    ).first()
+                    if not brand_obj:
+                        brand_obj = Brand.objects.create(
+                            name=brand_name,
+                            slug=brand_slug,
+                            category=mobile_cat,
+                            display_order=brand_order.get(brand_name, 50),
+                            is_active=True,
+                        )
                         stats['brands_created'] += 1
+                    else:
+                        updated_brand = False
+                        if not brand_obj.category:
+                            brand_obj.category = mobile_cat
+                            updated_brand = True
+                        if not brand_obj.is_active:
+                            brand_obj.is_active = True
+                            updated_brand = True
+                        if updated_brand:
+                            brand_obj.save()
+                    brand_cache[brand_name] = brand_obj
                 brand_obj = brand_cache[brand_name]
 
-                # 2. Series
+                # 2. Series (case-insensitive lookup)
                 series_key = (brand_name, series_name)
                 if series_key not in series_cache:
-                    series_obj = DeviceSeries.objects.filter(brand=brand_obj, name=series_name).first()
+                    series_obj = DeviceSeries.objects.filter(
+                        brand=brand_obj, name__iexact=series_name
+                    ).first()
                     if not series_obj:
                         series_obj = DeviceSeries.objects.create(
                             brand=brand_obj,
@@ -113,20 +127,21 @@ def seed_catalogue():
                     series_cache[series_key] = series_obj
                 series_obj = series_cache[series_key]
 
-                # 3. Phone Model
+                # 3. Phone Model (case-insensitive lookup)
                 model_key = (brand_name, model_name)
                 if model_key not in model_cache:
-                    model_obj, created = PhoneModel.objects.get_or_create(
-                        brand=brand_obj,
-                        name=model_name,
-                        defaults={
-                            'series': series_obj,
-                            'release_year': launch_year,
-                            'has_warranty': has_warranty,
-                            'is_active': True,
-                        }
-                    )
-                    if created:
+                    model_obj = PhoneModel.objects.filter(
+                        brand=brand_obj, name__iexact=model_name
+                    ).first()
+                    if not model_obj:
+                        model_obj = PhoneModel.objects.create(
+                            brand=brand_obj,
+                            name=model_name,
+                            series=series_obj,
+                            release_year=launch_year,
+                            has_warranty=has_warranty,
+                            is_active=True,
+                        )
                         stats['models_created'] += 1
                     else:
                         updated = False
@@ -139,26 +154,34 @@ def seed_catalogue():
                         if model_obj.has_warranty != has_warranty:
                             model_obj.has_warranty = has_warranty
                             updated = True
+                        if not model_obj.is_active:
+                            model_obj.is_active = True
+                            updated = True
                         if updated:
                             model_obj.save()
                             stats['models_updated'] += 1
                     model_cache[model_key] = model_obj
                 model_obj = model_cache[model_key]
 
-                # 4. Storage Variant
-                variant_obj, created = StorageVariant.objects.update_or_create(
-                    model=model_obj,
-                    ram=ram,
-                    storage=storage,
-                    defaults={
-                        'base_price': mint_price,
-                        'min_price': lower_price,
-                        'is_active': True,
-                    }
-                )
-                if created:
+                # 4. Storage Variant (case-insensitive lookup)
+                variant_obj = StorageVariant.objects.filter(
+                    model=model_obj, ram__iexact=ram, storage__iexact=storage
+                ).first()
+                if not variant_obj:
+                    StorageVariant.objects.create(
+                        model=model_obj,
+                        ram=ram,
+                        storage=storage,
+                        base_price=mint_price,
+                        min_price=lower_price,
+                        is_active=True,
+                    )
                     stats['variants_created'] += 1
                 else:
+                    variant_obj.base_price = mint_price
+                    variant_obj.min_price = lower_price
+                    variant_obj.is_active = True
+                    variant_obj.save()
                     stats['variants_updated'] += 1
 
     print("\nCatalogue Seeding Completed Successfully!")
