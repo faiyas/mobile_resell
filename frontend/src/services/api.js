@@ -72,7 +72,8 @@ export const api = {
   getCustomers: (search = '') => request(`/auth/customers/${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   createCustomer: (data) => request('/auth/customers/', { method: 'POST', body: JSON.stringify(data) }),
   updateCustomer: (id, data) => request(`/auth/customers/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
-  toggleCustomerActive: (id) => request(`/auth/customers/${id}/`, { method: 'DELETE' }),
+  toggleCustomerActive: (id) => request(`/auth/customers/${id}/?action=toggle`, { method: 'DELETE' }),
+  deleteCustomer: (id) => request(`/auth/customers/${id}/?action=delete`, { method: 'DELETE' }),
 
   // Catalog & Categories
   getCategories: (all = false) => request(`/catalog/categories/?all=${all}`),

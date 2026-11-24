@@ -4,7 +4,7 @@ import {
   IndianRupee, Smartphone, Clock, CheckCircle2, AlertCircle, 
   Search, Filter, QrCode, Upload, Eye, UserPlus, RefreshCw, 
   Layers, ShieldAlert, Award, FileText, ChevronRight, Sparkles,
-  Truck, X, MapPin, Calendar, UserCheck, User, Users, Phone, Mail, Edit3, Building, ShieldCheck
+  Truck, X, MapPin, Calendar, UserCheck, User, Users, Phone, Mail, Edit3, Building, ShieldCheck, Trash2
 } from 'lucide-react';
 import { api } from '../services/api';
 import PayoutModal from './PayoutModal';
@@ -225,6 +225,20 @@ export default function AdminDashboard({ currentUser }) {
       setCustomers(freshCusts);
     } catch (err) {
       alert(err.message || 'Failed to toggle status');
+    }
+  };
+
+  const handleDeleteCustomer = async (c) => {
+    const custLabel = c.full_name ? `${c.full_name} (${c.phone || c.email || 'ID: #' + c.id})` : (c.phone || c.email || `Customer #${c.id}`);
+    if (!window.confirm(`Are you sure you want to permanently delete customer "${custLabel}"?\n\nThis action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await api.deleteCustomer(c.id);
+      setSuccessToast(`✓ Customer "${c.full_name || c.phone}" deleted successfully.`);
+      setCustomers(prev => prev.filter(item => item.id !== c.id));
+    } catch (err) {
+      alert(err.message || 'Failed to delete customer');
     }
   };
 
@@ -1149,6 +1163,15 @@ export default function AdminDashboard({ currentUser }) {
                               title="Promote this customer to a Field Collection Agent"
                             >
                               Make Agent
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCustomer(c)}
+                              className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                              title="Delete Customer Profile"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                             </button>
                           </div>
                         </td>

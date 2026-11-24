@@ -202,12 +202,24 @@ def customer_detail_view(request, user_id):
         })
 
     if request.method == 'DELETE':
-        customer.is_active = not customer.is_active
-        customer.save()
+        action = request.GET.get('action', '').lower()
+        if action == 'toggle':
+            customer.is_active = not customer.is_active
+            customer.save()
+            return Response({
+                'message': f"Customer {'activated' if customer.is_active else 'deactivated'} successfully",
+                'is_active': customer.is_active
+            })
+
+        # Permanent deletion of customer profile
+        from apps.sales.models import PhoneSale
+        PhoneSale.objects.filter(customer=customer).update(customer=None)
+        cust_name = customer.full_name or customer.phone or f"#{customer.id}"
+        customer.delete()
         return Response({
-            'message': f"Customer {'activated' if customer.is_active else 'deactivated'} successfully",
-            'is_active': customer.is_active
-        })
+            'message': f"Customer '{cust_name}' deleted successfully",
+            'deleted': True
+        }, status=status.HTTP_200_OK)
 
 @api_view(['POST', 'DELETE'])
 @permission_classes([IsAuthenticated])
