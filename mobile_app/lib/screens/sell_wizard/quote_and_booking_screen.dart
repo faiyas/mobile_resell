@@ -127,6 +127,10 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
       if (_cityController.text.isEmpty && user.city.isNotEmpty) _cityController.text = user.city;
       if (_pincodeController.text.isEmpty && user.pincode.isNotEmpty) _pincodeController.text = user.pincode;
       if (_upiController.text.isEmpty && user.defaultUpiId.isNotEmpty) _upiController.text = user.defaultUpiId;
+
+      if (_addressController.text.trim().isEmpty) {
+        _isEditingAddress = true;
+      }
     }
   }
 
@@ -198,7 +202,32 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
   }
 
   Future<void> _submitBooking() async {
-    if (!_formKey.currentState!.validate()) return;
+    // 1. Validate Doorstep Address & Pincode
+    if (_addressController.text.trim().isEmpty) {
+      setState(() => _isEditingAddress = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your doorstep pickup address to book pickup.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_pincodeController.text.trim().isEmpty) {
+      setState(() => _isEditingAddress = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter your 6-digit doorstep pincode.'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_formKey.currentState != null && !_formKey.currentState!.validate()) return;
 
     // Check if user is authenticated (End-of-Funnel Login)
     if (_api.currentUser == null) {
@@ -287,11 +316,13 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
       }
     } catch (err) {
       if (mounted) {
+        final cleanMsg = err.toString().replaceFirst('Exception: ', '').trim();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(err.toString()),
-            backgroundColor: Colors.red.shade700,
+            content: Text(cleanMsg),
+            backgroundColor: Colors.red.shade800,
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

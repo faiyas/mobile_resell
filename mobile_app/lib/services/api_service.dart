@@ -367,8 +367,29 @@ class ApiService {
     if (res.statusCode == 201) {
       return SaleOrderModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
     } else {
-      final err = jsonDecode(res.body);
-      throw Exception(err['detail'] ?? 'Failed to book pickup');
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map) {
+          if (err['detail'] != null) throw Exception(err['detail']);
+          if (err['message'] != null) throw Exception(err['message']);
+          final errorMessages = <String>[];
+          err.forEach((key, val) {
+            String label = key.replaceAll('_', ' ');
+            label = label.isEmpty ? '' : label[0].toUpperCase() + label.substring(1);
+            if (val is List && val.isNotEmpty) {
+              errorMessages.add('$label: ${val.first}');
+            } else if (val != null) {
+              errorMessages.add('$label: $val');
+            }
+          });
+          if (errorMessages.isNotEmpty) {
+            throw Exception(errorMessages.join('\n'));
+          }
+        }
+      } catch (e) {
+        if (e is Exception && !e.toString().contains('FormatException')) rethrow;
+      }
+      throw Exception('Failed to book pickup. Please verify your address and booking details.');
     }
   }
 
