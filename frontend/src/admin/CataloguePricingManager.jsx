@@ -74,7 +74,7 @@ export default function CataloguePricingManager() {
 
   const [modelModalOpen, setModelModalOpen] = useState(false);
   const [editingModel, setEditingModel] = useState(null);
-  const [modelForm, setModelForm] = useState({ brand: '', name: '', release_year: 2024, image_base64: '', is_active: true });
+  const [modelForm, setModelForm] = useState({ brand: '', name: '', release_year: 2024, image_base64: '', has_warranty: true, is_active: true });
 
   const [variantModalOpen, setVariantModalOpen] = useState(false);
   const [editingVariant, setEditingVariant] = useState(null);
@@ -367,6 +367,7 @@ export default function CataloguePricingManager() {
         name: model.name,
         release_year: model.release_year || 2024,
         image_base64: model.image_base64 || '',
+        has_warranty: model.has_warranty !== false,
         is_active: model.is_active
       });
     } else {
@@ -377,6 +378,7 @@ export default function CataloguePricingManager() {
         name: '',
         release_year: 2024,
         image_base64: '',
+        has_warranty: true,
         is_active: true
       });
     }
@@ -391,6 +393,7 @@ export default function CataloguePricingManager() {
         brand: parseInt(modelForm.brand),
         series: modelForm.series ? parseInt(modelForm.series) : null,
         release_year: parseInt(modelForm.release_year) || 2024,
+        has_warranty: modelForm.has_warranty !== false,
       };
       if (editingModel) {
         await api.updateModel(editingModel.id, payload);
@@ -2751,13 +2754,23 @@ export default function CataloguePricingManager() {
             </div>
           </div>
 
-          <div className="flex items-center pt-2">
-            <label className="inline-flex items-center gap-2 cursor-pointer font-bold text-slate-700">
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 text-xs select-none">
+              <input
+                type="checkbox"
+                checked={modelForm.has_warranty !== false}
+                onChange={(e) => setModelForm({ ...modelForm, has_warranty: e.target.checked })}
+                className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+              />
+              <span>Include Warranty Questions (Uncheck for older/discontinued models to skip warranty questions)</span>
+            </label>
+
+            <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700 text-xs select-none">
               <input
                 type="checkbox"
                 checked={modelForm.is_active}
                 onChange={(e) => setModelForm({ ...modelForm, is_active: e.target.checked })}
-                className="rounded text-indigo-600"
+                className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
               />
               <span>Active & Accept Submissions</span>
             </label>
