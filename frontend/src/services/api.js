@@ -148,6 +148,7 @@ export const api = {
   getSaleByCode: (code) => request(`/sales/${code}/`),
   acceptOffer: (id) => request(`/sales/${id}/accept-offer/`, { method: 'POST' }),
   rejectOffer: (id) => request(`/sales/${id}/reject-offer/`, { method: 'POST' }),
+  cancelOrder: (id, payload = {}) => request(`/sales/${id}/cancel/`, { method: 'POST', body: JSON.stringify(payload) }),
   markDeviceCollected: (id) => request(`/sales/${id}/mark-collected/`, { method: 'POST' }),
   assignPickup: (id, payload) => request(`/sales/${id}/schedule-pickup/`, { method: 'POST', body: JSON.stringify(payload) }),
   shiftPickupToNextDay: (id, payload = {}) => request(`/sales/${id}/shift-next-day/`, { method: 'POST', body: JSON.stringify(payload) }),

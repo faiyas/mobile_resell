@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import (
     register_view, login_view, me_view, collection_agents_view,
-    customers_view, customer_detail_view
+    customers_view, customer_detail_view, delete_account_view
 )
 
 urlpatterns = [

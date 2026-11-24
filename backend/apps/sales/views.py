@@ -325,6 +325,44 @@ def reject_final_offer_view(request, pk):
     return Response({'message': 'Offer rejected. Device return will be initiated.', 'status': sale.status})
 
 @api_view(['POST'])
+@permission_classes([AllowAny])
+def cancel_order_view(request, pk):
+    """Allow customer or admin to cancel a sale order prior to physical collection/payment"""
+    sale = _get_sale_instance(pk)
+    if not sale:
+        return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
+
+    non_cancellable = ['CANCELLED', 'PICKED_UP', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED']
+    if sale.status in non_cancellable:
+        if sale.status == 'CANCELLED':
+            return Response({'detail': 'This order has already been cancelled.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'detail': f'Order cannot be cancelled in status: {sale.get_status_display()}. Please contact Dolly support.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.user.is_authenticated and request.user.role == 'CUSTOMER':
+        is_owner = (
+            sale.customer == request.user or
+            (request.user.phone and sale.customer_phone == request.user.phone) or
+            (request.user.email and sale.customer_email and sale.customer_email.strip().lower() == request.user.email.strip().lower())
+        )
+        if not is_owner:
+            return Response({'detail': 'You do not have permission to cancel this order.'}, status=status.HTTP_403_FORBIDDEN)
+
+    reason = request.data.get('reason', '').strip()
+    sale.status = 'CANCELLED'
+    now_ist = timezone.now().astimezone(IST)
+    audit = f"[{now_ist.strftime('%d %b, %I:%M %p')}] Order cancelled by customer. Reason: {reason or 'No reason specified'}."
+    sale.admin_notes = (sale.admin_notes + '\n' + audit).strip() if sale.admin_notes else audit
+    sale.save()
+
+    return Response({
+        'message': 'Order cancelled successfully.',
+        'status': sale.status,
+        'sale': PhoneSaleDetailSerializer(sale).data
+    }, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def assign_pickup_view(request, pk):
     """Admin or Collection Agent schedules pickup and assigns agent"""

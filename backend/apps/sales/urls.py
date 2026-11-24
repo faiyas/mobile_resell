@@ -10,12 +10,15 @@ from .views import (
     shift_pickup_to_next_day_view,
     pincode_lookup_view,
     mark_device_collected_view,
+    cancel_order_view,
 )
 
 urlpatterns = [
     path('', sales_list_create_view, name='sales-list-create'),
     path('pincode-lookup/', pincode_lookup_view, name='sales-pincode-lookup'),
     path('<str:pk>/', sale_detail_view, name='sales-detail'),
+    path('<str:pk>/cancel/', cancel_order_view, name='sales-cancel-order'),
+    path('<str:pk>/cancel-order/', cancel_order_view, name='sales-cancel-order-alias'),
     path('<str:pk>/accept-offer/', accept_final_offer_view, name='sales-accept-offer'),
     path('<str:pk>/reject-offer/', reject_final_offer_view, name='sales-reject-offer'),
     path('<str:pk>/schedule-pickup/', assign_pickup_view, name='sales-schedule-pickup'),

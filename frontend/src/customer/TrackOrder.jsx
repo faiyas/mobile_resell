@@ -17,6 +17,33 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
   const [receiptData, setReceiptData] = useState(null);
   const [loadingReceipt, setLoadingReceipt] = useState(false);
 
+  // Order cancellation state
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelling, setCancelling] = useState(false);
+
+  const isCancellable = selectedSale && [
+    'SUBMITTED', 'PICKUP_SCHEDULED', 'INSPECTION_PENDING', 'FINAL_OFFER_SENT'
+  ].includes(selectedSale.status);
+
+  const handleCancelOrder = async () => {
+    if (!selectedSale) return;
+    setCancelling(true);
+    try {
+      await api.cancelOrder(selectedSale.id, { reason: cancelReason });
+      const updated = await api.getSaleDetail(selectedSale.id);
+      setSelectedSale(updated);
+      setSalesList(salesList.map(s => s.id === updated.id ? updated : s));
+      setCancelModalOpen(false);
+      setCancelReason('');
+      alert('Your selling order has been cancelled successfully.');
+    } catch (e) {
+      alert(e.message || 'Failed to cancel order.');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   // If initialSaleCode provided, search immediately
   useEffect(() => {
     if (initialSaleCode) {
@@ -218,7 +245,9 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                     {selectedSale.sale_code}
                   </span>
                   <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                    selectedSale.status === 'PAYMENT_COMPLETED' 
+                    selectedSale.status === 'CANCELLED'
+                      ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                      : selectedSale.status === 'PAYMENT_COMPLETED' 
                       ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                       : selectedSale.status === 'FINAL_OFFER_SENT'
                       ? 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
@@ -226,6 +255,17 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                   }`}>
                     ● {selectedSale.status.replace(/_/g, ' ')}
                   </span>
+                  {isCancellable && (
+                    <button
+                      type="button"
+                      onClick={() => setCancelModalOpen(true)}
+                      className="text-[11px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-0.5 rounded-full font-bold transition flex items-center gap-1 shadow-xs"
+                      title="Cancel this pickup request"
+                    >
+                      <XCircle className="w-3 h-3 text-rose-500" />
+                      Cancel Order
+                    </button>
+                  )}
                 </div>
                 <h3 className="text-2xl font-black text-[#17251C] mt-2">
                   {selectedSale.brand_name} {selectedSale.model_name}
@@ -284,6 +324,21 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                 })}
               </div>
             </div>
+
+            {/* STATUS BANNER: CANCELLED */}
+            {selectedSale.status === 'CANCELLED' && (
+              <div className="glass-card bg-rose-50/90 border-2 border-rose-300 rounded-2xl p-5 space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <XCircle className="w-6 h-6 text-rose-600 shrink-0" />
+                  <div>
+                    <h4 className="font-extrabold text-rose-950 text-sm">Selling Order Cancelled</h4>
+                    <p className="text-xs text-rose-700 mt-0.5">
+                      This doorstep buyback request was cancelled. No device inspection or collection will take place. You can place a new sell request anytime.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* ACTION BANNER: FINAL OFFER ACCEPTANCE */}
             {selectedSale.status === 'FINAL_OFFER_SENT' && (
@@ -490,6 +545,65 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
           receiptData={receiptData} 
           onClose={() => setReceiptData(null)} 
         />
+      )}
+
+      {/* Cancel Order Confirmation Modal */}
+      {cancelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600 font-black text-base">
+                <XCircle className="w-5 h-5" />
+                Cancel Selling Order
+              </div>
+              <button 
+                onClick={() => setCancelModalOpen(false)} 
+                className="text-slate-400 hover:text-slate-600 p-1 text-sm font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to cancel the doorstep pickup for your <strong className="text-slate-900">{selectedSale?.brand_name} {selectedSale?.model_name}</strong>?
+            </p>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Reason for cancellation (optional):</label>
+              <select 
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full text-xs border border-slate-200 rounded-xl p-2.5 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+              >
+                <option value="">Select a reason...</option>
+                <option value="Changed my mind">Changed my mind</option>
+                <option value="Price didn't match expectation">Price didn't match expectation</option>
+                <option value="Decided to keep or gift device">Decided to keep or gift device</option>
+                <option value="Device repaired or sold elsewhere">Device repaired or sold elsewhere</option>
+                <option value="Wrong details entered">Wrong details entered</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setCancelModalOpen(false)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
+              >
+                Keep Order
+              </button>
+              <button
+                type="button"
+                disabled={cancelling}
+                onClick={handleCancelOrder}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md transition disabled:opacity-50"
+              >
+                {cancelling ? 'Cancelling...' : 'Confirm Cancellation'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

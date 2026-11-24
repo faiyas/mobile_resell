@@ -103,6 +103,105 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     }
   }
 
+  Future<void> _cancelOrder(SaleOrderModel order) async {
+    String selectedReason = 'Changed my mind';
+    final reasons = [
+      'Changed my mind',
+      'Price didn\'t match expectation',
+      'Decided to keep or gift device',
+      'Device repaired or sold elsewhere',
+      'Wrong details entered',
+      'Other',
+    ];
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDlgState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.cancel_outlined, color: Colors.red, size: 22),
+              SizedBox(width: 8),
+              Text('Cancel Sell Order?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to cancel the doorstep pickup for your ${order.brandName} ${order.modelName}?',
+                style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+              ),
+              const SizedBox(height: 14),
+              const Text('Reason for cancellation:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                  color: Colors.grey.shade50,
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedReason,
+                    isExpanded: true,
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+                    items: reasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDlgState(() => selectedReason = val);
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Keep Order'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Cancel Order', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _loading = true);
+    try {
+      await _api.cancelOrder(order.id, reason: selectedReason);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✓ Selling order has been cancelled successfully.'),
+          backgroundColor: Colors.black87,
+          duration: Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _lookupOrder(order.saleCode);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to cancel order: $e'), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -457,13 +556,17 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withOpacity(0.12),
+                      color: order.status == 'CANCELLED' ? Colors.red.withOpacity(0.12) : AppTheme.primaryGreen.withOpacity(0.12),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                      border: Border.all(color: order.status == 'CANCELLED' ? Colors.red.withOpacity(0.4) : AppTheme.primaryGreen.withOpacity(0.3)),
                     ),
                     child: Text(
                       order.status.replaceAll('_', ' '),
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.primaryGreen),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: order.status == 'CANCELLED' ? Colors.red : AppTheme.primaryGreen,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -489,7 +592,34 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
         const SizedBox(height: 16),
 
         // Action Banners based on customer approval stage
-        if (order.status == 'FINAL_OFFER_SENT') ...[
+        if (order.status == 'CANCELLED') ...[
+          GlassContainer(
+            padding: const EdgeInsets.all(18),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.red.withOpacity(0.4), width: 1.5),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.cancel_rounded, color: Colors.red, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Selling Order Cancelled', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.red)),
+                      SizedBox(height: 2),
+                      Text('This doorstep buyback request was cancelled. No device inspection or collection will take place.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+        ] else if (order.status == 'FINAL_OFFER_SENT') ...[
           GlassContainer(
             padding: const EdgeInsets.all(20),
             borderRadius: BorderRadius.circular(24),
@@ -930,6 +1060,28 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
             ),
           ),
         ),
+
+        // Cancel Order Action Button (Visible if order is pending/scheduled/inspected)
+        if (['SUBMITTED', 'PICKUP_SCHEDULED', 'INSPECTION_PENDING', 'FINAL_OFFER_SENT'].contains(order.status)) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(48),
+                side: BorderSide(color: Colors.red.shade300, width: 1.2),
+                backgroundColor: Colors.red.withOpacity(0.04),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              icon: const Icon(Icons.cancel_outlined, size: 18, color: Colors.red),
+              label: const Text(
+                'Cancel This Selling Order',
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              onPressed: () => _cancelOrder(order),
+            ),
+          ),
+        ],
       ],
     );
   }

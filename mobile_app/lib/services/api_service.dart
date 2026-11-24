@@ -534,6 +534,21 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> cancelOrder(dynamic saleId, {String? reason}) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/cancel/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode({'reason': reason ?? 'Cancelled by customer'}),
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to cancel order');
+    }
+  }
+
   Future<Map<String, dynamic>> recordPayout(Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/payments/record-payout/');
     final res = await http.post(
