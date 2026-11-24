@@ -89,6 +89,25 @@ export default function App() {
   const canAccessAdmin = userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
   const canAccessAgent = canAccessAdmin || userRole === 'COLLECTION_AGENT' || userRole === 'AGENT' || userRole === 'FIELD_AGENT';
 
+  if (activeTab === 'admin' && canAccessAdmin) {
+    return (
+      <div className="h-screen w-screen overflow-hidden bg-slate-50 antialiased">
+        <AdminDashboard 
+          currentUser={currentUser} 
+          onNavigate={(tab) => setActiveTab(tab)} 
+          onLogout={handleLogout} 
+        />
+        {authModalOpen && (
+          <AuthModal
+            isOpen={authModalOpen}
+            onClose={() => setAuthModalOpen(false)}
+            onAuthSuccess={handleAuthSuccess}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-mesh-canvas text-[#17251C] selection:bg-[#0BAA4B] selection:text-white antialiased">
       

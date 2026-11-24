@@ -10,9 +10,23 @@ import { api } from '../services/api';
 import PayoutModal from './PayoutModal';
 import ReceiptModal from '../customer/ReceiptModal';
 import CataloguePricingManager from './CataloguePricingManager';
+import AdminSidebar from './AdminSidebar';
+import AdminHeader from './AdminHeader';
+import OperationsDashboardView from './OperationsDashboardView';
+import SystemSettingsView from './SystemSettingsView';
 
-export default function AdminDashboard({ currentUser }) {
-  const [activeTab, setActiveTab] = useState('payouts'); // 'payouts' | 'sales' | 'pricing' | 'history'
+export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'sales' | 'customers' | 'payouts' | ...
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [catalogueCounts, setCatalogueCounts] = useState({
+    deviceCategories: 0,
+    brands: 0,
+    models: 0,
+    variants: 0,
+    options: 0,
+    cms: 0
+  });
+  const [catalogueModels, setCatalogueModels] = useState([]);
   
   const [sales, setSales] = useState([]);
   const [paymentsList, setPaymentsList] = useState({ total_count: 0, total_disbursed: 0, payments: [] });
@@ -288,18 +302,32 @@ export default function AdminDashboard({ currentUser }) {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [salesData, paymentsData, catsData, agentsData, customersData] = await Promise.all([
+      const [salesData, paymentsData, catsData, agentsData, customersData, dCats, brandsData, modelsData, cmsData, optsData] = await Promise.all([
         api.getSales(),
         api.getPaymentsList().catch(() => ({ total_count: 0, total_disbursed: 0, payments: [] })),
-        api.getConditionCategories(),
+        api.getConditionCategories().catch(() => []),
         api.getAgents().catch(() => []),
         api.getCustomers().catch(() => []),
+        api.getCategories(true).catch(() => []),
+        api.getBrands(true, true).catch(() => []),
+        api.getModels(null, true).catch(() => []),
+        api.getCMSSections().catch(() => []),
+        api.getConditionOptions().catch(() => [])
       ]);
       setSales(salesData);
       setPaymentsList(paymentsData);
       setConditionCategories(catsData);
       setAgents(agentsData);
       setCustomers(customersData);
+      setCatalogueModels(modelsData || []);
+      setCatalogueCounts({
+        deviceCategories: (dCats || []).length,
+        brands: (brandsData || []).length,
+        models: (modelsData || []).length,
+        variants: (modelsData || []).reduce((acc, m) => acc + (m.variants?.length || 0), 0) || (modelsData || []).length,
+        options: (optsData || []).length,
+        cms: (cmsData || []).length
+      });
     } catch (e) {
       console.error(e);
     } finally {
@@ -416,151 +444,81 @@ export default function AdminDashboard({ currentUser }) {
   const payoutQueue = sales.filter(s => ['OWNERSHIP_TRANSFERRED', 'CUSTOMER_ACCEPTED'].includes(s.status));
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-fade-in">
+    <div className="flex h-screen w-full overflow-hidden bg-slate-50 text-slate-900 font-sans">
       
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#087C38] via-[#0BAA4B] to-[#0D4722] text-white p-5 sm:p-8 rounded-3xl shadow-xl">
-        <div>
-          <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#E8F8ED] bg-white/20 border border-white/20 px-2.5 py-0.5 rounded-full inline-block">
-            Super Admin Control Center · Dolly Platform · 1103 TechStudios
-          </span>
-          <h1 className="text-xl sm:text-3xl font-black mt-2">
-            Operations & Dynamic CMS Desk
-          </h1>
-          <p className="text-[11px] sm:text-xs text-[#E8F8ED] mt-1">
-            Dynamic homepage builder, questionnaire steps, pricing deductions, agent assignments & UPI/Bank payouts.
-          </p>
-        </div>
+      {/* 1. Left Dark Emerald Sidebar */}
+      <AdminSidebar
+        currentView={activeTab}
+        onSelectView={(viewId) => setActiveTab(viewId)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+        counts={{
+          sales: sales.length,
+          customers: customers.length,
+          awaitingPayouts: awaitingPayoutsCount,
+          payments: paymentsList.total_count,
+          agents: agents.length,
+          deviceCategories: catalogueCounts.deviceCategories,
+          brands: catalogueCounts.brands,
+          models: catalogueCounts.models,
+          variants: catalogueCounts.variants,
+          questions: conditionCategories.length,
+          deductions: catalogueCounts.options,
+          cms: catalogueCounts.cms
+        }}
+      />
 
-        <button
-          onClick={loadDashboardData}
-          disabled={loading}
-          className="flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 text-white text-xs font-bold px-4 py-2.5 rounded-xl border border-white/20 transition w-full sm:w-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-white' : ''}`} />
-          {loading ? 'Refreshing...' : 'Refresh Data'}
-        </button>
-      </div>
-
-      {successToast && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fade-in shadow-sm">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{successToast}</span>
-        </div>
-      )}
-
-      {/* Metrics Row (Glassmorphic Green & White) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      {/* 2. Main Workspace Body */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         
-        <div className="glass-card glass-card-hover p-3.5 sm:p-5 rounded-2xl flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-bold text-[#7B8980] uppercase tracking-wider">Today's Sales</span>
-          <p className="text-2xl sm:text-3xl font-black text-[#17251C] mt-1">{sales.length}</p>
-          <span className="text-[10px] sm:text-[11px] text-[#7B8980] font-medium mt-1 truncate">All submissions</span>
-        </div>
+        {/* Sticky Top Header */}
+        <AdminHeader
+          currentUser={currentUser}
+          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
+          onNavigateTab={onNavigate}
+          onLogout={onLogout}
+          onQuickSearchSelect={(type, item) => {
+            if (type === 'sales') {
+              setActiveTab('sales');
+              setSearchQuery(item.sale_code || '');
+            } else if (type === 'customers') {
+              setActiveTab('customers');
+              setCustomerSearch(item.phone || item.full_name || '');
+            } else if (type === 'models') {
+              setActiveTab('models');
+            }
+          }}
+          sales={sales}
+          customers={customers}
+          models={catalogueModels}
+        />
 
-        <div className="glass-card glass-card-hover p-3.5 sm:p-5 rounded-2xl flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-bold text-amber-600 uppercase tracking-wider">Pending Pickup</span>
-          <p className="text-2xl sm:text-3xl font-black text-amber-600 mt-1">{pendingInspectionsCount}</p>
-          <span className="text-[10px] sm:text-[11px] text-amber-700 font-medium mt-1 truncate">Awaiting collection</span>
-        </div>
+        {/* Scrollable Main Views Area */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-7 space-y-6">
+          
+          {successToast && (
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3.5 rounded-2xl text-xs font-bold flex items-center gap-2 animate-fade-in shadow-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{successToast}</span>
+            </div>
+          )}
 
-        <div className="glass-card glass-card-hover p-3.5 sm:p-5 rounded-2xl bg-[#E8F8ED]/70 border-[#0BAA4B]/30 flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-bold text-[#087C38] uppercase tracking-wider">Awaiting Payout</span>
-          <p className="text-2xl sm:text-3xl font-black text-[#0BAA4B] mt-1">{awaitingPayoutsCount}</p>
-          <span className="text-[10px] sm:text-[11px] text-[#087C38] font-semibold mt-1 truncate">Ready for QR scan</span>
-        </div>
+          {/* ================= TAB 0: OPERATIONS DASHBOARD (OVERVIEW) ================= */}
+          {activeTab === 'dashboard' && (
+            <OperationsDashboardView
+              sales={sales}
+              paymentsList={paymentsList}
+              customers={customers}
+              models={catalogueModels}
+              onNavigateView={(v) => setActiveTab(v)}
+              onOpenPayout={(s) => setPayoutSale(s)}
+              onAddManualSale={() => {
+                if (onNavigate) onNavigate('sell');
+              }}
+            />
+          )}
 
-        <div className="glass-card glass-card-hover p-3.5 sm:p-5 rounded-2xl flex flex-col justify-between">
-          <span className="text-[10px] sm:text-xs font-bold text-[#7B8980] uppercase tracking-wider">Total Payouts</span>
-          <p className="text-xl sm:text-3xl font-black text-[#17251C] mt-1 truncate">
-            ₹{Number(paymentsList.total_disbursed).toLocaleString('en-IN')}
-          </p>
-          <span className="text-[10px] sm:text-[11px] text-[#7B8980] font-medium mt-1 truncate">
-            {paymentsList.total_count} verified sales
-          </span>
-        </div>
-
-      </div>
-
-      {/* Navigation Tabs (Glassmorphic) */}
-      <div className="glass-panel rounded-2xl p-1.5 flex gap-1 overflow-x-auto scrollbar-none shadow-sm">
-        <button
-          onClick={() => setActiveTab('payouts')}
-          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
-            activeTab === 'payouts'
-              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
-              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
-          }`}
-        >
-          <IndianRupee className="w-3.5 h-3.5" />
-          Payout Desk ({payoutQueue.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('sales')}
-          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
-            activeTab === 'sales'
-              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
-              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
-          }`}
-        >
-          <Smartphone className="w-3.5 h-3.5" />
-          Customer Sales ({sales.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('pricing')}
-          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
-            activeTab === 'pricing'
-              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
-              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
-          }`}
-        >
-          <Layers className="w-3.5 h-3.5" />
-          Phone Catalogue & Pricing
-          <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.2 rounded font-bold uppercase tracking-wider">
-            New
-          </span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
-            activeTab === 'history'
-              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
-              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
-          }`}
-        >
-          <CheckCircle2 className="w-3.5 h-3.5" />
-          Payout History ({paymentsList.total_count})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('agents')}
-          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
-            activeTab === 'agents'
-              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
-              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
-          }`}
-        >
-          <UserCheck className="w-3.5 h-3.5" />
-          Field Agents ({agents.length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('customers')}
-          className={`py-2 px-4 rounded-xl text-xs font-extrabold transition shrink-0 flex items-center gap-1.5 ${
-            activeTab === 'customers'
-              ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
-              : 'text-[#7B8980] hover:bg-white/60 hover:text-[#17251C]'
-          }`}
-        >
-          <Users className="w-3.5 h-3.5" />
-          Customers ({customers.length})
-        </button>
-      </div>
-
-      {/* ================= TAB 1: PAYOUT DESK ================= */}
+          {/* ================= TAB 1: PAYOUT DESK ================= */}
       {activeTab === 'payouts' && (
         <div className="space-y-4 animate-fade-in">
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 flex items-start gap-3">
@@ -787,9 +745,16 @@ export default function AdminDashboard({ currentUser }) {
         </div>
       )}
 
-      {/* ================= TAB 3: PHONE CATALOGUE & PRICING ================= */}
-      {activeTab === 'pricing' && (
-        <CataloguePricingManager />
+      {/* ================= TAB 3: PHONE CATALOGUE, PRICING, VALUATION & CMS ================= */}
+      {['device_categories', 'brands', 'models', 'variants', 'questionnaire', 'deductions', 'cms', 'hero_banners', 'promotions', 'pricing'].includes(activeTab) && (
+        <CataloguePricingManager 
+          initialSubTab={
+            activeTab === 'pricing' ? 'brands' :
+            activeTab === 'hero_banners' || activeTab === 'promotions' ? 'cms' :
+            activeTab
+          }
+          onSubTabChange={(newSubTab) => setActiveTab(newSubTab)}
+        />
       )}
 
       {/* ================= TAB 4: PAYOUTS HISTORY ================= */}
@@ -1207,6 +1172,14 @@ export default function AdminDashboard({ currentUser }) {
           )}
         </div>
       )}
+
+      {/* ================= TAB 7: SYSTEM SETTINGS & ROLES ================= */}
+      {['settings', 'roles'].includes(activeTab) && (
+        <SystemSettingsView mode={activeTab} />
+      )}
+
+        </div>
+      </div>
 
       {/* Payout Modal */}
       {payoutSale && (

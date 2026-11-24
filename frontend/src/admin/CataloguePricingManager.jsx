@@ -50,9 +50,20 @@ function ResponsiveModal({ isOpen, onClose, title, children, maxWidth = 'max-w-m
   );
 }
 
-export default function CataloguePricingManager() {
+export default function CataloguePricingManager({ initialSubTab = 'brands', onSubTabChange }) {
   // Sub-tabs: 'brands' | 'models' | 'variants' | 'categories' | 'deductions' | 'simulator' | 'history'
-  const [subTab, setSubTab] = useState('brands');
+  const [subTab, setSubTab] = useState(initialSubTab);
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setSubTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
+  const handleSubTabChange = (newTab) => {
+    setSubTab(newTab);
+    if (onSubTabChange) onSubTabChange(newTab);
+  };
 
   // Data states
   const [brands, setBrands] = useState([]);
@@ -917,14 +928,14 @@ export default function CataloguePricingManager() {
       {/* Sub Navigation Chips Bar - Perfectly Aligned & Responsive */}
       <div className="bg-slate-100/90 p-1.5 rounded-2xl flex items-center gap-1.5 overflow-x-auto scrollbar-none border border-slate-200 shadow-sm">
         {[
-          { id: 'cms', label: '🎨 Homepage (CMS)', count: cmsSections.length },
+          { id: 'cms', label: '🎨 Homepage (CMS)', count: cmsSections.length || heroSlides.length },
           { id: 'questionnaire', label: '📋 Questionnaire Builder', count: categories.length },
           { id: 'device_categories', label: '🗂️ Categories', count: deviceCategories.length },
           { id: 'brands', label: '📱 Brands', count: brands.length },
           { id: 'models', label: '🏷️ Series & Models', count: models.length },
           { id: 'variants', label: '💾 Storage & Prices', count: variants.length },
           { id: 'deductions', label: '📉 Deduction Rules', count: options.length },
-          { id: 'simulator', label: '⚡ Valuation Simulator', badge: 'Interactive' },
+          { id: 'simulator', label: '⚡ Valuation Simulator', count: variants.length },
           { id: 'history', label: '📜 Audit Log', count: priceHistory.length },
         ].map((tab) => {
           const isActive = subTab === tab.id;
@@ -932,7 +943,7 @@ export default function CataloguePricingManager() {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setSubTab(tab.id)}
+              onClick={() => handleSubTabChange(tab.id)}
               className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 active:scale-95 whitespace-nowrap ${
                 isActive
                   ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20 ring-1 ring-[#0BAA4B]'
