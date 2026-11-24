@@ -16,7 +16,7 @@ def record_inspection_view(request):
     Staff / Collection Agent records physical device inspection,
     attaches Base64 photos, verifies IMEI and cloud locks.
     """
-    if request.user.role not in ['ADMIN', 'COLLECTION_AGENT']:
+    if not getattr(request.user, 'is_staff_role', False):
         return Response({'detail': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = DeviceInspectionCreateSerializer(data=request.data)

@@ -17,7 +17,7 @@ def get_payment_qr_view(request, sale_id):
     Generates exact dynamic UPI payment string and details for the admin.
     Admin can scan this QR code with Google Pay, PhonePe, or Paytm!
     """
-    if request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+    if not getattr(request.user, 'is_admin_role', False):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     sale = get_object_or_404(PhoneSale, id=sale_id)
@@ -58,7 +58,7 @@ def record_payout_view(request):
     then uploads the confirmation screenshot (Base64) + 12-digit UTR.
     This marks the sale as PAYMENT_COMPLETED.
     """
-    if request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+    if not getattr(request.user, 'is_admin_role', False):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = PaymentRecordSerializer(data=request.data)
@@ -110,7 +110,7 @@ def record_payout_view(request):
 @permission_classes([IsAuthenticated])
 def payments_list_view(request):
     """Admin view of all payout records and financial summary with date filters"""
-    if request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+    if not getattr(request.user, 'is_admin_role', False):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     payments = Payment.objects.all().select_related('sale__variant__model__brand', 'paid_by').defer('payment_proof_base64')

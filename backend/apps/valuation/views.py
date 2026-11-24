@@ -20,7 +20,7 @@ def condition_categories_view(request):
         device_cat = request.GET.get('device_category')
         brand_param = request.GET.get('brand')
         
-        if show_all and request.user.is_authenticated and request.user.role in ['ADMIN', 'SUPER_ADMIN']:
+        if show_all and getattr(request.user, 'is_admin_role', False):
             categories = ConditionCategory.objects.all()
         else:
             categories = ConditionCategory.objects.filter(is_active=True)
@@ -74,7 +74,7 @@ def condition_categories_view(request):
         return Response(serializer.data)
     
     elif request.method == 'POST':
-        if not request.user.is_authenticated or request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+        if not getattr(request.user, 'is_admin_role', False):
             return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         
         try:
@@ -108,7 +108,7 @@ def condition_category_detail_view(request, pk):
         if request.method == 'GET':
             return Response(ConditionCategorySerializer(category).data)
 
-        if not request.user.is_authenticated or request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+        if not getattr(request.user, 'is_admin_role', False):
             return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
         if request.method in ['PUT', 'PATCH']:
@@ -149,7 +149,7 @@ def condition_options_view(request):
     if request.method == 'GET':
         category_id = request.GET.get('category')
         show_all = request.GET.get('all', 'false').lower() == 'true'
-        if show_all and request.user.is_authenticated and request.user.role in ['ADMIN', 'SUPER_ADMIN']:
+        if show_all and getattr(request.user, 'is_admin_role', False):
             options = ConditionOption.objects.all().select_related('category')
         else:
             options = ConditionOption.objects.filter(is_active=True).select_related('category')
@@ -160,7 +160,7 @@ def condition_options_view(request):
         return Response(serializer.data)
 
     elif request.method == 'POST':
-        if not request.user.is_authenticated or request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+        if not getattr(request.user, 'is_admin_role', False):
             return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
         
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
@@ -189,7 +189,7 @@ def condition_option_detail_view(request, pk):
     if request.method == 'GET':
         return Response(ConditionOptionSerializer(option).data)
 
-    if not request.user.is_authenticated or request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+    if not getattr(request.user, 'is_admin_role', False):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method in ['PUT', 'PATCH']:
@@ -362,7 +362,7 @@ def calculate_estimate_view(request):
 @permission_classes([IsAuthenticated])
 def price_history_list_view(request):
     """Admin view of all price changes and audit log"""
-    if request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+    if not getattr(request.user, 'is_admin_role', False):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
     
     variant_id = request.GET.get('variant')
@@ -381,7 +381,7 @@ def copy_questions_from_brand_view(request):
     from a source brand to a target brand, with optional mandatory toggle.
     Guarantees unique codes <= 50 chars and transaction atomicity with JSON responses.
     """
-    if request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+    if not getattr(request.user, 'is_admin_role', False):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
     
     source_brand_id = request.data.get('source_brand_id')

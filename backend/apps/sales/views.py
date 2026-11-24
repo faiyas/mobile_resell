@@ -59,22 +59,22 @@ def sales_list_create_view(request):
                 queryset = queryset.filter(customer_phone=phone)
             if sale_code:
                 queryset = queryset.filter(sale_code=sale_code)
-        elif user.role == 'CUSTOMER':
-            q = queryset.filter(customer=user)
-            if user.phone:
-                q = q | queryset.filter(customer_phone=user.phone)
-            if user.email:
-                q = q | queryset.filter(customer_email__iexact=user.email)
-            queryset = q.distinct()
-        elif user.role == 'COLLECTION_AGENT':
+        elif getattr(user, 'is_admin_role', False):
+            pass # Super Admin sees all orders across the business
+        elif getattr(user, 'is_agent_role', False):
             # Collection agent view: default is their own assigned queue & history.
             # If agent specifically queries unassigned pool: ?pool=true
             if request.GET.get('pool', 'false').lower() == 'true':
                 queryset = queryset.filter(assigned_agent__isnull=True, status__in=['SUBMITTED', 'PICKUP_SCHEDULED'])
             else:
                 queryset = queryset.filter(assigned_agent=user)
-        elif user.role in ['ADMIN', 'SUPER_ADMIN']:
-            pass # Super Admin sees all orders across the business
+        elif str(getattr(user, 'role', '')).upper() == 'CUSTOMER':
+            q = queryset.filter(customer=user)
+            if user.phone:
+                q = q | queryset.filter(customer_phone=user.phone)
+            if user.email:
+                q = q | queryset.filter(customer_email__iexact=user.email)
+            queryset = q.distinct()
         else:
             queryset = queryset.none()
 
@@ -289,7 +289,7 @@ def accept_final_offer_view(request, pk):
 @permission_classes([IsAuthenticated])
 def mark_device_collected_view(request, pk):
     """Agent records physical device collection after customer confirmed offer"""
-    if request.user.role not in ['ADMIN', 'COLLECTION_AGENT']:
+    if not getattr(request.user, 'is_staff_role', False):
         return Response({'detail': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
     sale = _get_sale_instance(pk)
@@ -367,7 +367,7 @@ def cancel_order_view(request, pk):
 @permission_classes([IsAuthenticated])
 def assign_pickup_view(request, pk):
     """Admin or Collection Agent schedules pickup and assigns agent"""
-    if request.user.role not in ['ADMIN', 'COLLECTION_AGENT']:
+    if not getattr(request.user, 'is_staff_role', False):
         return Response({'detail': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
     sale = _get_sale_instance(pk)
@@ -378,7 +378,7 @@ def assign_pickup_view(request, pk):
     pickup_date = request.data.get('pickup_date')
     pickup_slot = request.data.get('pickup_slot')
 
-    if request.user.role == 'COLLECTION_AGENT':
+    if getattr(request.user, 'is_agent_role', False) and not getattr(request.user, 'is_admin_role', False):
         sale.assigned_agent = request.user
     elif agent_id:
         try:
@@ -421,7 +421,7 @@ def assign_pickup_view(request, pk):
 @permission_classes([IsAuthenticated])
 def transfer_ownership_view(request, pk):
     """Agent/Admin records IMEI and physical device handover"""
-    if request.user.role not in ['ADMIN', 'COLLECTION_AGENT']:
+    if not getattr(request.user, 'is_staff_role', False):
         return Response({'detail': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
     sale = _get_sale_instance(pk)
@@ -442,7 +442,7 @@ def transfer_ownership_view(request, pk):
 @permission_classes([IsAuthenticated])
 def admin_approve_final_offer_view(request, pk):
     """Admin reviews inspection and sets approved final price"""
-    if request.user.role not in ['ADMIN', 'SUPER_ADMIN']:
+    if not getattr(request.user, 'is_admin_role', False):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     sale = _get_sale_instance(pk)
@@ -468,7 +468,7 @@ def admin_approve_final_offer_view(request, pk):
 @permission_classes([IsAuthenticated])
 def shift_pickup_to_next_day_view(request, pk):
     """Admin or Collection Agent manually shifts an order to tomorrow (or next available day)"""
-    if request.user.role not in ['ADMIN', 'COLLECTION_AGENT']:
+    if not getattr(request.user, 'is_staff_role', False):
         return Response({'detail': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
     sale = _get_sale_instance(pk)
