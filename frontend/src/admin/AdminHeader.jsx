@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Menu, Smartphone, Search, Bell, Crown, LogOut, ChevronDown, 
-  X, CheckCircle2, AlertTriangle, Truck, UserCheck, ArrowRight
+  X, CheckCircle2, AlertTriangle, Truck, UserCheck, ArrowRight, KeyRound
 } from 'lucide-react';
 
 export default function AdminHeader({
@@ -9,6 +9,7 @@ export default function AdminHeader({
   onToggleSidebar,
   onNavigateTab,
   onLogout,
+  onChangePassword,
   onQuickSearchSelect,
   sales = [],
   customers = [],
@@ -323,6 +324,17 @@ export default function AdminHeader({
                 >
                   <UserCheck className="w-4 h-4 text-emerald-600" />
                   <span>Agent Inspection Portal</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    onChangePassword && onChangePassword();
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-[#0BAA4B] flex items-center gap-2 transition"
+                >
+                  <KeyRound className="w-4 h-4 text-emerald-600" />
+                  <span>Change Password</span>
                 </button>
                 <button
                   type="button"

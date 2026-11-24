@@ -131,6 +131,11 @@ def agent_detail_view(request, agent_id):
             agent.phone = str(data['phone']).strip()
         if 'email' in data and data['email']:
             agent.email = str(data['email']).strip().lower()
+        if 'password' in data and data['password']:
+            new_pass = str(data['password']).strip()
+            if len(new_pass) < 6:
+                return Response({'detail': 'Password must be at least 6 characters'}, status=status.HTTP_400_BAD_REQUEST)
+            agent.set_password(new_pass)
         if 'is_active' in data:
             agent.is_active = bool(data['is_active'])
         agent.save()
@@ -288,3 +293,23 @@ def delete_account_view(request):
     user.default_upi_id = ""
     user.save()
     return Response({'message': 'Your account and personal data have been deleted successfully.'}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password_view(request):
+    """Allow an authenticated user to change their own password, or admin to reset"""
+    data = request.data
+    old_password = data.get('old_password', '')
+    new_password = str(data.get('new_password', '')).strip()
+
+    if not new_password or len(new_password) < 6:
+        return Response({'detail': 'New password must be at least 6 characters long'}, status=status.HTTP_400_BAD_REQUEST)
+
+    is_admin = getattr(request.user, 'is_admin_role', False)
+    if not is_admin or old_password:
+        if not request.user.check_password(old_password):
+            return Response({'detail': 'Current password does not match'}, status=status.HTTP_400_BAD_REQUEST)
+
+    request.user.set_password(new_password)
+    request.user.save()
+    return Response({'message': 'Password changed successfully!'}, status=status.HTTP_200_OK)

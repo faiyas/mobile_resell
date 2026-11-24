@@ -4,7 +4,7 @@ import {
   IndianRupee, Smartphone, Clock, CheckCircle2, AlertCircle, 
   Search, Filter, QrCode, Upload, Eye, UserPlus, RefreshCw, 
   Layers, ShieldAlert, Award, FileText, ChevronRight, Sparkles,
-  Truck, X, MapPin, Calendar, UserCheck, User, Users, Phone, Mail, Edit3, Building, ShieldCheck, Trash2
+  Truck, X, MapPin, Calendar, UserCheck, User, Users, Phone, Mail, Edit3, Building, ShieldCheck, Trash2, KeyRound
 } from 'lucide-react';
 import { api } from '../services/api';
 import PayoutModal from './PayoutModal';
@@ -105,6 +105,68 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       setAgentCreateError(err.message || 'Failed to create field agent.');
     } finally {
       setCreatingAgentLoading(false);
+    }
+  };
+
+  // Change Agent Password State
+  const [agentPasswordModalOpen, setAgentPasswordModalOpen] = useState(false);
+  const [selectedAgentForPassword, setSelectedAgentForPassword] = useState(null);
+  const [newAgentPasswordToSet, setNewAgentPasswordToSet] = useState('');
+  const [updatingAgentPasswordLoading, setUpdatingAgentPasswordLoading] = useState(false);
+  const [agentPasswordError, setAgentPasswordError] = useState('');
+
+  const handleUpdateAgentPassword = async (e) => {
+    e.preventDefault();
+    if (!newAgentPasswordToSet || newAgentPasswordToSet.trim().length < 6) {
+      setAgentPasswordError('Password must be at least 6 characters long.');
+      return;
+    }
+    setUpdatingAgentPasswordLoading(true);
+    setAgentPasswordError('');
+    try {
+      await api.updateAgent(selectedAgentForPassword.id, { password: newAgentPasswordToSet.trim() });
+      setSuccessToast(`✓ Password for "${selectedAgentForPassword.full_name}" updated successfully!`);
+      setAgentPasswordModalOpen(false);
+      setSelectedAgentForPassword(null);
+      setNewAgentPasswordToSet('');
+    } catch (err) {
+      setAgentPasswordError(err.message || 'Failed to update agent password.');
+    } finally {
+      setUpdatingAgentPasswordLoading(false);
+    }
+  };
+
+  // Change My Password State (Admin self-service)
+  const [changeMyPasswordModalOpen, setChangeMyPasswordModalOpen] = useState(false);
+  const [myOldPassword, setMyOldPassword] = useState('');
+  const [myNewPassword, setMyNewPassword] = useState('');
+  const [myConfirmPassword, setMyConfirmPassword] = useState('');
+  const [myPasswordLoading, setMyPasswordLoading] = useState(false);
+  const [myPasswordError, setMyPasswordError] = useState('');
+
+  const handleChangeMyPassword = async (e) => {
+    e.preventDefault();
+    if (!myNewPassword || myNewPassword.trim().length < 6) {
+      setMyPasswordError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (myNewPassword !== myConfirmPassword) {
+      setMyPasswordError('New passwords do not match.');
+      return;
+    }
+    setMyPasswordLoading(true);
+    setMyPasswordError('');
+    try {
+      await api.changePassword({ old_password: myOldPassword, new_password: myNewPassword.trim() });
+      setSuccessToast('✓ Your password has been changed successfully!');
+      setChangeMyPasswordModalOpen(false);
+      setMyOldPassword('');
+      setMyNewPassword('');
+      setMyConfirmPassword('');
+    } catch (err) {
+      setMyPasswordError(err.message || 'Failed to change password.');
+    } finally {
+      setMyPasswordLoading(false);
     }
   };
 
@@ -477,6 +539,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           onNavigateTab={onNavigate}
           onLogout={onLogout}
+          onChangePassword={() => setChangeMyPasswordModalOpen(true)}
           onQuickSearchSelect={(type, item) => {
             if (type === 'sales') {
               setActiveTab('sales');
@@ -943,15 +1006,32 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
                     </div>
 
                     <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-100">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAgent(ag)}
-                        className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5"
-                        title="Delete Field Agent Account"
-                      >
-                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                        <span>Delete Agent</span>
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedAgentForPassword(ag);
+                            setNewAgentPasswordToSet('');
+                            setAgentPasswordError('');
+                            setAgentPasswordModalOpen(true);
+                          }}
+                          className="text-slate-500 hover:text-amber-700 hover:bg-amber-50 px-2 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5"
+                          title="Reset or Change Agent Password"
+                        >
+                          <KeyRound className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Change Password</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAgent(ag)}
+                          className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1"
+                          title="Delete Field Agent Account"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                          <span className="hidden sm:inline">Delete</span>
+                        </button>
+                      </div>
 
                       <button
                         type="button"
@@ -2061,6 +2141,192 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
                     </>
                   ) : (
                     <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ================= MODAL: CHANGE FIELD AGENT PASSWORD ================= */}
+      {agentPasswordModalOpen && selectedAgentForPassword && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div className="px-6 py-4 bg-gradient-to-r from-amber-600 to-amber-700 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm">Change Agent Password</h3>
+                  <p className="text-[11px] text-amber-100 font-medium">
+                    {selectedAgentForPassword.full_name} ({selectedAgentForPassword.phone})
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setAgentPasswordModalOpen(false);
+                  setSelectedAgentForPassword(null);
+                }}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateAgentPassword} className="p-6 space-y-4">
+              {agentPasswordError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{agentPasswordError}</span>
+                </div>
+              )}
+
+              <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-3 text-xs text-amber-800">
+                <p>You are setting a new password for <strong>{selectedAgentForPassword.full_name}</strong>. They will use this password to log into the Dolly Agent Inspection app.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">New Password *</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Min 6 characters (e.g. Secret@123)"
+                  value={newAgentPasswordToSet}
+                  onChange={(e) => setNewAgentPasswordToSet(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAgentPasswordModalOpen(false);
+                    setSelectedAgentForPassword(null);
+                  }}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingAgentPasswordLoading}
+                  className="px-5 py-2.5 bg-gradient-to-r from-amber-600 to-amber-700 hover:brightness-105 text-white font-black rounded-xl text-xs shadow-md transition flex items-center gap-2 disabled:opacity-50 active:scale-98"
+                >
+                  {updatingAgentPasswordLoading ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Updating...</span>
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>Set New Password</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ================= MODAL: CHANGE MY PASSWORD (SELF-SERVICE) ================= */}
+      {changeMyPasswordModalOpen && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+            <div className="px-6 py-4 bg-gradient-to-r from-[#087C38] to-[#0BAA4B] text-white flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-black text-sm">Change Your Password</h3>
+                  <p className="text-[11px] text-emerald-100 font-medium">Update your admin login password</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChangeMyPasswordModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleChangeMyPassword} className="p-6 space-y-4">
+              {myPasswordError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{myPasswordError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Current Password *</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter current password"
+                  value={myOldPassword}
+                  onChange={(e) => setMyOldPassword(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">New Password *</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Min 6 characters"
+                  value={myNewPassword}
+                  onChange={(e) => setMyNewPassword(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Confirm New Password *</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Re-type new password"
+                  value={myConfirmPassword}
+                  onChange={(e) => setMyConfirmPassword(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setChangeMyPasswordModalOpen(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={myPasswordLoading}
+                  className="px-5 py-2.5 bg-[#0BAA4B] hover:bg-[#087C38] text-white font-black rounded-xl text-xs shadow-md transition flex items-center gap-2 disabled:opacity-50 active:scale-98"
+                >
+                  {myPasswordLoading ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <KeyRound className="w-3.5 h-3.5" />
+                      <span>Update Password</span>
+                    </>
                   )}
                 </button>
               </div>
