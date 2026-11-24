@@ -184,6 +184,9 @@ def seed_catalogue():
                     variant_obj.save()
                     stats['variants_updated'] += 1
 
+        # Clean up obsolete 'Number Series' entries if no models remain linked to them
+        DeviceSeries.objects.filter(name__iexact='Number Series', models__isnull=True).delete()
+
     print("\nCatalogue Seeding Completed Successfully!")
     print(f"  Brands  : {len(brand_cache)} processed ({stats['brands_created']} created)")
     print(f"  Series  : {len(series_cache)} processed ({stats['series_created']} created)")
