@@ -38,20 +38,23 @@ class UserSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6)
     phone = serializers.CharField(required=True)
+    email = serializers.EmailField(required=False, allow_blank=True, allow_null=True)
 
     class Meta:
         model = User
         fields = ['id', 'email', 'password', 'phone', 'full_name', 'role']
 
     def validate_email(self, value):
-        email = value.strip().lower()
+        if not value or not str(value).strip():
+            return ''
+        email = str(value).strip().lower()
+        # If user with same email exists, raise error
         if User.objects.filter(email__iexact=email).exists():
             raise serializers.ValidationError("An account with this email address already exists. Please sign in.")
         return email
 
     def validate_phone(self, value):
-        raw_phone = value.strip()
-        # Keep only digits
+        raw_phone = str(value or '').strip()
         clean_phone = ''.join(c for c in raw_phone if c.isdigit())
         if clean_phone.startswith('91') and len(clean_phone) == 12:
             clean_phone = clean_phone[2:]
@@ -73,10 +76,17 @@ class RegisterSerializer(serializers.ModelSerializer):
         else:
             role = 'CUSTOMER'
 
+        clean_phone = validated_data.get('phone', '')
+        email = validated_data.get('email')
+        if not email or not str(email).strip():
+            # Auto-assign domain email based on phone if omitted
+            prefix = 'agent' if role == 'COLLECTION_AGENT' else 'user'
+            email = f"{prefix}_{clean_phone}@dollybuyback.com"
+
         user = User.objects.create_user(
-            email=validated_data['email'],
+            email=email,
             password=validated_data['password'],
-            phone=validated_data['phone'],
+            phone=clean_phone,
             full_name=validated_data.get('full_name', ''),
             role=role,
             is_staff=(role == 'ADMIN')

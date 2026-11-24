@@ -96,6 +96,9 @@ def collection_agents_view(request):
     if request.method == 'POST':
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         data['role'] = 'COLLECTION_AGENT'
+        if not data.get('email') or not str(data.get('email', '')).strip():
+            raw_ph = ''.join(c for c in str(data.get('phone', '')) if c.isdigit())
+            data['email'] = f"agent_{raw_ph or 'new'}@dollybuyback.com"
         serializer = RegisterSerializer(data=data, context={'is_admin': True})
         if serializer.is_valid():
             agent = serializer.save()
@@ -123,6 +126,9 @@ def customers_view(request):
     if request.method == 'POST':
         data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
         data['role'] = 'CUSTOMER'
+        if not data.get('email') or not str(data.get('email', '')).strip():
+            raw_ph = ''.join(c for c in str(data.get('phone', '')) if c.isdigit())
+            data['email'] = f"cust_{raw_ph or 'new'}@dollybuyback.com"
         serializer = RegisterSerializer(data=data, context={'is_admin': True})
         if serializer.is_valid():
             customer = serializer.save()
