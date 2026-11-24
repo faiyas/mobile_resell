@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 import '../services/api_service.dart';
+import '../services/draft_sell_service.dart';
 import '../widgets/brand_logo.dart';
 import 'home_screen.dart';
 
@@ -25,10 +26,10 @@ class _SplashScreenState extends State<SplashScreen>
 
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 2000),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.82, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
       CurvedAnimation(
         parent: _animController,
         curve: const Interval(0.0, 0.70, curve: Curves.easeOutBack),
@@ -45,7 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
     _taglineSlideAnimation = Tween<double>(begin: 18.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _animController,
-        curve: const Interval(0.40, 0.90, curve: Curves.easeOutCubic),
+        curve: const Interval(0.35, 0.85, curve: Curves.easeOutCubic),
       ),
     );
 
@@ -54,13 +55,30 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _startSessionAndNavigate() async {
-    // 1. Minimum splash display duration for smooth brand impression
-    final waitFuture = Future.delayed(const Duration(milliseconds: 1800));
+    // 1. Exact 5-second splash screen duration for brand impression
+    final waitFuture = Future.delayed(const Duration(milliseconds: 5000));
 
-    // 2. Fast background pre-initialization (reads tokens, cache)
-    final initFuture = ApiService().init();
+    // 2. Comprehensive parallel background pre-warm sync
+    final syncFuture = Future(() async {
+      try {
+        final api = ApiService();
+        // Step A: Init auth token and user state
+        await api.init();
 
-    await Future.wait([waitFuture, initFuture]);
+        // Step B: Pre-warm backend and cache in parallel
+        await Future.wait([
+          api.pingHealth().catchError((_) => false),
+          api.getCMSSections().catchError((_) => []),
+          api.getDeviceCategories().catchError((_) => []),
+          api.getBrands().catchError((_) => []),
+          DraftSellService.getDraft().catchError((_) => null),
+        ]);
+      } catch (e) {
+        debugPrint('Splash background pre-sync error (non-fatal): $e');
+      }
+    });
+
+    await Future.wait([waitFuture, syncFuture]);
 
     if (!mounted) return;
 
@@ -139,7 +157,7 @@ class _SplashScreenState extends State<SplashScreen>
             child: Container(color: Colors.transparent),
           ),
 
-          // 3. Central Brand Logo & Choreographed Reveal
+          // 3. Single Central Brand Logo & Choreographed Reveal
           Center(
             child: AnimatedBuilder(
               animation: _animController,
@@ -151,52 +169,52 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // Single Prominent Dolly Brand Logo with Ambient Glow
                         Container(
-                          width: 108,
-                          height: 108,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(26),
                             boxShadow: [
                               BoxShadow(
-                                color: AppTheme.primaryGreen.withOpacity(0.28),
-                                blurRadius: 28,
-                                offset: const Offset(0, 10),
+                                color: AppTheme.primaryGreen.withOpacity(0.25),
+                                blurRadius: 40,
+                                spreadRadius: 4,
+                                offset: const Offset(0, 8),
                               ),
                             ],
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(26),
-                            child: Image.asset(
+                          child: Image.asset(
+                            'assets/images/dolly_logo.png',
+                            width: 220,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Image.asset(
                               'assets/images/dolly_icon.png',
+                              width: 180,
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) =>
-                                  const RecellLogoIcon(size: 96),
+                                  const Text(
+                                'DOLLY',
+                                style: TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppTheme.primaryGreen,
+                                  letterSpacing: 2.0,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 18),
-                        Image.asset(
-                          'assets/images/dolly_logo.png',
-                          width: 190,
-                          fit: BoxFit.contain,
-                          errorBuilder: (context, error, stackTrace) => const Text(
-                            'DOLLY',
-                            style: TextStyle(
-                              fontSize: 34,
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.primaryGreen,
-                              letterSpacing: 2.0,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
+
+                        // Frosted Glass Subtitle Tagline
                         Transform.translate(
                           offset: Offset(0, _taglineSlideAnimation.value),
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
+                                horizontal: 16, vertical: 7),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.75),
+                              color: Colors.white.withOpacity(0.85),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: AppTheme.glassBorder,
@@ -204,7 +222,7 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.03),
+                                  color: Colors.black.withOpacity(0.04),
                                   blurRadius: 10,
                                   offset: const Offset(0, 4),
                                 ),
@@ -229,17 +247,17 @@ class _SplashScreenState extends State<SplashScreen>
             ),
           ),
 
-          // 4. Subtle Bottom Loading Indicator
+          // 4. Smooth Bottom Loading Indicator
           Positioned(
             bottom: 48,
             left: 0,
             right: 0,
             child: Center(
               child: SizedBox(
-                width: 32,
-                height: 3,
+                width: 72,
+                height: 3.5,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
+                  borderRadius: BorderRadius.circular(3),
                   child: const LinearProgressIndicator(
                     backgroundColor: Color(0xFFE2ECE5),
                     color: AppTheme.primaryGreen,
