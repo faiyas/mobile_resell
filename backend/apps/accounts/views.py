@@ -111,6 +111,77 @@ def collection_agents_view(request):
     agents = User.objects.filter(role__in=['COLLECTION_AGENT', 'AGENT', 'FIELD_AGENT'], is_active=True)
     return Response(UserSerializer(agents, many=True).data)
 
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def agent_detail_view(request, agent_id):
+    """View, update or delete a field agent (Admin only)"""
+    is_admin = bool(
+        getattr(request.user, 'role', '') in ['ADMIN', 'SUPER_ADMIN'] or 
+        getattr(request.user, 'is_staff', False) or 
+        getattr(request.user, 'is_superuser', False)
+    )
+    if not is_admin:
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    try:
+        agent = User.objects.get(pk=agent_id)
+    except User.DoesNotExist:
+        return Response({'detail': 'Agent not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(UserSerializer(agent).data)
+
+    if request.method in ['PUT', 'PATCH']:
+        data = request.data
+        if 'full_name' in data and data['full_name']:
+            agent.full_name = str(data['full_name']).strip()
+        if 'phone' in data and data['phone']:
+            agent.phone = str(data['phone']).strip()
+        if 'email' in data and data['email']:
+            agent.email = str(data['email']).strip().lower()
+        if 'is_active' in data:
+            agent.is_active = bool(data['is_active'])
+        agent.save()
+        return Response({
+            'message': 'Agent details updated successfully',
+            'agent': UserSerializer(agent).data
+        })
+
+    if request.method == 'DELETE':
+        from apps.sales.models import PhoneSale
+        # Unassign any active orders currently assigned to this agent back to the unassigned queue
+        PhoneSale.objects.filter(assigned_agent=agent).update(assigned_agent=None)
+
+        agent_name = agent.full_name or agent.phone or f"#{agent.id}"
+
+        # Check if agent has performed inspections or payouts (protected by ForeignKey models.PROTECT)
+        has_inspections = False
+        has_payouts = False
+        try:
+            has_inspections = agent.inspections_performed.exists()
+        except Exception:
+            pass
+        try:
+            has_payouts = agent.payouts_authorized.exists()
+        except Exception:
+            pass
+
+        if has_inspections or has_payouts:
+            # Soft-delete / deactivate so historical audit and inspection records remain valid
+            agent.is_active = False
+            agent.save()
+            return Response({
+                'message': f"Agent '{agent_name}' deactivated and removed from active roster (audit records preserved).",
+                'deleted': True
+            })
+        else:
+            # Hard delete if no dependent records
+            agent.delete()
+            return Response({
+                'message': f"Agent '{agent_name}' permanently deleted.",
+                'deleted': True
+            })
+
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def customers_view(request):

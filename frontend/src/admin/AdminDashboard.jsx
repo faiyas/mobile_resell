@@ -242,6 +242,20 @@ export default function AdminDashboard({ currentUser }) {
     }
   };
 
+  const handleDeleteAgent = async (ag) => {
+    const agentLabel = ag.full_name ? `${ag.full_name} (${ag.phone || ag.email || 'ID: #' + ag.id})` : (ag.phone || `Agent #${ag.id}`);
+    if (!window.confirm(`Are you sure you want to delete Field Agent "${agentLabel}"?\n\nAny uncollected orders assigned to this agent will be returned to the unassigned queue.`)) {
+      return;
+    }
+    try {
+      await api.deleteAgent(ag.id);
+      setSuccessToast(`✓ Agent "${ag.full_name || ag.phone}" removed successfully.`);
+      setAgents(prev => prev.filter(item => item.id !== ag.id));
+    } catch (err) {
+      alert(err.message || 'Failed to delete agent');
+    }
+  };
+
   // History tab date filters
   const [historyPeriod, setHistoryPeriod] = useState('all');
   const [historyStartDate, setHistoryStartDate] = useState('');
@@ -963,16 +977,26 @@ export default function AdminDashboard({ currentUser }) {
                       <p><strong className="text-slate-700">Active Queue:</strong> <span className="font-bold text-amber-600">{assignedPickups} Pending Pickups</span></p>
                     </div>
 
-                    <div className="pt-1 flex items-center justify-between text-xs">
-                      <span className="text-[10px] text-slate-400">ID: #{ag.id}</span>
+                    <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-100">
                       <button
+                        type="button"
+                        onClick={() => handleDeleteAgent(ag)}
+                        className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 px-2 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1.5"
+                        title="Delete Field Agent Account"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                        <span>Delete Agent</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => {
                           setActiveTab('sales');
                           setSearchQuery(ag.full_name);
                         }}
                         className="text-[#087C38] hover:underline font-bold text-[11px] flex items-center gap-1"
                       >
-                        View Assigned Orders →
+                        View Orders →
                       </button>
                     </div>
                   </div>
