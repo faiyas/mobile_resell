@@ -48,7 +48,8 @@ export default function AdminSidebar({
       title: 'VALUATION',
       items: [
         { id: 'questionnaire', label: 'Questionnaire Builder', icon: FileText, count: counts.questions },
-        { id: 'deductions', label: 'Deduction Rules', icon: Percent, count: counts.deductions }
+        { id: 'deductions', label: 'Deduction Rules', icon: Percent, count: counts.deductions },
+        { id: 'simulator', label: 'Valuation Simulator', icon: Sparkles }
       ]
     },
     {

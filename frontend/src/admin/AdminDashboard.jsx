@@ -746,7 +746,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       )}
 
       {/* ================= TAB 3: PHONE CATALOGUE, PRICING, VALUATION & CMS ================= */}
-      {['device_categories', 'brands', 'models', 'variants', 'questionnaire', 'deductions', 'cms', 'hero_banners', 'promotions', 'pricing'].includes(activeTab) && (
+      {['device_categories', 'brands', 'models', 'variants', 'questionnaire', 'deductions', 'cms', 'hero_banners', 'promotions', 'pricing', 'simulator'].includes(activeTab) && (
         <CataloguePricingManager 
           initialSubTab={
             activeTab === 'pricing' ? 'brands' :

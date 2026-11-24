@@ -925,50 +925,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
         </div>
       )}
 
-      {/* Sub Navigation Chips Bar - Perfectly Aligned & Responsive */}
-      <div className="bg-slate-100/90 p-1.5 rounded-2xl flex items-center gap-1.5 overflow-x-auto scrollbar-none border border-slate-200 shadow-sm">
-        {[
-          { id: 'cms', label: '🎨 Homepage (CMS)', count: cmsSections.length || heroSlides.length },
-          { id: 'questionnaire', label: '📋 Questionnaire Builder', count: categories.length },
-          { id: 'device_categories', label: '🗂️ Categories', count: deviceCategories.length },
-          { id: 'brands', label: '📱 Brands', count: brands.length },
-          { id: 'models', label: '🏷️ Series & Models', count: models.length },
-          { id: 'variants', label: '💾 Storage & Prices', count: variants.length },
-          { id: 'deductions', label: '📉 Deduction Rules', count: options.length },
-          { id: 'simulator', label: '⚡ Valuation Simulator', count: variants.length },
-          { id: 'history', label: '📜 Audit Log', count: priceHistory.length },
-        ].map((tab) => {
-          const isActive = subTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => handleSubTabChange(tab.id)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 active:scale-95 whitespace-nowrap ${
-                isActive
-                  ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20 ring-1 ring-[#0BAA4B]'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
-              }`}
-            >
-              <span>{tab.label}</span>
-              {tab.count !== undefined && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
-                  isActive ? 'bg-white/20 text-white font-black' : 'bg-slate-200 text-slate-700'
-                }`}>
-                  {tab.count}
-                </span>
-              )}
-              {tab.badge && (
-                <span className={`text-[9px] px-1.5 py-0.5 rounded font-black ${
-                  isActive ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800'
-                }`}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+
 
       {/* ================= HERO CAROUSEL & PROMOTIONAL BANNERS MANAGER ================= */}
       {subTab === 'cms' && (() => {
