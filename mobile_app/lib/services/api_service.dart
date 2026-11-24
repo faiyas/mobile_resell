@@ -187,6 +187,27 @@ class ApiService {
     }
   }
 
+  Future<void> changePassword({required String oldPassword, required String newPassword}) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/change-password/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode({
+        'old_password': oldPassword,
+        'new_password': newPassword,
+      }),
+    );
+    if (res.statusCode != 200) {
+      try {
+        final err = jsonDecode(res.body);
+        throw Exception(err['detail'] ?? 'Failed to change password');
+      } catch (e) {
+        if (e is Exception) rethrow;
+        throw Exception('Failed to change password: ${res.statusCode}');
+      }
+    }
+  }
+
   // ================= 2. DYNAMIC CMS SECTIONS =================
   Future<List<CMSSectionModel>> getCMSSections({bool forceRefresh = false}) async {
     if (!forceRefresh && _cachedCMSSections != null && _cachedCMSSections!.isNotEmpty) {

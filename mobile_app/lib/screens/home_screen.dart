@@ -1724,6 +1724,36 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(height: 12),
+          // Change Password Option
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.key_rounded, color: Colors.amber.shade800, size: 20),
+              ),
+              title: const Text(
+                'Change Password',
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary),
+              ),
+              subtitle: const Text(
+                'Update your login security password',
+                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
+              onTap: _showChangePasswordModal,
+            ),
+          ),
+          const SizedBox(height: 12),
+
           Container(
             decoration: BoxDecoration(
               color: Colors.red.withOpacity(0.06),
@@ -1833,6 +1863,210 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 110),
         ],
+      ),
+    );
+  }
+
+  void _showChangePasswordModal() {
+    final oldPassCtrl = TextEditingController();
+    final newPassCtrl = TextEditingController();
+    final confirmPassCtrl = TextEditingController();
+    bool loading = false;
+    String error = '';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => ClipRRect(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 16,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.96),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                border: Border.all(color: AppTheme.glassBorder, width: 1.5),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 48,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: AppTheme.border,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.lightGreen,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.lock_reset_rounded, color: AppTheme.primaryGreen, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Change Password',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+                            ),
+                            Text(
+                              'Update your Dolly login credentials',
+                              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    if (error.isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: Colors.red, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                error,
+                                style: TextStyle(color: Colors.red.shade900, fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: oldPassCtrl,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'Current Password *',
+                        prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.primaryGreen),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: newPassCtrl,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'New Password * (Min 6 chars)',
+                        prefixIcon: const Icon(Icons.key_rounded, color: AppTheme.primaryGreen),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: confirmPassCtrl,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm New Password *',
+                        prefixIcon: const Icon(Icons.check_circle_outline_rounded, color: AppTheme.primaryGreen),
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryGreen,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 2,
+                        ),
+                        onPressed: loading
+                            ? null
+                            : () async {
+                                final oldP = oldPassCtrl.text;
+                                final newP = newPassCtrl.text.trim();
+                                final confP = confirmPassCtrl.text.trim();
+
+                                if (oldP.isEmpty) {
+                                  setModalState(() => error = 'Please enter your current password');
+                                  return;
+                                }
+                                if (newP.length < 6) {
+                                  setModalState(() => error = 'New password must be at least 6 characters');
+                                  return;
+                                }
+                                if (newP != confP) {
+                                  setModalState(() => error = 'New passwords do not match');
+                                  return;
+                                }
+
+                                setModalState(() {
+                                  loading = true;
+                                  error = '';
+                                });
+
+                                try {
+                                  await _api.changePassword(oldPassword: oldP, newPassword: newP);
+                                  if (mounted) {
+                                    Navigator.pop(ctx);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        backgroundColor: AppTheme.primaryGreen,
+                                        content: Text('✓ Password changed successfully!'),
+                                      ),
+                                    );
+                                  }
+                                } catch (e) {
+                                  setModalState(() {
+                                    loading = false;
+                                    error = e.toString().replaceAll('Exception: ', '');
+                                  });
+                                }
+                              },
+                        child: loading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text(
+                                'Update Password',
+                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14),
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
