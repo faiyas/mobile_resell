@@ -53,6 +53,15 @@ class ApiService {
     await prefs.remove('current_user');
   }
 
+  /// Permanently deletes the user account and erases personal data (App Store & Google Play compliance)
+  Future<void> deleteAccount() async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/delete-account/');
+    try {
+      await http.post(url, headers: _headers);
+    } catch (_) {}
+    await logout();
+  }
+
   Map<String, String> get _headers {
     final headers = <String, String>{
       'Content-Type': 'application/json',

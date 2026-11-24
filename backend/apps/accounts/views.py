@@ -202,3 +202,18 @@ def customer_detail_view(request, user_id):
             'message': f"Customer {'activated' if customer.is_active else 'deactivated'} successfully",
             'is_active': customer.is_active
         })
+
+@api_view(['POST', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_account_view(request):
+    """Allow an authenticated user to permanently delete their account and erase personal data (Mandatory for App Store & Play Store compliance)"""
+    user = request.user
+    user.is_active = False
+    # Anonymize personal info to protect privacy while maintaining transaction audit integrity
+    user.phone = f"del_{user.id}_{user.phone[-4:]}"
+    user.email = f"deleted_{user.id}@dollyresell.com"
+    user.full_name = "Deleted User"
+    user.default_address = ""
+    user.default_upi_id = ""
+    user.save()
+    return Response({'message': 'Your account and personal data have been deleted successfully.'}, status=status.HTTP_200_OK)

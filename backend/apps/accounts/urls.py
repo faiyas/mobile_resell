@@ -11,4 +11,5 @@ urlpatterns = [
     path('agents/', collection_agents_view, name='auth-agents'),
     path('customers/', customers_view, name='auth-customers'),
     path('customers/<int:user_id>/', customer_detail_view, name='auth-customer-detail'),
+    path('delete-account/', delete_account_view, name='auth-delete-account'),
 ]

@@ -38,14 +38,13 @@ class ContactLauncher {
   /// Uses RFC 3986 percent-encoding (%20) so email clients like Gmail show natural spaces without '+'
   static Future<void> sendEmail(
     BuildContext context, {
-    String subject = '1103 RECELL Customer Support Request',
-    String body = 'Hello 1103 RECELL Team,\n\nI need assistance with: ',
+    String subject = 'Dolly Customer Support Request',
+    String body = 'Hello Dolly Support Team,\n\nI need assistance with: ',
   }) async {
-    String encodeComponent(String s) =>
-        Uri.encodeComponent(s).replaceAll('+', '%20');
-
-    final uri = Uri.parse(
-      'mailto:$email?subject=${encodeComponent(subject)}&body=${encodeComponent(body)}',
+    final uri = Uri(
+      scheme: 'mailto',
+      path: email,
+      query: 'subject=${Uri.encodeComponent(subject)}&body=${Uri.encodeComponent(body)}',
     );
 
     try {

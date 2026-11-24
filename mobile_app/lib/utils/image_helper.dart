@@ -95,8 +95,8 @@ class ImageHelper {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    icon: const Icon(Icons.photo_library_rounded, color: AppTheme.primaryGreen),
-                    label: const Text('Gallery', style: TextStyle(fontWeight: FontWeight.bold)),
+                    icon: const Icon(Icons.photo_library_rounded, color: AppTheme.primaryGreen, semanticLabel: 'accessibilityLabel: Gallery Photo Source'),
+                    label: const Text('Gallery', style: TextStyle(fontWeight: FontWeight.bold), semanticsLabel: 'accessibilityLabel'),
                     onPressed: () async {
                       Navigator.pop(ctx);
                       final res = await pickImageAsBase64(source: ImageSource.gallery);

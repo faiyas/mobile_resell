@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ShieldCheck, Truck, Banknote, RefreshCw, Smartphone, Award, Lock } from 'lucide-react';
+import PrivacyPolicyModal from './PrivacyPolicyModal';
 
 export default function Footer() {
+  const [privacyOpen, setPrivacyOpen] = useState(false);
   return (
     <footer className="bg-slate-900 text-slate-400 mt-12 sm:mt-20 border-t border-slate-800 pb-16 sm:pb-0">
       {/* Value props banner */}
@@ -66,12 +68,13 @@ export default function Footer() {
           </p>
 
           <div className="flex gap-4">
-            <span className="text-slate-400 hover:text-white cursor-pointer">Terms & Conditions</span>
-            <span className="text-slate-400 hover:text-white cursor-pointer">Privacy & Data Wiping Policy</span>
-            <span className="text-slate-400 hover:text-white cursor-pointer">IMEI Verification Notice</span>
+            <span onClick={() => setPrivacyOpen(true)} className="text-slate-400 hover:text-white cursor-pointer">Terms & Conditions</span>
+            <span onClick={() => setPrivacyOpen(true)} className="text-slate-400 hover:text-white cursor-pointer">Privacy & Data Wiping Policy</span>
+            <span onClick={() => setPrivacyOpen(true)} className="text-slate-400 hover:text-white cursor-pointer">IMEI Verification Notice</span>
           </div>
         </div>
       </div>
+      <PrivacyPolicyModal isOpen={privacyOpen} onClose={() => setPrivacyOpen(false)} />
     </footer>
   );
 }

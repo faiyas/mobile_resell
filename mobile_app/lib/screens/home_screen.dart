@@ -1717,6 +1717,59 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: _confirmLogout,
             ),
           ),
+          const SizedBox(height: 12),
+
+          // Privacy Policy (Mandatory App Store 5.1.1 & Google Play Compliance)
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.lightGreen,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.privacy_tip_outlined, color: AppTheme.primaryGreen, size: 20),
+              ),
+              title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary)),
+              subtitle: const Text('Read how Dolly handles and protects your data', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+              trailing: const Icon(Icons.open_in_new_rounded, size: 16, color: AppTheme.primaryGreen),
+              onTap: () async {
+                final url = Uri.parse('https://mobile-resell.vercel.app/privacy-policy');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url, mode: LaunchMode.externalApplication);
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Account Deletion (Mandatory Apple 5.1.1(v) & Google Play User Data Compliance)
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.grey.shade300),
+            ),
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.delete_outline_rounded, color: Colors.grey, size: 20),
+              ),
+              title: const Text('Delete Account', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87)),
+              subtitle: const Text('Erase account data and personal records', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+              trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+              onTap: _confirmDeleteAccount,
+            ),
+          ),
           const SizedBox(height: 24),
 
           // Official Copyright & Version Footer
@@ -1773,6 +1826,54 @@ class _HomeScreenState extends State<HomeScreen> {
               }
             },
             child: const Text('Log Out', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteAccount() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Account?', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+        content: const Text(
+          'Are you sure you want to permanently delete your Dolly account?\n\n'
+          'All your personal data, default address, and saved profiles will be permanently erased. '
+          'This action cannot be undone.',
+          style: TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _api.deleteAccount();
+                if (mounted) {
+                  setState(() {
+                    _currentIndex = 0;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Your Dolly account has been deleted successfully.'),
+                      backgroundColor: Colors.black87,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed to delete account: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete Permanently', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

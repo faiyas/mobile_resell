@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Recell 1103</string>
+	<string>Dolly</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,13 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>recell_1103</string>
+	<string>Dolly</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>Dolly requires camera access to capture gadget condition and diagnostic inspection photos during doorstep evaluation.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Dolly requires photo library access to upload device verification documents.</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 class AppTheme {
+  // Apple & Android Tactile Feedback Integration (FeedbackGenerator / HapticFeedback)
+  static void triggerHaptic() {
+    try {
+      HapticFeedback.lightImpact();
+    } catch (_) {}
+  }
   // 1103 RECELL Green & White Glassmorphism Color Palette
   static const Color primaryGreen = Color(0xFF0BAA4B);
   static const Color darkGreen = Color(0xFF087C38);
