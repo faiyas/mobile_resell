@@ -28,6 +28,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
   List<SaleOrderModel> _myOrders = [];
   bool _loading = false;
   String _error = '';
+  String _activeFilter = 'ALL';
 
   @override
   void initState() {
@@ -119,11 +120,15 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDlgState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.cancel_outlined, color: Colors.red, size: 22),
-              SizedBox(width: 8),
-              Text('Cancel Sell Order?', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: Colors.red.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.cancel_rounded, color: Colors.red, size: 20),
+              ),
+              const SizedBox(width: 8),
+              const Text('Cancel Selling Order?', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
             ],
           ),
           content: Column(
@@ -132,17 +137,17 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
             children: [
               Text(
                 'Are you sure you want to cancel the doorstep pickup for your ${order.brandName} ${order.modelName}?',
-                style: const TextStyle(fontSize: 13, color: AppTheme.textPrimary),
+                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 14),
-              const Text('Reason for cancellation:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+              const Text('Reason for cancellation (optional):', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppTheme.textPrimary)),
               const SizedBox(height: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey.shade300),
-                  color: Colors.grey.shade50,
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
@@ -221,9 +226,12 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
       if (mounted) {
         setState(() {
           _myOrders = list;
-          if (list.isNotEmpty) {
+          // If exactly 1 order, open it directly; if multiple, start in Amazon-style list view!
+          if (list.length == 1) {
             _order = list.first;
             _searchController.text = _order!.saleCode;
+          } else {
+            _order = null;
           }
           _loading = false;
         });
@@ -234,7 +242,12 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
   }
 
   Future<void> _lookupOrder(String code) async {
-    if (code.trim().isEmpty) return;
+    if (code.trim().isEmpty) {
+      if (_myOrders.isNotEmpty) {
+        setState(() => _order = null);
+      }
+      return;
+    }
     setState(() {
       _loading = true;
       _error = '';
@@ -258,13 +271,39 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     }
   }
 
+  List<SaleOrderModel> get _filteredOrders {
+    if (_activeFilter == 'SCHEDULED') {
+      return _myOrders.where((o) => ['SUBMITTED', 'PICKUP_SCHEDULED'].contains(o.status)).toList();
+    }
+    if (_activeFilter == 'INSPECTION') {
+      return _myOrders.where((o) => ['INSPECTION_PENDING', 'FINAL_OFFER_SENT', 'CUSTOMER_ACCEPTED'].contains(o.status)).toList();
+    }
+    if (_activeFilter == 'PAID') {
+      return _myOrders.where((o) => ['OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED'].contains(o.status)).toList();
+    }
+    if (_activeFilter == 'CANCELLED') {
+      return _myOrders.where((o) => o.status == 'CANCELLED').toList();
+    }
+    return _myOrders;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final hasMultipleOrders = _myOrders.length > 1;
+    final isDetailView = _order != null;
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.white.withOpacity(0.70),
+        backgroundColor: Colors.white.withOpacity(0.80),
         elevation: 0,
+        leading: isDetailView && hasMultipleOrders
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
+                tooltip: 'All Orders',
+                onPressed: () => setState(() => _order = null),
+              )
+            : null,
         flexibleSpace: ClipRRect(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
@@ -275,7 +314,10 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
             ),
           ),
         ),
-        title: const Text('Track Order Status', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: Text(
+          isDetailView ? 'Order Details' : 'Your Orders',
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen),
@@ -291,23 +333,23 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Frosted Search Bar for Sale Code
+                // Top Search Bar (Amazon style)
                 GlassContainer(
-                  padding: const EdgeInsets.all(8),
-                  borderRadius: BorderRadius.circular(20),
+                  padding: const EdgeInsets.all(6),
+                  borderRadius: BorderRadius.circular(18),
                   child: Row(
                     children: [
                       Expanded(
                         child: TextField(
                           controller: _searchController,
                           decoration: InputDecoration(
-                            hintText: 'Enter Order ID (e.g. XP2610008753)...',
+                            hintText: 'Search by Order ID (e.g. PHN-2026-22245B)...',
                             hintStyle: TextStyle(fontSize: 12, color: AppTheme.textSecondary.withOpacity(0.8)),
-                            prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primaryGreen),
+                            prefixIcon: const Icon(Icons.search_rounded, color: AppTheme.primaryGreen, size: 20),
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                           ),
                           onSubmitted: _lookupOrder,
                         ),
@@ -316,15 +358,15 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                         onPressed: () => _lookupOrder(_searchController.text),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryGreen,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: const Text('Track', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text('Search', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 16),
 
                 if (_loading)
                   const Padding(
@@ -346,170 +388,33 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                       ],
                     ),
                   )
-                else if (_order != null)
-                  _buildOrderTimelineCard(_order!)
+                // VIEW B: SINGLE ORDER DETAILS VIEW (AMAZON STYLE)
+                else if (_order != null) ...[
+                  if (hasMultipleOrders) ...[
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.primaryGreen,
+                        padding: EdgeInsets.zero,
+                      ),
+                      icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                      label: Text('Back to All Orders (${_myOrders.length})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                      onPressed: () => setState(() => _order = null),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  _buildAmazonOrderDetailView(_order!),
+                ]
+                // VIEW A: MULTIPLE ORDERS LIST VIEW (AMAZON STYLE)
+                else if (_myOrders.isNotEmpty)
+                  _buildAmazonOrdersListView()
+                // GUEST / SIGN-IN PROMPT
                 else if (_api.currentUser == null)
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: GlassContainer(
-                        padding: const EdgeInsets.all(26),
-                        borderRadius: BorderRadius.circular(24),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryGreen.withOpacity(0.12),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.lock_person_rounded, size: 42, color: AppTheme.primaryGreen),
-                            ),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'Track Your Personal Orders',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'Doorstep pickup timelines, QC verification, and instant UPI receipts are linked to your account.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
-                            ),
-                            const SizedBox(height: 20),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                showModalBottomSheet(
-                                  context: context,
-                                  isScrollControlled: true,
-                                  backgroundColor: Colors.transparent,
-                                  builder: (ctx) => AuthModalSheet(
-                                    onSuccess: () {
-                                      setState(() {});
-                                      _loadRecentOrders();
-                                    },
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryGreen,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              ),
-                              icon: const Icon(Icons.login_rounded, size: 18),
-                              label: const Text('Sign In or Register', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
-                            ),
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Have a pickup receipt slip? Enter the Order ID in the search bar above.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  )
+                  _buildGuestSignInView()
+                // NO ORDERS
                 else
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      child: GlassContainer(
-                        padding: const EdgeInsets.all(26),
-                        borderRadius: BorderRadius.circular(24),
-                        child: Column(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppTheme.lightGreen,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.receipt_long_outlined, size: 40, color: AppTheme.primaryGreen),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No Active Orders for ${_api.currentUser?.fullName ?? "You"}',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
-                            ),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'You haven\'t placed any device sell orders yet. Sell your old phone, tablet, or dead device today for instant doorstep cash!',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
-                            ),
-                            const SizedBox(height: 20),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const CategorySelectionScreen()),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryGreen,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              ),
-                              icon: const Icon(Icons.sell_outlined, size: 18),
-                              label: const Text('Sell a Device Now', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  _buildEmptyOrdersView(),
 
-                // Recent Orders List (if multiple exist)
-                if (_myOrders.length > 1) ...[
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Your Recent Bookings',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
-                  ),
-                  const SizedBox(height: 10),
-                  ..._myOrders.map(
-                    (o) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: GlassContainer(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        borderRadius: BorderRadius.circular(16),
-                        child: ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryGreen.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(Icons.phone_iphone_rounded, color: AppTheme.primaryGreen, size: 20),
-                          ),
-                          title: Text(
-                            '${o.brandName} ${o.modelName}',
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary),
-                          ),
-                          subtitle: Text(
-                            '${o.saleCode} · ₹${o.estimatedPrice.toStringAsFixed(0)}',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
-                          ),
-                          trailing: const Icon(Icons.chevron_right_rounded, size: 20, color: AppTheme.primaryGreen),
-                          onTap: () {
-                            setState(() {
-                              _order = o;
-                              _searchController.text = o.saleCode;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-
-                const SizedBox(height: 120),
+                const SizedBox(height: 100),
               ],
             ),
           ),
@@ -518,8 +423,187 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     );
   }
 
-  Widget _buildOrderTimelineCard(SaleOrderModel order) {
-    // Stage Calculation for 6-Milestone Lifecycle
+  // =========================================================
+  // VIEW A: AMAZON-STYLE "YOUR ORDERS" LIST SCREEN
+  // =========================================================
+  Widget _buildAmazonOrdersListView() {
+    final orders = _filteredOrders;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Filter Chips Row
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildFilterChip('ALL', 'All (${_myOrders.length})'),
+              _buildFilterChip('SCHEDULED', 'Scheduled'),
+              _buildFilterChip('INSPECTION', 'QC / Inspection'),
+              _buildFilterChip('PAID', 'Completed'),
+              _buildFilterChip('CANCELLED', 'Cancelled'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        if (orders.isEmpty)
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 30),
+              child: GlassContainer(
+                padding: const EdgeInsets.all(24),
+                borderRadius: BorderRadius.circular(20),
+                child: Column(
+                  children: [
+                    const Icon(Icons.inventory_2_outlined, size: 36, color: AppTheme.primaryGreen),
+                    const SizedBox(height: 10),
+                    const Text('No orders in this category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                    const SizedBox(height: 4),
+                    const Text('Tap "All" to view your full buyback history.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                  ],
+                ),
+              ),
+            ),
+          )
+        else
+          ...orders.map((o) {
+            final isPaid = o.status == 'PAYMENT_COMPLETED';
+            final isCancelled = o.status == 'CANCELLED';
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () {
+                  setState(() {
+                    _order = o;
+                    _searchController.text = o.saleCode;
+                  });
+                },
+                child: GlassContainer(
+                  padding: EdgeInsets.zero,
+                  borderRadius: BorderRadius.circular(20),
+                  child: Column(
+                    children: [
+                      // Amazon Top Card Header
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100.withOpacity(0.8),
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                          border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('ORDER PLACED', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+                                Text(o.pickupDate ?? 'Recent', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textPrimary)),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                Text('#${o.saleCode}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w900, fontFamily: 'monospace', color: AppTheme.textPrimary)),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: isCancelled ? Colors.red.withOpacity(0.12) : isPaid ? AppTheme.primaryGreen.withOpacity(0.15) : Colors.amber.withOpacity(0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    o.status.replaceAll('_', ' '),
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w900,
+                                      color: isCancelled ? Colors.red : isPaid ? AppTheme.primaryGreen : Colors.amber.shade900,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Card Content
+                      Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 54,
+                              height: 54,
+                              decoration: BoxDecoration(
+                                color: AppTheme.lightGreen,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                              ),
+                              child: const Icon(Icons.phone_iphone_rounded, color: AppTheme.primaryGreen, size: 28),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${o.brandName} ${o.modelName}',
+                                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Slot: ${o.pickupDate ?? "Today"} · ${o.pickupSlot ?? "Morning"}',
+                                    style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '₹${(o.finalPrice ?? o.estimatedPrice).toStringAsFixed(0)}',
+                                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.primaryGreen),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right_rounded, size: 22, color: AppTheme.primaryGreen),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+      ],
+    );
+  }
+
+  Widget _buildFilterChip(String key, String label) {
+    final isSelected = _activeFilter == key;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        labelStyle: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: isSelected ? Colors.white : AppTheme.textPrimary,
+        ),
+        selectedColor: AppTheme.primaryGreen,
+        backgroundColor: Colors.white.withOpacity(0.8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? AppTheme.primaryGreen : Colors.grey.shade300)),
+        onSelected: (_) => setState(() => _activeFilter = key),
+      ),
+    );
+  }
+
+  // =========================================================
+  // VIEW B: AMAZON-STYLE ORDER DETAILS & TIMELINE
+  // =========================================================
+  Widget _buildAmazonOrderDetailView(SaleOrderModel order) {
     int currentStage = 1;
     if (order.status == 'PICKUP_SCHEDULED') currentStage = 2;
     if (order.status == 'FINAL_OFFER_SENT') currentStage = 3;
@@ -527,179 +611,102 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     if (order.status == 'OWNERSHIP_TRANSFERRED') currentStage = 5;
     if (order.status == 'PAYMENT_COMPLETED') currentStage = 6;
 
+    final isPaid = order.status == 'PAYMENT_COMPLETED';
+    final isCancelled = order.status == 'CANCELLED';
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 1. Order Code Frosted Glass Header
+        // 1. Amazon Hero Status Card (Screenshot 2 style)
         GlassContainer(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          padding: const EdgeInsets.all(18),
           borderRadius: BorderRadius.circular(22),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'DOLLY ORDER ID',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: AppTheme.textSecondary, letterSpacing: 0.8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isPaid ? 'Payment Disbursed' : isCancelled ? 'Order Cancelled' : 'Doorstep Pickup Scheduled',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            color: isPaid ? AppTheme.primaryGreen : isCancelled ? Colors.red : AppTheme.darkGreen,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isPaid
+                              ? 'Paid ₹${order.finalPrice?.toStringAsFixed(0)}'
+                              : '${order.pickupDate ?? "Today"} · ${order.pickupSlot ?? "Morning"}',
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: AppTheme.textPrimary),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    order.saleCode,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppTheme.textPrimary, letterSpacing: 0.5),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: AppTheme.lightGreen,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.phone_iphone_rounded, color: AppTheme.primaryGreen, size: 26),
                   ),
                 ],
               ),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: order.status == 'CANCELLED' ? Colors.red.withOpacity(0.12) : AppTheme.primaryGreen.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: order.status == 'CANCELLED' ? Colors.red.withOpacity(0.4) : AppTheme.primaryGreen.withOpacity(0.3)),
-                    ),
-                    child: Text(
-                      order.status.replaceAll('_', ' '),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: order.status == 'CANCELLED' ? Colors.red : AppTheme.primaryGreen,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.copy_rounded, size: 18, color: AppTheme.primaryGreen),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: order.saleCode));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Order ID copied to clipboard'),
-                          duration: Duration(seconds: 1),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
-                    },
-                  ),
-                ],
+              const SizedBox(height: 8),
+              Text(
+                'Pickup address: ${order.pickupAddress}, ${order.pickupCity}',
+                style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
               ),
             ],
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
-        // Action Banners based on customer approval stage
-        if (order.status == 'CANCELLED') ...[
+        // Action Banners: Review final offer / Cancelled
+        if (order.status == 'FINAL_OFFER_SENT') ...[
           GlassContainer(
             padding: const EdgeInsets.all(18),
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: Colors.red.withOpacity(0.4), width: 1.5),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
-                  child: const Icon(Icons.cancel_rounded, color: Colors.red, size: 24),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Selling Order Cancelled', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: Colors.red)),
-                      SizedBox(height: 2),
-                      Text('This doorstep buyback request was cancelled. No device inspection or collection will take place.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-        ] else if (order.status == 'FINAL_OFFER_SENT') ...[
-          GlassContainer(
-            padding: const EdgeInsets.all(20),
-            borderRadius: BorderRadius.circular(24),
             border: Border.all(color: Colors.amber.shade600, width: 2),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(10)),
-                      child: Icon(Icons.rate_review_rounded, color: Colors.amber.shade900, size: 22),
-                    ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('ACTION REQUIRED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.amber, letterSpacing: 0.8)),
-                          Text('Review Final Buyback Offer', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: AppTheme.textPrimary)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
+                const Text('Physical Inspection Completed', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
+                const SizedBox(height: 4),
                 Text(
-                  'Doorstep inspection is completed for your ${order.brandName} ${order.modelName}. Please review the final price below:',
+                  'Our agent inspected your ${order.brandName} ${order.modelName} and offered a final payout of:',
                   style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
-                if (order.imeiNumber != null && order.imeiNumber!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text('Verified IMEI: ${order.imeiNumber}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.darkGreen)),
-                ],
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Final Agreed Payout:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
-                      Text(
-                        '₹${(order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)}',
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: AppTheme.primaryGreen),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 10),
+                Text(
+                  '₹${(order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)}',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.primaryGreen),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      flex: 2,
                       child: OutlinedButton(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.redAccent),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                        style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.red)),
                         onPressed: () => _rejectOffer(order),
-                        child: const Text('Decline', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 13)),
+                        child: const Text('Decline', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
-                      flex: 3,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryGreen,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
+                        style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
                         onPressed: () => _acceptOffer(order),
-                        child: const Text('Accept Offer ✓', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                        child: const Text('Accept Offer', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -707,107 +714,57 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
-        ] else if (order.status == 'CUSTOMER_ACCEPTED') ...[
-          GlassContainer(
-            padding: const EdgeInsets.all(16),
-            borderRadius: BorderRadius.circular(20),
-            child: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 26),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Offer Accepted (₹${(order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)})', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.darkGreen)),
-                      const SizedBox(height: 2),
-                      Text('Please hand over the physical device to agent ${order.assignedAgentName ?? "Specialist"}.', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-        ] else if (order.status == 'OWNERSHIP_TRANSFERRED') ...[
-          GlassContainer(
-            padding: const EdgeInsets.all(16),
-            borderRadius: BorderRadius.circular(20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen.withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Pickup Completed & In Custody', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.darkGreen)),
-                      const SizedBox(height: 2),
-                      Text('Device safely handed over to ${order.assignedAgentName ?? "Agent"}. Super Admin payout is being processed.', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
         ],
 
-        // 2. Timeline Card
+        // 2. Amazon Stepper Timeline (Screenshot 3 style)
         GlassContainer(
-          padding: const EdgeInsets.all(22),
-          borderRadius: BorderRadius.circular(24),
+          padding: const EdgeInsets.all(20),
+          borderRadius: BorderRadius.circular(22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Live 6-Stage Pickup & Payout Progress',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
+              const Row(
+                children: [
+                  Icon(Icons.local_shipping_outlined, color: AppTheme.primaryGreen, size: 20),
+                  SizedBox(width: 8),
+                  Text('Pickup & Verification Journey', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary)),
+                ],
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               _buildTimelineStep(
                 title: '1. Request Submitted',
-                subtitle: 'Order recorded in Dolly operations desk',
+                subtitle: 'Order recorded in Dolly operations system',
                 isCompleted: currentStage >= 1,
                 isCurrent: currentStage == 1,
               ),
               _buildTimelineStep(
                 title: '2. Pickup Scheduled',
-                subtitle: order.assignedAgentName != null
-                    ? 'Assigned to Agent ${order.assignedAgentName}'
-                    : 'Awaiting field agent assignment',
+                subtitle: order.assignedAgentName != null ? 'Assigned to specialist ${order.assignedAgentName}' : 'Awaiting specialist assignment',
                 isCompleted: currentStage >= 2,
                 isCurrent: currentStage == 2,
               ),
               _buildTimelineStep(
-                title: '3. Doorstep QC Inspected',
-                subtitle: currentStage >= 3 ? 'Inspection completed by agent · Final offer sent' : '10-point physical inspection & IMEI verification',
+                title: '3. Doorstep Inspection',
+                subtitle: currentStage >= 3 ? 'Inspection completed by field specialist' : 'Physical condition & IMEI check at doorstep',
                 isCompleted: currentStage >= 3,
                 isCurrent: currentStage == 3,
               ),
               _buildTimelineStep(
-                title: '4. Offer Confirmed by Customer',
-                subtitle: currentStage >= 4 ? 'You accepted the final offer amount' : 'Customer reviews & confirms final buyback price',
+                title: '4. Offer Confirmed',
+                subtitle: currentStage >= 4 ? 'Final buyback price approved' : 'Customer confirms final payout value',
                 isCompleted: currentStage >= 4,
                 isCurrent: currentStage == 4,
               ),
               _buildTimelineStep(
-                title: '5. Pickup Completed (Device Collected)',
-                subtitle: currentStage >= 5 ? 'Physical device handed over to agent' : 'Agent verifies customer agreement and collects phone',
+                title: '5. Device Handover',
+                subtitle: currentStage >= 5 ? 'Physical device collected' : 'Agent collects device and issues receipt',
                 isCompleted: currentStage >= 5,
                 isCurrent: currentStage == 5,
               ),
               _buildTimelineStep(
                 title: '6. Payout Disbursed',
-                subtitle: currentStage >= 6 ? 'Transferred via UPI · Payout Completed' : 'Super Admin releases instant payment',
+                subtitle: currentStage >= 6 ? 'Instant payment transferred via UPI' : 'Funds credited directly to your bank account',
                 isCompleted: currentStage >= 6,
                 isCurrent: currentStage == 6,
                 isLast: true,
@@ -816,254 +773,56 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
           ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
-        // 3. Order Details Summary Card
+        // 3. Amazon "Order Summary" Card (Screenshot 2 style)
         GlassContainer(
           padding: const EdgeInsets.all(18),
           borderRadius: BorderRadius.circular(22),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Device & Payout Details', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary)),
-              Divider(height: 16, color: AppTheme.border.withOpacity(0.6)),
-              _buildDetailRow('Device', '${order.brandName} ${order.modelName} (${order.storage})'),
-              _buildDetailRow('Quoted Value', '₹${order.estimatedPrice.toStringAsFixed(0)}'),
-              if (order.finalPrice != null)
-                _buildDetailRow('Final Agreed Price', '₹${order.finalPrice!.toStringAsFixed(0)}'),
-              if (order.pickupSlot != null)
-                _buildDetailRow('Scheduled Pickup', '${order.pickupDate ?? "Scheduled"} · ${order.pickupSlot!} (IST)'),
-              if (order.createdAtIst != null)
-                _buildDetailRow('Booked On', order.createdAtIst!),
-              _buildDetailRow('Pickup Address', '${order.pickupAddress}, ${order.pickupCity} - ${order.pickupPincode}'),
-              _buildDetailRow('Payout Method', '${order.beneficiaryType}: ${order.beneficiaryUpiId ?? 'Direct Account'}'),
+              const Text('Order Summary', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
+              const SizedBox(height: 4),
+              Text('Order number #${order.saleCode}', style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontFamily: 'monospace')),
+              Divider(height: 18, color: Colors.grey.shade300),
+              _buildDetailRow('Device Subtotal', '₹${order.estimatedPrice.toStringAsFixed(0)}'),
+              if (order.finalPrice != null && order.finalPrice != order.estimatedPrice)
+                _buildDetailRow('QC Adjustments', '-₹${(order.estimatedPrice - order.finalPrice!).toStringAsFixed(0)}'),
+              _buildDetailRow('Doorstep Pickup Fee', 'FREE'),
+              Divider(height: 18, color: Colors.grey.shade300),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Grand Total Payout:', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
+                  Text(
+                    '₹${(order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)}',
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.primaryGreen),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Payout To: ${order.beneficiaryType}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+                    Text(order.beneficiaryUpiId ?? 'Bank IMPS', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textPrimary)),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
 
-        // 4. Official Payment Proof & Confirmation Card (If Paid)
-        if (order.payment != null || order.status == 'PAYMENT_COMPLETED') ...[
-          const SizedBox(height: 16),
-          GlassContainer(
-            padding: const EdgeInsets.all(18),
-            borderRadius: BorderRadius.circular(22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(10)),
-                      child: const Icon(Icons.verified_user_rounded, color: AppTheme.primaryGreen, size: 20),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Payment Transferred & Verified',
-                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary),
-                          ),
-                          Text(
-                            order.payment?.utrNumber != null && order.payment!.utrNumber.isNotEmpty
-                                ? 'Bank UTR: ${order.payment!.utrNumber}'
-                                : 'Instant Disbursal Confirmed',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.primaryGreen, fontWeight: FontWeight.bold),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                if (order.payment != null && order.payment!.paymentProofBase64.isNotEmpty) ...[
-                  Builder(builder: (ctx) {
-                    final bytes = ImageHelper.decodeBase64(order.payment!.paymentProofBase64);
-                    if (bytes != null) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 14),
-                          const Text(
-                            'Official Bank / UPI Payout Confirmation Receipt:',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
-                          ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Image.memory(bytes, width: double.infinity, fit: BoxFit.contain),
-                          ),
-                        ],
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  }),
-                ],
-              ],
-            ),
-          ),
-        ],
-
-        // 5. Agent Handover Inspection Photos (If captured)
-        if (order.inspection != null && order.inspection!.photos.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          GlassContainer(
-            padding: const EdgeInsets.all(18),
-            borderRadius: BorderRadius.circular(22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.camera_alt_outlined, size: 18, color: AppTheme.primaryGreen),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Doorstep Inspection Photos (${order.inspection!.photos.length})',
-                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 90,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: order.inspection!.photos.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 10),
-                    itemBuilder: (ctx, idx) {
-                      final p = order.inspection!.photos[idx];
-                      final bytes = ImageHelper.decodeBase64(p.imageBase64);
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Container(
-                            width: 65,
-                            height: 65,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: bytes != null
-                                  ? Image.memory(bytes, fit: BoxFit.cover)
-                                  : const Icon(Icons.image, color: AppTheme.textSecondary),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          SizedBox(
-                            width: 65,
-                            child: Text(
-                              p.label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-
-        const SizedBox(height: 16),
-
-        // Concierge Support Button
-        GlassContainer(
-          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-          borderRadius: BorderRadius.circular(16),
-          child: OutlinedButton(
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                backgroundColor: Colors.transparent,
-                builder: (ctx) => ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                    child: Container(
-                      padding: const EdgeInsets.all(22),
-                      color: Colors.white.withOpacity(0.96),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(10))),
-                          const SizedBox(height: 16),
-                          const Row(
-                            children: [
-                              Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen),
-                              SizedBox(width: 8),
-                              Text('Dolly Order Concierge', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          ListTile(
-                            leading: const Icon(Icons.phone_rounded, color: AppTheme.primaryGreen),
-                            title: const Text('+91 90252 32453', style: TextStyle(fontWeight: FontWeight.w900)),
-                            subtitle: const Text('Direct Pickup Support & Dispute Line'),
-                            onTap: () => ContactLauncher.callHotline(context),
-                            trailing: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryGreen,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              icon: const Icon(Icons.phone_forwarded_rounded, size: 12),
-                              label: const Text('Call', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                              onPressed: () => ContactLauncher.callHotline(context),
-                            ),
-                          ),
-                          ListTile(
-                            leading: const Icon(Icons.email_outlined, color: Color(0xFFD97706)),
-                            title: const Text('aiothamizha@gmail.com', style: TextStyle(fontWeight: FontWeight.w900)),
-                            subtitle: const Text('Official Support Desk'),
-                            onTap: () => ContactLauncher.sendEmail(context, subject: 'Order ${order.saleCode} Support Request'),
-                            trailing: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFD97706),
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              icon: const Icon(Icons.mail_outline_rounded, size: 12),
-                              label: const Text('Mail', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                              onPressed: () => ContactLauncher.sendEmail(context, subject: 'Order ${order.saleCode} Support Request'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-              side: BorderSide(color: AppTheme.primaryGreen.withOpacity(0.5)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.headset_mic_outlined, size: 18, color: AppTheme.primaryGreen),
-                SizedBox(width: 8),
-                Text(
-                  'Need Help? Contact Dolly Support',
-                  style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // Cancel Order Action Button (Visible if order is pending/scheduled/inspected)
+        // 4. Cancel Order Button (if cancellable)
         if (['SUBMITTED', 'PICKUP_SCHEDULED', 'INSPECTION_PENDING', 'FINAL_OFFER_SENT'].contains(order.status)) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
@@ -1099,38 +858,29 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
         Column(
           children: [
             Container(
-              width: 24,
-              height: 24,
+              width: 22,
+              height: 22,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: isCompleted ? AppTheme.primaryGreen : Colors.white.withOpacity(0.8),
+                color: isCompleted ? AppTheme.primaryGreen : Colors.white,
                 border: Border.all(
-                  color: isCompleted ? AppTheme.primaryGreen : AppTheme.glassBorder,
+                  color: isCompleted ? AppTheme.primaryGreen : Colors.grey.shade300,
                   width: 2,
                 ),
-                boxShadow: isCompleted
-                    ? [
-                        BoxShadow(
-                          color: AppTheme.primaryGreen.withOpacity(0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        )
-                      ]
-                    : null,
               ),
               child: isCompleted
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  ? const Icon(Icons.check, size: 13, color: Colors.white)
                   : null,
             ),
             if (!isLast)
               Container(
                 width: 2,
-                height: 38,
-                color: isCompleted ? AppTheme.primaryGreen.withOpacity(0.8) : AppTheme.border.withOpacity(0.7),
+                height: 36,
+                color: isCompleted ? AppTheme.primaryGreen : Colors.grey.shade300,
               ),
           ],
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1138,17 +888,17 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w900,
                   color: isCompleted ? AppTheme.textPrimary : AppTheme.textSecondary,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 1),
               Text(
                 subtitle,
-                style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
               ),
-              if (!isLast) const SizedBox(height: 18),
+              if (!isLast) const SizedBox(height: 14),
             ],
           ),
         ),
@@ -1160,16 +910,121 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          SizedBox(
-            width: 110,
-            child: Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-          ),
-          Expanded(
-            child: Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
-          ),
+          Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGuestSignInView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: GlassContainer(
+          padding: const EdgeInsets.all(26),
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withOpacity(0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.lock_person_rounded, size: 42, color: AppTheme.primaryGreen),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Track Your Personal Orders',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Doorstep pickup timelines, QC verification, and instant UPI receipts are linked to your account.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (ctx) => AuthModalSheet(
+                      onSuccess: () {
+                        setState(() {});
+                        _loadRecentOrders();
+                      },
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                icon: const Icon(Icons.login_rounded, size: 18),
+                label: const Text('Sign In or Register', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyOrdersView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: GlassContainer(
+          padding: const EdgeInsets.all(26),
+          borderRadius: BorderRadius.circular(24),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: AppTheme.lightGreen, shape: BoxShape.circle),
+                child: const Icon(Icons.receipt_long_outlined, size: 40, color: AppTheme.primaryGreen),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No Active Orders for ${_api.currentUser?.fullName ?? "You"}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'You haven\'t placed any device sell orders yet. Sell your old phone, tablet, or dead device today for instant doorstep cash!',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const CategorySelectionScreen()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                icon: const Icon(Icons.phone_iphone_rounded, size: 18),
+                label: const Text('Sell A Device Now', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

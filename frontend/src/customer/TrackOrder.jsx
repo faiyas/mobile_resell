@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Search, Smartphone, MapPin, Calendar, Clock, CheckCircle2, 
-  XCircle, AlertCircle, FileText, IndianRupee, ShieldCheck, ChevronRight, Eye 
+  XCircle, AlertCircle, FileText, IndianRupee, ShieldCheck, ChevronRight, 
+  ArrowLeft, Share2, PhoneCall, RefreshCw, Filter, PackageCheck, Truck
 } from 'lucide-react';
 import { api } from '../services/api';
 import ReceiptModal from './ReceiptModal';
@@ -12,6 +13,7 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
   const [selectedSale, setSelectedSale] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [activeFilter, setActiveFilter] = useState('ALL');
   
   // Receipt modal state
   const [receiptData, setReceiptData] = useState(null);
@@ -59,8 +61,12 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
     setLoading(true);
     try {
       const data = await api.getSales();
-      setSalesList(data);
-      if (data.length > 0) setSelectedSale(data[0]);
+      const list = Array.isArray(data) ? data : (data?.results || []);
+      setSalesList(list);
+      // If exactly 1 order, open it directly; if multiple, start in Amazon-style list view
+      if (list.length === 1 && !selectedSale) {
+        setSelectedSale(list[0]);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -70,7 +76,10 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
 
   const handleSearch = async (codeToSearch = query) => {
     const q = (codeToSearch || '').trim();
-    if (!q) return;
+    if (!q) {
+      if (currentUser) loadMySales();
+      return;
+    }
 
     setLoading(true);
     setErrorMsg('');
@@ -78,12 +87,14 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
       const isPhone = /^[0-9]{10}$/.test(q);
       const data = await api.getSales(isPhone ? { phone: q } : { sale_code: q });
       
-      if (Array.isArray(data) && data.length > 0) {
-        setSalesList(data);
-        setSelectedSale(data[0]);
-      } else if (data && data.id) {
-        setSalesList([data]);
-        setSelectedSale(data);
+      const list = Array.isArray(data) ? data : (data?.id ? [data] : []);
+      if (list.length > 0) {
+        setSalesList(list);
+        if (list.length === 1) {
+          setSelectedSale(list[0]);
+        } else {
+          setSelectedSale(null); // Let customer browse the matching orders list
+        }
       } else {
         setSalesList([]);
         setSelectedSale(null);
@@ -99,7 +110,6 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
   const handleAcceptOffer = async (saleId) => {
     try {
       await api.acceptOffer(saleId);
-      // Refresh
       const updated = await api.getSaleDetail(saleId);
       setSelectedSale(updated);
       setSalesList(salesList.map(s => s.id === updated.id ? updated : s));
@@ -109,7 +119,7 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
   };
 
   const handleRejectOffer = async (saleId) => {
-    if (!window.confirm("Are you sure you want to reject this offer? Your phone will be returned safely to your address.")) return;
+    if (!window.confirm("Are you sure you want to decline this final offer? Your phone will be returned safely.")) return;
     try {
       await api.rejectOffer(saleId);
       const updated = await api.getSaleDetail(saleId);
@@ -134,12 +144,12 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
 
   // 6-Milestone Lifecycle
   const STEPS = [
-    { key: 'SUBMITTED', label: '1. Request Placed' },
-    { key: 'PICKUP_SCHEDULED', label: '2. Pickup Scheduled' },
-    { key: 'INSPECTION_PENDING', label: '3. Doorstep QC' },
-    { key: 'FINAL_OFFER_SENT', label: '4. Offer Confirmed' },
-    { key: 'OWNERSHIP_TRANSFERRED', label: '5. Pickup Completed' },
-    { key: 'PAYMENT_COMPLETED', label: '6. Payout Disbursed' },
+    { key: 'SUBMITTED', label: '1. Request Placed', desc: 'Device details & pickup address registered' },
+    { key: 'PICKUP_SCHEDULED', label: '2. Pickup Scheduled', desc: 'Doorstep pickup slot confirmed' },
+    { key: 'INSPECTION_PENDING', label: '3. Doorstep QC', desc: 'Field specialist verifies hardware & screen' },
+    { key: 'FINAL_OFFER_SENT', label: '4. Offer Confirmed', desc: 'Customer accepts final valuation' },
+    { key: 'OWNERSHIP_TRANSFERRED', label: '5. Device Handover', desc: 'Custody transferred to Dolly' },
+    { key: 'PAYMENT_COMPLETED', label: '6. Payout Disbursed', desc: 'Direct UPI / IMPS funds credited' },
   ];
 
   const getStepIndex = (status) => {
@@ -158,18 +168,43 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
     }
   };
 
+  // Filter orders by tab
+  const filteredSales = salesList.filter(s => {
+    if (activeFilter === 'SCHEDULED') return ['SUBMITTED', 'PICKUP_SCHEDULED'].includes(s.status);
+    if (activeFilter === 'INSPECTION') return ['INSPECTION_PENDING', 'FINAL_OFFER_SENT', 'CUSTOMER_ACCEPTED'].includes(s.status);
+    if (activeFilter === 'PAID') return ['OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED'].includes(s.status);
+    if (activeFilter === 'CANCELLED') return s.status === 'CANCELLED';
+    return true; // 'ALL'
+  });
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       
       {/* Search Header Glass Panel */}
-      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-sm mb-8">
-        <h2 className="text-xl font-extrabold text-[#17251C] mb-1">
-          Track Your 1103 RECELL Order Status
-        </h2>
-        <p className="text-xs text-[#7B8980] mb-4">
-          Enter your Order ID (e.g. <span className="font-mono font-bold text-[#0BAA4B]">XP2610008753</span>) or 10-digit mobile number:
-        </p>
+      <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-sm mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-[#17251C]">
+              {selectedSale ? 'Order Details & Real-Time Tracking' : 'Your Buyback Orders'}
+            </h2>
+            <p className="text-xs text-[#7B8980] mt-0.5">
+              {selectedSale 
+                ? `Order #${selectedSale.sale_code} · Dolly Doorstep Service`
+                : 'Track, manage, and inspect all your device sell orders in one place'}
+            </p>
+          </div>
+          {selectedSale && (
+            <button
+              onClick={() => setSelectedSale(null)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/80 hover:bg-white text-xs font-bold text-slate-700 border border-slate-200 shadow-xs transition shrink-0"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-[#0BAA4B]" />
+              View All Orders ({salesList.length})
+            </button>
+          )}
+        </div>
 
+        {/* Search input bar */}
         <form onSubmit={(e) => { e.preventDefault(); handleSearch(); }} className="flex gap-2 max-w-xl">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-[#7B8980] absolute left-3.5 top-3.5" />
@@ -177,367 +212,406 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g. XP2610008753 or 9870011223"
-              className="w-full pl-10 pr-3 py-2.5 glass-input rounded-xl text-sm focus:outline-none font-mono"
+              placeholder="Search by Order ID (e.g. PHN-2026-22245B) or 10-digit mobile..."
+              className="w-full pl-10 pr-3 py-2.5 glass-input rounded-xl text-xs sm:text-sm focus:outline-none font-mono"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="bg-[#0BAA4B] hover:bg-[#087C38] text-white font-bold px-6 py-2.5 rounded-xl text-sm transition shadow-md shadow-[#0BAA4B]/20"
+            className="bg-[#0BAA4B] hover:bg-[#087C38] text-white font-bold px-5 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm transition shadow-md shadow-[#0BAA4B]/20 shrink-0"
           >
             {loading ? 'Searching...' : 'Track'}
           </button>
         </form>
 
         {errorMsg && (
-          <div className="mt-4 p-3 bg-rose-50/90 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+          <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
       </div>
 
-      {/* Results View */}
-      {salesList.length > 1 && (
-        <div className="mb-4">
-          <p className="text-[11px] font-extrabold text-[#7B8980] uppercase tracking-wider mb-2">
-            Select Order to Track ({salesList.length} found):
-          </p>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {salesList.map((s) => (
+      {/* ========================================================= */}
+      {/* VIEW A: AMAZON-STYLE "YOUR ORDERS" LIST SCREEN            */}
+      {/* ========================================================= */}
+      {!selectedSale && (
+        <div className="space-y-5 animate-fade-in">
+          
+          {/* Amazon-style Filter Chips */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {[
+              { id: 'ALL', label: `All Orders (${salesList.length})` },
+              { id: 'SCHEDULED', label: 'Scheduled Pickups' },
+              { id: 'INSPECTION', label: 'Under QC / Inspection' },
+              { id: 'PAID', label: 'Paid / Completed' },
+              { id: 'CANCELLED', label: 'Cancelled' },
+            ].map((f) => (
               <button
-                key={s.id}
+                key={f.id}
                 type="button"
-                onClick={() => setSelectedSale(s)}
-                className={`px-3 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-2 shrink-0 ${
-                  selectedSale?.id === s.id
-                    ? 'bg-[#0BAA4B] text-white shadow-md'
-                    : 'glass-card text-[#17251C] hover:bg-white'
+                onClick={() => setActiveFilter(f.id)}
+                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
+                  activeFilter === f.id
+                    ? 'bg-[#0BAA4B] text-white shadow-md shadow-[#0BAA4B]/20'
+                    : 'glass-card text-slate-700 hover:bg-white border border-slate-200'
                 }`}
               >
-                <span className="font-mono">{s.sale_code}</span>
-                <span className="text-[11px] opacity-80">{s.brand_name} {s.model_name}</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
-                  s.status === 'PAYMENT_COMPLETED' ? 'bg-white/20 text-white' :
-                  s.status === 'FINAL_OFFER_SENT' ? 'bg-amber-100 text-amber-800' :
-                  'bg-white/30 text-white'
-                }`}>
-                  {s.status === 'PAYMENT_COMPLETED' ? 'PAID' : s.status.replace(/_/g, ' ')}
-                </span>
+                {f.label}
               </button>
             ))}
           </div>
+
+          {/* Orders Card Grid / List */}
+          {filteredSales.length === 0 ? (
+            <div className="glass-panel rounded-3xl p-12 text-center space-y-3">
+              <div className="w-14 h-14 mx-auto rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#0BAA4B]">
+                <PackageCheck className="w-7 h-7" />
+              </div>
+              <h3 className="font-extrabold text-slate-800 text-base">
+                {salesList.length === 0 ? 'No Buyback Orders Found' : 'No Orders In This Category'}
+              </h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                {salesList.length === 0 
+                  ? 'Sell your old phone, tablet, or laptop at guaranteed doorstep prices.' 
+                  : 'Try selecting "All Orders" to view your full order history.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredSales.map((sale) => {
+                const isPaid = sale.status === 'PAYMENT_COMPLETED';
+                const isCancelled = sale.status === 'CANCELLED';
+                const isReview = sale.status === 'FINAL_OFFER_SENT';
+
+                return (
+                  <div
+                    key={sale.id}
+                    onClick={() => setSelectedSale(sale)}
+                    className="glass-card rounded-2xl sm:rounded-3xl border border-white/80 hover:border-[#0BAA4B]/40 hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden group bg-white/70"
+                  >
+                    {/* Top Amazon Card Header */}
+                    <div className="bg-slate-50/80 px-5 sm:px-6 py-3 border-b border-slate-200/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-4 text-slate-500">
+                        <div>
+                          <span className="block text-[10px] uppercase font-bold text-slate-400">Order Placed</span>
+                          <span className="font-medium text-slate-700">{sale.created_at_ist || sale.pickup_date || 'Recent'}</span>
+                        </div>
+                        <div className="hidden sm:block">
+                          <span className="block text-[10px] uppercase font-bold text-slate-400">Total Payout</span>
+                          <span className="font-bold text-[#0BAA4B]">₹{Number(sale.final_price || sale.estimated_price).toLocaleString('en-IN')}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] uppercase font-bold text-slate-400">Ship To</span>
+                          <span className="font-medium text-slate-700">{sale.pickup_city || 'Doorstep Pickup'}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[11px] font-bold text-slate-600 bg-white px-2.5 py-1 rounded-md border border-slate-200">
+                          #{sale.sale_code}
+                        </span>
+                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                          isCancelled ? 'bg-rose-100 text-rose-800' :
+                          isPaid ? 'bg-emerald-100 text-emerald-800' :
+                          isReview ? 'bg-amber-100 text-amber-800 animate-pulse' :
+                          'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        }`}>
+                          ● {sale.status.replace(/_/g, ' ')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Main Card Body */}
+                    <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                      <div className="flex items-start gap-4">
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-emerald-50 to-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0 text-[#0BAA4B] shadow-xs group-hover:scale-105 transition-transform">
+                          <Smartphone className="w-8 h-8 sm:w-10 sm:h-10" />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-base sm:text-lg font-black text-[#17251C] group-hover:text-[#0BAA4B] transition-colors">
+                            {sale.brand_name} {sale.model_name}
+                          </h4>
+                          <p className="text-xs text-slate-500 font-medium">
+                            Variant: {sale.variant_details?.storage || 'Standard'}{sale.variant_details?.ram ? ` · ${sale.variant_details.ram} RAM` : ''}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
+                            <span className="inline-flex items-center gap-1 text-slate-600">
+                              <Calendar className="w-3.5 h-3.5 text-[#0BAA4B]" />
+                              Pickup: {sale.pickup_date || 'Today'} ({sale.pickup_slot || 'Morning'})
+                            </span>
+                            {sale.assigned_agent_name && (
+                              <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-md">
+                                Agent: {sale.assigned_agent_name}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Action Pill */}
+                      <div className="flex items-center justify-between sm:justify-end gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                        <div className="sm:text-right">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 block sm:hidden">Payout Amount</span>
+                          <span className="text-xl font-black text-[#0BAA4B]">
+                            ₹{Number(sale.final_price || sale.estimated_price).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          className="px-4 py-2.5 rounded-xl bg-slate-900 group-hover:bg-[#0BAA4B] text-white text-xs font-bold shadow transition-all flex items-center gap-1 shrink-0"
+                        >
+                          <span>Track & Details</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      {selectedSale ? (
+      {/* ========================================================= */}
+      {/* VIEW B: AMAZON-STYLE ORDER DETAILS & LIVE TRACKING SCREEN */}
+      {/* ========================================================= */}
+      {selectedSale && (
         <div className="space-y-6 animate-fade-in">
           
-          {/* Main Status Glass Panel */}
-          <div className="glass-panel rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+          {/* Amazon-style Status Header Card */}
+          <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-sm border border-white/80 space-y-4">
             
-            {/* Top row */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/80 pb-5">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold bg-[#E8F8ED] text-[#087C38] px-2.5 py-1 rounded-md border border-[#0BAA4B]/20">
-                    {selectedSale.sale_code}
-                  </span>
-                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                    selectedSale.status === 'CANCELLED'
-                      ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                      : selectedSale.status === 'PAYMENT_COMPLETED' 
-                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                      : selectedSale.status === 'FINAL_OFFER_SENT'
-                      ? 'bg-amber-100 text-amber-800 border border-amber-200 animate-pulse'
-                      : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                  }`}>
-                    ● {selectedSale.status.replace(/_/g, ' ')}
-                  </span>
-                  {isCancellable && (
-                    <button
-                      type="button"
-                      onClick={() => setCancelModalOpen(true)}
-                      className="text-[11px] text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-2.5 py-0.5 rounded-full font-bold transition flex items-center gap-1 shadow-xs"
-                      title="Cancel this pickup request"
-                    >
-                      <XCircle className="w-3 h-3 text-rose-500" />
-                      Cancel Order
-                    </button>
-                  )}
-                </div>
-                <h3 className="text-2xl font-black text-[#17251C] mt-2">
-                  {selectedSale.brand_name} {selectedSale.model_name}
+            {/* Top row status */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div className="space-y-1">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#0BAA4B] block">
+                  {selectedSale.status === 'PAYMENT_COMPLETED' ? '✓ Completed & Disbursed' :
+                   selectedSale.status === 'CANCELLED' ? '✕ Order Cancelled' :
+                   'Doorstep Pickup Scheduled'}
+                </span>
+                <h3 className="text-2xl font-black text-[#17251C]">
+                  {selectedSale.status === 'PAYMENT_COMPLETED'
+                    ? `Paid ₹${Number(selectedSale.final_price).toLocaleString('en-IN')}`
+                    : selectedSale.status === 'CANCELLED'
+                    ? 'Selling Order Cancelled'
+                    : `${selectedSale.pickup_date || 'Today'} · ${selectedSale.pickup_slot || 'Doorstep Pickup'}`}
                 </h3>
-                <p className="text-xs text-[#7B8980] mt-0.5">
-                  Variant: {selectedSale.variant_details?.ram ? `${selectedSale.variant_details.ram} / ` : ''}{selectedSale.variant_details?.storage}
+                <p className="text-xs text-slate-600">
+                  {selectedSale.status === 'PAYMENT_COMPLETED'
+                    ? `Payment credited to ${selectedSale.beneficiary_type === 'UPI' ? selectedSale.beneficiary_upi_id : selectedSale.beneficiary_account_no}`
+                    : `Specialist assigned to collect device at ${selectedSale.pickup_city || 'your address'}`}
                 </p>
               </div>
 
-              <div className="text-left sm:text-right glass-card p-4 rounded-2xl border border-white/80 sm:bg-transparent sm:p-0 sm:border-0 sm:shadow-none">
-                <span className="text-xs text-[#7B8980] font-medium block">
-                  {selectedSale.final_price ? 'Final Approved Offer:' : 'Estimated Offer:'}
-                </span>
-                <span className="text-3xl font-black text-[#0BAA4B]">
-                  ₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}
-                </span>
-                {selectedSale.final_price && selectedSale.final_price !== selectedSale.estimated_price && (
-                  <span className="text-xs text-[#7B8980] line-through block mt-0.5">
-                    Est: ₹{Number(selectedSale.estimated_price).toLocaleString('en-IN')}
-                  </span>
+              {/* Action Buttons Header */}
+              <div className="flex flex-wrap items-center gap-2">
+                {isCancellable && (
+                  <button
+                    type="button"
+                    onClick={() => setCancelModalOpen(true)}
+                    className="px-3 py-2 rounded-xl text-xs font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition flex items-center gap-1.5"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    Cancel Order
+                  </button>
+                )}
+                {selectedSale.status === 'PAYMENT_COMPLETED' && (
+                  <button
+                    onClick={() => handleViewReceipt(selectedSale.sale_code)}
+                    disabled={loadingReceipt}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-[#0BAA4B] hover:bg-[#087C38] text-white shadow transition flex items-center gap-1.5"
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    {loadingReceipt ? 'Loading...' : 'Download Invoice'}
+                  </button>
                 )}
               </div>
             </div>
 
-            {/* Visual Stepper (Responsive 5-Step Progress) */}
-            <div className="py-2">
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {/* Device Item Card (Amazon Screenshot 2 style) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-white/60 border border-slate-100">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#0BAA4B] shrink-0">
+                  <Smartphone className="w-8 h-8" />
+                </div>
+                <div>
+                  <h4 className="font-black text-slate-800 text-base">
+                    {selectedSale.brand_name} {selectedSale.model_name}
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Storage: {selectedSale.variant_details?.storage || 'Standard'} {selectedSale.variant_details?.ram ? `· ${selectedSale.variant_details.ram} RAM` : ''}
+                  </p>
+                  <span className="text-sm font-black text-[#0BAA4B] block mt-0.5">
+                    ₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 text-xs">
+                <span className="font-mono bg-slate-100 px-3 py-1.5 rounded-lg text-slate-600 font-bold border border-slate-200">
+                  #{selectedSale.sale_code}
+                </span>
+              </div>
+            </div>
+
+            {/* Stepper Timeline (Amazon Screenshot 3 style) */}
+            <div className="pt-2">
+              <h5 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+                <Truck className="w-3.5 h-3.5 text-[#0BAA4B]" /> Live Pickup Journey
+              </h5>
+
+              <div className="space-y-4 relative pl-4 border-l-2 border-emerald-200 ml-3">
                 {STEPS.map((s, idx) => {
                   const currentIdx = getStepIndex(selectedSale.status);
                   const isDone = currentIdx >= idx;
                   const isCurrent = currentIdx === idx;
-                  const isLastOdd = idx === 4;
+
                   return (
-                    <div 
-                      key={s.key} 
-                      className={`p-2.5 sm:p-3 rounded-2xl border text-center transition ${
-                        isLastOdd ? 'col-span-2 sm:col-span-1' : ''
-                      } ${
-                        isCurrent
-                          ? 'bg-[#E8F8ED] border-[#0BAA4B] text-[#087C38] ring-2 ring-[#0BAA4B]/20 shadow-sm'
-                          : isDone
-                          ? 'bg-emerald-50/70 border-emerald-200 text-[#087C38]'
-                          : 'glass-card border-white/60 text-slate-400'
-                      }`}
-                    >
-                      <div className="flex items-center justify-center mb-1">
-                        {isDone ? (
-                          <CheckCircle2 className="w-4 h-4 text-[#0BAA4B]" />
-                        ) : (
-                          <div className="w-4 h-4 rounded-full border border-slate-300" />
-                        )}
+                    <div key={s.key} className="relative group">
+                      {/* Stepper indicator circle */}
+                      <div className={`absolute -left-[25px] top-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all ${
+                        isDone 
+                          ? 'bg-[#0BAA4B] border-[#0BAA4B] text-white shadow-xs'
+                          : 'bg-white border-slate-300 text-slate-400'
+                      }`}>
+                        {isDone ? '✓' : idx + 1}
                       </div>
-                      <span className="text-[11px] sm:text-xs font-bold block">{s.label}</span>
+
+                      <div className="pl-2">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs font-extrabold ${
+                            isCurrent ? 'text-[#0BAA4B]' : isDone ? 'text-slate-800' : 'text-slate-400'
+                          }`}>
+                            {s.label}
+                          </span>
+                          {isCurrent && (
+                            <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full animate-pulse">
+                              In Progress
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          {s.desc}
+                        </p>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* STATUS BANNER: CANCELLED */}
-            {selectedSale.status === 'CANCELLED' && (
-              <div className="glass-card bg-rose-50/90 border-2 border-rose-300 rounded-2xl p-5 space-y-2">
-                <div className="flex items-center gap-2.5">
-                  <XCircle className="w-6 h-6 text-rose-600 shrink-0" />
-                  <div>
-                    <h4 className="font-extrabold text-rose-950 text-sm">Selling Order Cancelled</h4>
-                    <p className="text-xs text-rose-700 mt-0.5">
-                      This doorstep buyback request was cancelled. No device inspection or collection will take place. You can place a new sell request anytime.
-                    </p>
-                  </div>
-                </div>
+          </div>
+
+          {/* Amazon-style "Order Summary" Ledger Card */}
+          <div className="glass-panel rounded-3xl p-6 sm:p-7 shadow-sm border border-white/80 space-y-4">
+            <h4 className="text-sm font-black uppercase tracking-wider text-[#17251C]">
+              Order Summary & Financial Ledger
+            </h4>
+
+            <div className="space-y-2 text-xs border-b border-slate-100 pb-4">
+              <div className="flex justify-between text-slate-600">
+                <span>Base Device Valuation:</span>
+                <span className="font-bold text-slate-800">
+                  ₹{Number(selectedSale.estimated_price).toLocaleString('en-IN')}
+                </span>
               </div>
-            )}
-
-            {/* ACTION BANNER: FINAL OFFER ACCEPTANCE */}
-            {selectedSale.status === 'FINAL_OFFER_SENT' && (
-              <div className="glass-card bg-amber-50/80 border-2 border-amber-300 rounded-2xl p-6 space-y-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="font-extrabold text-amber-900 text-base">
-                      Physical Inspection Completed: Action Required
-                    </h4>
-                    <p className="text-xs text-amber-800 mt-1">
-                      Our field team inspected your device and calculated a final offer of{' '}
-                      <strong className="text-sm font-black text-[#17251C]">
-                        ₹{Number(selectedSale.final_price).toLocaleString('en-IN')}
-                      </strong>.
-                      {selectedSale.inspection?.inspector_notes && (
-                        <span className="block mt-1 italic text-slate-700 font-medium">
-                          Inspection Note: "{selectedSale.inspection.inspector_notes}"
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <button
-                    onClick={() => handleAcceptOffer(selectedSale.id)}
-                    className="flex-1 bg-[#0BAA4B] hover:bg-[#087C38] text-white font-extrabold py-3 rounded-xl text-sm shadow transition flex items-center justify-center gap-2"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    Accept ₹{Number(selectedSale.final_price).toLocaleString('en-IN')} & Release Payment
-                  </button>
-                  <button
-                    onClick={() => handleRejectOffer(selectedSale.id)}
-                    className="border border-rose-300 hover:bg-rose-50 text-rose-700 font-bold py-3 px-6 rounded-xl text-sm transition"
-                  >
-                    Reject Offer (Return Device)
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STATUS BANNER: CUSTOMER ACCEPTED, AWAITING PHYSICAL COLLECTION */}
-            {selectedSale.status === 'CUSTOMER_ACCEPTED' && (
-              <div className="glass-card bg-blue-50/90 border-2 border-blue-300 rounded-2xl p-5 space-y-2">
-                <div className="flex items-center gap-2.5">
-                  <CheckCircle2 className="w-5 h-5 text-blue-600 shrink-0" />
-                  <h4 className="font-extrabold text-blue-900 text-sm">
-                    Final Buyback Price Confirmed (₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')})
-                  </h4>
-                </div>
-                <p className="text-xs text-blue-800">
-                  Please hand over the physical device to pickup specialist <strong>{selectedSale.assigned_agent_name || 'Agent'}</strong>. The agent will sign for custody, and your instant payout will be released.
-                </p>
-              </div>
-            )}
-
-            {/* STATUS BANNER: PICKUP COMPLETED & IN COMPANY CUSTODY */}
-            {selectedSale.status === 'OWNERSHIP_TRANSFERRED' && (
-              <div className="glass-card bg-emerald-50/90 border-2 border-emerald-400 rounded-2xl p-5 space-y-2 shadow-sm">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0">
-                    ✓
-                  </div>
-                  <div>
-                    <h4 className="font-black text-emerald-950 text-base">
-                      Pickup Completed & Device Handed Over
-                    </h4>
-                    <p className="text-xs text-emerald-800">
-                      Physical custody transferred to 1103 RECELL specialist {selectedSale.assigned_agent_name || 'Agent'}.
-                    </p>
-                  </div>
-                </div>
-                <div className="bg-white/80 p-3 rounded-xl border border-emerald-200 text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-2">
-                  <span>Super Admin has been notified to release payment of <strong>₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}</strong> to your {selectedSale.beneficiary_type}.</span>
-                  <span className="font-bold text-emerald-800 text-[11px] bg-emerald-100 px-2.5 py-1 rounded-full whitespace-nowrap">Payout Processing...</span>
-                </div>
-              </div>
-            )}
-
-            {/* Inspection Proof Gallery */}
-            {selectedSale.inspection?.photos && selectedSale.inspection.photos.length > 0 && (
-              <div className="glass-card p-4 sm:p-5 rounded-2xl border border-white/80 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-xs sm:text-sm text-[#17251C] flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-[#0BAA4B]" />
-                    Doorstep QC Physical Photos ({selectedSale.inspection.photos.length} Captured by Agent)
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full font-mono">
-                    IMEI: {selectedSale.inspection.verified_imei || selectedSale.imei_number || 'Verified'}
+              {selectedSale.final_price && selectedSale.final_price !== selectedSale.estimated_price && (
+                <div className="flex justify-between text-rose-600">
+                  <span>Inspection Condition Adjustments:</span>
+                  <span className="font-bold font-mono">
+                    -₹{Number(selectedSale.estimated_price - selectedSale.final_price).toLocaleString('en-IN')}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {selectedSale.inspection.photos.map((p, idx) => (
-                    <div key={p.id || idx} className="rounded-xl overflow-hidden border border-slate-200 bg-white aspect-square shadow-xs">
-                      <img
-                        src={p.image_base64?.startsWith('data:') ? p.image_base64 : `data:image/jpeg;base64,${p.image_base64}`}
-                        alt={p.label}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="p-1 bg-slate-900/80 text-center">
-                        <span className="text-[9px] font-bold text-white block truncate">{p.label}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              )}
+              <div className="flex justify-between text-slate-600">
+                <span>Doorstep Inspection & Pickup:</span>
+                <span className="font-bold text-emerald-600 uppercase text-[11px]">Free Service</span>
               </div>
-            )}
-
-            {/* SUCCESS BANNER: PAID */}
-            {selectedSale.status === 'PAYMENT_COMPLETED' && (
-              <div className="bg-gradient-to-r from-[#0BAA4B] to-[#087C38] text-white rounded-2xl p-6 shadow-lg space-y-3 border border-white/20">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                      <CheckCircle2 className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-black text-lg">Payment Disbursed Successfully!</h4>
-                      <p className="text-xs text-emerald-100">
-                        Funds have been sent to your {selectedSale.beneficiary_type === 'UPI' ? 'UPI ID' : 'Bank Account'}.
-                      </p>
-                    </div>
-                  </div>
-                  <span className="font-mono text-xl font-black bg-black/20 px-3 py-1.5 rounded-xl">
-                    ₹{Number(selectedSale.final_price).toLocaleString('en-IN')}
-                  </span>
-                </div>
-
-                {selectedSale.payment && (
-                  <div className="bg-white/10 rounded-xl p-3 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-white/20">
-                    <div>
-                      <span className="text-emerald-100">Bank Reference (UTR):</span>{' '}
-                      <strong className="font-mono text-white font-bold">{selectedSale.payment.utr_number}</strong>
-                    </div>
-                    <div>
-                      <span className="text-emerald-100">Paid Via:</span>{' '}
-                      <strong className="text-white">{selectedSale.payment.payment_method}</strong>
-                    </div>
-                  </div>
-                )}
-
-                <div className="pt-2">
-                  <button
-                    onClick={() => handleViewReceipt(selectedSale.sale_code)}
-                    disabled={loadingReceipt}
-                    className="w-full sm:w-auto bg-white hover:bg-slate-100 text-[#17251C] font-extrabold px-6 py-2.5 rounded-xl text-xs shadow transition flex items-center justify-center gap-2"
-                  >
-                    <FileText className="w-4 h-4 text-[#0BAA4B]" />
-                    {loadingReceipt ? 'Loading Receipt...' : 'View Payment Proof & Official Receipt'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Information Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs pt-2">
-              
-              {/* Pickup & Agent Details */}
-              <div className="glass-card p-5 rounded-2xl space-y-3">
-                <h5 className="font-bold text-[#17251C] flex items-center gap-2 text-xs">
-                  <MapPin className="w-4 h-4 text-[#0BAA4B]" /> Doorstep Collection Details
-                </h5>
-                <div className="space-y-1.5 text-[#7B8980]">
-                  <p><span className="text-[#7B8980]/80">Address:</span> {selectedSale.pickup_address}, {selectedSale.pickup_city} - {selectedSale.pickup_pincode}</p>
-                  <p><span className="text-[#7B8980]/80">Pickup Slot:</span> {selectedSale.pickup_date ? `${selectedSale.pickup_date} · ` : ''}{selectedSale.pickup_slot} (IST)</p>
-                  {selectedSale.created_at_ist && (
-                    <p><span className="text-[#7B8980]/80">Booked On:</span> {selectedSale.created_at_ist}</p>
-                  )}
-                  {selectedSale.is_overdue && (
-                    <p className="text-rose-600 font-bold bg-rose-50 p-2 rounded-lg border border-rose-200">
-                      ⚠️ Pickup Window Passed · Rescheduling or agent is en route (IST)
-                    </p>
-                  )}
-                  <p><span className="text-[#7B8980]/80">Assigned Agent:</span> <strong className="text-[#17251C]">{selectedSale.assigned_agent_name || 'Assigning field staff...'}</strong></p>
-                </div>
-              </div>
-
-              {/* Payout Destination */}
-              <div className="glass-card p-5 rounded-2xl space-y-3">
-                <h5 className="font-bold text-[#17251C] flex items-center gap-2 text-xs">
-                  <IndianRupee className="w-4 h-4 text-[#0BAA4B]" /> Payout Destination
-                </h5>
-                <div className="space-y-1.5 text-[#7B8980]">
-                  <p><span className="text-[#7B8980]/80">Payee Name:</span> {selectedSale.beneficiary_name}</p>
-                  {selectedSale.beneficiary_type === 'UPI' ? (
-                    <p><span className="text-[#7B8980]/80">UPI ID:</span> <strong className="font-mono text-[#17251C]">{selectedSale.beneficiary_upi_id}</strong></p>
-                  ) : (
-                    <p><span className="text-[#7B8980]/80">Bank Details:</span> <strong className="font-mono text-[#17251C]">{selectedSale.beneficiary_account_no} ({selectedSale.beneficiary_ifsc})</strong></p>
-                  )}
-                  <p><span className="text-[#7B8980]/80">Device IMEI:</span> <strong className="font-mono text-[#17251C]">{selectedSale.imei_number || 'Verifying during pickup'}</strong></p>
-                </div>
-              </div>
-
             </div>
 
+            {/* Grand Total */}
+            <div className="flex justify-between items-center pt-1 text-sm">
+              <span className="font-black text-slate-900">Final Payout Amount:</span>
+              <span className="text-2xl font-black text-[#0BAA4B]">
+                ₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}
+              </span>
+            </div>
+
+            {/* Payout Details */}
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Payout Mode:</span>
+                <strong className="text-slate-800 font-mono">{selectedSale.beneficiary_type}</strong>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Destination Account / UPI:</span>
+                <strong className="text-slate-800 font-mono">
+                  {selectedSale.beneficiary_type === 'UPI' ? selectedSale.beneficiary_upi_id : selectedSale.beneficiary_account_no}
+                </strong>
+              </div>
+              {selectedSale.payment?.utr_number && (
+                <div className="flex justify-between pt-1 border-t border-slate-200">
+                  <span className="text-emerald-700 font-bold">Bank Reference (UTR):</span>
+                  <strong className="text-emerald-800 font-mono font-bold">{selectedSale.payment.utr_number}</strong>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Action Banner: Final Offer Acceptance */}
+          {selectedSale.status === 'FINAL_OFFER_SENT' && (
+            <div className="glass-card bg-amber-50/80 border-2 border-amber-300 rounded-2xl p-6 space-y-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-extrabold text-amber-900 text-base">
+                    Physical Inspection Completed: Action Required
+                  </h4>
+                  <p className="text-xs text-amber-800 mt-1">
+                    Our field agent tested your device and offered{' '}
+                    <strong className="text-sm font-black text-[#17251C]">
+                      ₹{Number(selectedSale.final_price).toLocaleString('en-IN')}
+                    </strong>. Accept to receive instant payment directly to your account.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  onClick={() => handleAcceptOffer(selectedSale.id)}
+                  className="flex-1 bg-[#0BAA4B] hover:bg-[#087C38] text-white font-extrabold py-3 rounded-xl text-sm shadow transition flex items-center justify-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Accept ₹{Number(selectedSale.final_price).toLocaleString('en-IN')} & Release Payment
+                </button>
+                <button
+                  onClick={() => handleRejectOffer(selectedSale.id)}
+                  className="border border-rose-300 hover:bg-rose-50 text-rose-700 font-bold py-3 px-6 rounded-xl text-sm transition"
+                >
+                  Decline Offer
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Doorstep Address Card */}
+          <div className="glass-panel rounded-3xl p-6 shadow-sm border border-white/80 text-xs space-y-2">
+            <h5 className="font-bold text-[#17251C] flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-[#0BAA4B]" /> Doorstep Pickup Location
+            </h5>
+            <p className="text-slate-600">
+              {selectedSale.pickup_address}, {selectedSale.pickup_city} - {selectedSale.pickup_pincode}
+            </p>
+            <p className="text-slate-500">
+              Assigned Field Specialist: <strong className="text-slate-800">{selectedSale.assigned_agent_name || 'Assigning soon...'}</strong>
+            </p>
+          </div>
+
         </div>
-      ) : null}
+      )}
 
       {/* Official Printable Receipt Modal */}
       {receiptData && (
