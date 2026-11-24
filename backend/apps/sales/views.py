@@ -141,7 +141,8 @@ def sales_list_create_view(request):
             total_deduction += amt
             answers_to_create.append((opt, amt, ''))
 
-        estimated_price = max(base_price - total_deduction, min_price)
+        min_floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
+        estimated_price = max(base_price - total_deduction, min_floor)
 
         # Pickup lead-time & cutoff enforcement:
         # Same-day pickup is never permitted.

@@ -19,6 +19,9 @@ class QuestionnaireScreen extends StatefulWidget {
   final String? customDeviceCategory;
   final String? customDeviceSpecs;
   final double? customExpectedPrice;
+  final int initialStepIndex;
+  final List<String>? initialSelectedOptionCodes;
+  final Map<String, String>? initialCustomStepNotes;
 
   const QuestionnaireScreen({
     super.key,
@@ -31,6 +34,9 @@ class QuestionnaireScreen extends StatefulWidget {
     this.customDeviceCategory,
     this.customDeviceSpecs,
     this.customExpectedPrice,
+    this.initialStepIndex = 0,
+    this.initialSelectedOptionCodes,
+    this.initialCustomStepNotes,
   });
 
   @override
@@ -65,6 +71,13 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   @override
   void initState() {
     super.initState();
+    _currentStepIndex = widget.initialStepIndex;
+    if (widget.initialSelectedOptionCodes != null) {
+      _selectedOptionCodes.addAll(widget.initialSelectedOptionCodes!);
+    }
+    if (widget.initialCustomStepNotes != null) {
+      _stepCustomNotes.addAll(widget.initialCustomStepNotes!);
+    }
     _loadQuestionnaire();
   }
 
@@ -97,6 +110,9 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
 
       setState(() {
         _steps = data;
+        if (_currentStepIndex >= _steps.length) {
+          _currentStepIndex = _steps.isNotEmpty ? _steps.length - 1 : 0;
+        }
         _loading = false;
       });
 
@@ -178,7 +194,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
     _autoSaveDraft();
   }
 
-  void _autoSaveDraft() {
+  void _autoSaveDraft({bool isCompleted = false}) {
     DraftSellService.saveDraft(
       SellDraftData(
         isCustomDevice: widget.isCustomDevice,
@@ -193,6 +209,8 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
         customStepNotes: Map<String, String>.from(_stepCustomNotes),
         otherDefectsNotes: _stepCustomNotes.values.where((v) => v.trim().isNotEmpty).join(', '),
         estimatedPrice: widget.customExpectedPrice ?? widget.variant.basePrice,
+        currentStepIndex: _currentStepIndex,
+        isQuestionnaireCompleted: isCompleted,
         savedAt: DateTime.now().toIso8601String(),
       ),
     );
@@ -315,7 +333,9 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
 
     if (_currentStepIndex < _steps.length - 1) {
       setState(() => _currentStepIndex++);
+      _autoSaveDraft();
     } else {
+      _autoSaveDraft(isCompleted: true);
       // Completed all steps -> Proceed to Quote
       final combinedNotes = _stepCustomNotes.entries
           .where((e) => e.value.trim().isNotEmpty)
@@ -346,6 +366,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
   void _previousStep() {
     if (_currentStepIndex > 0) {
       setState(() => _currentStepIndex--);
+      _autoSaveDraft();
     } else {
       Navigator.pop(context);
     }

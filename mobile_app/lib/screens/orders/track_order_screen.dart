@@ -13,8 +13,13 @@ import '../../widgets/brand_logo.dart';
 
 class TrackOrderScreen extends StatefulWidget {
   final String? initialSaleCode;
+  final bool isFromBooking;
 
-  const TrackOrderScreen({super.key, this.initialSaleCode});
+  const TrackOrderScreen({
+    super.key,
+    this.initialSaleCode,
+    this.isFromBooking = false,
+  });
 
   @override
   State<TrackOrderScreen> createState() => _TrackOrderScreenState();
@@ -297,13 +302,19 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white.withOpacity(0.80),
         elevation: 0,
-        leading: isDetailView && hasMultipleOrders
+        leading: widget.isFromBooking
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
-                tooltip: 'All Orders',
-                onPressed: () => setState(() => _order = null),
+                tooltip: 'Back to Home',
+                onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
               )
-            : null,
+            : (isDetailView && hasMultipleOrders
+                ? IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
+                    tooltip: 'All Orders',
+                    onPressed: () => setState(() => _order = null),
+                  )
+                : null),
         flexibleSpace: ClipRRect(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
@@ -326,7 +337,15 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
           ),
         ],
       ),
-      body: GlassBackgroundMesh(
+      body: PopScope(
+        canPop: !widget.isFromBooking,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          if (widget.isFromBooking) {
+            Navigator.of(context).popUntil((route) => route.isFirst);
+          }
+        },
+        child: GlassBackgroundMesh(
         child: SafeArea(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),

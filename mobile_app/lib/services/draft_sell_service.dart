@@ -15,6 +15,8 @@ class SellDraftData {
   final Map<String, String> customStepNotes;
   final String otherDefectsNotes;
   final double estimatedPrice;
+  final int currentStepIndex;
+  final bool isQuestionnaireCompleted;
   final String savedAt;
 
   SellDraftData({
@@ -30,6 +32,8 @@ class SellDraftData {
     this.customStepNotes = const {},
     this.otherDefectsNotes = '',
     this.estimatedPrice = 0.0,
+    this.currentStepIndex = 0,
+    this.isQuestionnaireCompleted = false,
     required this.savedAt,
   });
 
@@ -76,6 +80,8 @@ class SellDraftData {
     'custom_step_notes': customStepNotes,
     'other_defects_notes': otherDefectsNotes,
     'estimated_price': estimatedPrice,
+    'current_step_index': currentStepIndex,
+    'is_questionnaire_completed': isQuestionnaireCompleted,
     'saved_at': savedAt,
   };
 
@@ -134,6 +140,8 @@ class SellDraftData {
       customStepNotes: notes,
       otherDefectsNotes: json['other_defects_notes']?.toString() ?? '',
       estimatedPrice: double.tryParse(json['estimated_price']?.toString() ?? '') ?? 0.0,
+      currentStepIndex: json['current_step_index'] is int ? json['current_step_index'] : 0,
+      isQuestionnaireCompleted: json['is_questionnaire_completed'] == true,
       savedAt: json['saved_at']?.toString() ?? DateTime.now().toIso8601String(),
     );
   }

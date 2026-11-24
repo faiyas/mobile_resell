@@ -342,14 +342,15 @@ def calculate_estimate_view(request):
             'rule_type': f"{chosen_rule_type} [Max group rule applied]"
         })
 
-    estimated_price = max(base_price - total_deduction, min_price)
+    min_floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
+    estimated_price = max(base_price - total_deduction, min_floor)
 
     return Response({
         'brand': phone_model.brand.name,
         'model': phone_model.name,
         'variant': f"{variant.ram} / {variant.storage}" if variant.ram else variant.storage,
         'base_price': float(base_price),
-        'min_price': float(min_price),
+        'min_price': float(min_floor),
         'total_deduction': float(total_deduction),
         'estimated_price': float(estimated_price),
         'is_rejected': False,

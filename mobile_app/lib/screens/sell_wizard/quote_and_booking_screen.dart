@@ -153,17 +153,21 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
         widget.selectedOptionCodes,
       );
 
-      if (res['rejected'] == true) {
+      final isRejected = res['is_rejected'] == true || res['rejected'] == true;
+      if (isRejected) {
         setState(() {
           _isRejection = true;
-          _rejectionReason = res['reason'] ?? 'Device condition does not meet buyback criteria.';
+          _rejectionReason = res['message'] ?? res['reason'] ?? 'Device condition does not meet buyback criteria.';
           _calculating = false;
         });
         return;
       }
 
-      final est = double.tryParse(res['estimated_price'].toString()) ?? widget.variant.basePrice;
-      final List bList = res['breakdown'] ?? [];
+      final minFloor = double.tryParse(res['min_price']?.toString() ?? '') ?? widget.variant.minPrice;
+      final effectiveMin = minFloor > 0 ? minFloor : 500.0;
+      final rawEst = double.tryParse(res['estimated_price']?.toString() ?? '') ?? widget.variant.basePrice;
+      final est = rawEst > effectiveMin ? rawEst : effectiveMin;
+      final List bList = res['breakdown'] ?? res['deductions'] ?? [];
 
       setState(() {
         _estimatedPrice = est;
@@ -196,6 +200,8 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
         customStepNotes: widget.customStepNotes ?? {},
         otherDefectsNotes: widget.otherDefectsNotes ?? '',
         estimatedPrice: est,
+        currentStepIndex: 18,
+        isQuestionnaireCompleted: true,
         savedAt: DateTime.now().toIso8601String(),
       ),
     );
@@ -306,12 +312,16 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
           ),
         );
 
-        // Open live order tracking screen
-        Navigator.pushReplacement(
+        // Open live order tracking screen clearing the wizard back-stack so Back returns directly to Home
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
-            builder: (_) => TrackOrderScreen(initialSaleCode: order.saleCode),
+            builder: (_) => TrackOrderScreen(
+              initialSaleCode: order.saleCode,
+              isFromBooking: true,
+            ),
           ),
+          (route) => route.isFirst,
         );
       }
     } catch (err) {

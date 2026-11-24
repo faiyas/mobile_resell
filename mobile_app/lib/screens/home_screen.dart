@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    if (draft.selectedOptionCodes.isNotEmpty && draft.estimatedPrice > 0) {
+    if (draft.isQuestionnaireCompleted) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -204,6 +204,9 @@ class _HomeScreenState extends State<HomeScreen> {
             customDeviceCategory: draft.customDeviceCategory,
             customDeviceSpecs: draft.customDeviceSpecs,
             customExpectedPrice: draft.customExpectedPrice,
+            initialStepIndex: draft.currentStepIndex,
+            initialSelectedOptionCodes: draft.selectedOptionCodes,
+            initialCustomStepNotes: draft.customStepNotes,
           ),
         ),
       ).then((_) => _loadInitialData());
