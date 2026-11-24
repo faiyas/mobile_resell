@@ -69,14 +69,22 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!_heroPageController.hasClients) return;
       final hero = _cmsSections.isNotEmpty
           ? _cmsSections.firstWhere(
-              (s) => s.sectionType == 'hero_carousel',
-              orElse: () => _cmsSections.first,
+              (s) => s.sectionType.toUpperCase() == 'HERO_CAROUSEL',
+              orElse: () => _cmsSections.firstWhere(
+                (s) => s.dataJson.containsKey('slides'),
+                orElse: () => _cmsSections.first,
+              ),
             )
           : null;
       int count = 1;
       if (hero != null && hero.dataJson['slides'] is List) {
-        final list = (hero.dataJson['slides'] as List).where((s) => s['is_active'] != false).toList();
-        if (list.isNotEmpty) count = list.length;
+        final list = hero.dataJson['slides'] as List;
+        final validSlides = list
+            .where((e) => e != null && e is Map)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .where((s) => s['is_active'] != false)
+            .toList();
+        if (validSlides.isNotEmpty) count = validSlides.length;
       }
       if (count <= 1) return;
       final next = (_currentHeroSlide + 1) % count;
@@ -147,9 +155,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _startHeroAutoScroll();
       } else if (!hasCachedContent && mounted) {
         // Cold start fallback if first install and offline check returned false
-        final freshCms = await _api.getCMSSections();
-        final freshCats = await _api.getDeviceCategories();
-        final freshBrands = await _api.getBrands();
+        final freshCms = await _api.getCMSSections(forceRefresh: true);
+        final freshCats = await _api.getDeviceCategories(forceRefresh: true);
+        final freshBrands = await _api.getBrands(forceRefresh: true);
 
         setState(() {
           _cmsSections = freshCms;
@@ -851,8 +859,11 @@ class _HomeScreenState extends State<HomeScreen> {
     // CMS Hero Section
     final hero = _cmsSections.isNotEmpty
         ? _cmsSections.firstWhere(
-            (s) => s.sectionType == 'hero_carousel',
-            orElse: () => _cmsSections.first,
+            (s) => s.sectionType.toUpperCase() == 'HERO_CAROUSEL',
+            orElse: () => _cmsSections.firstWhere(
+              (s) => s.dataJson.containsKey('slides'),
+              orElse: () => _cmsSections.first,
+            ),
           )
         : null;
 
@@ -936,13 +947,20 @@ class _HomeScreenState extends State<HomeScreen> {
     List<Map<String, dynamic>> rawSlides = [];
     if (hero != null && hero.dataJson['slides'] is List) {
       final list = hero.dataJson['slides'] as List;
-      rawSlides = list.whereType<Map<String, dynamic>>().where((s) => s['is_active'] != false).toList();
+      rawSlides = list
+          .where((e) => e != null && e is Map)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .where((s) => s['is_active'] != false)
+          .toList();
     }
 
     if (rawSlides.isEmpty) {
+      final hasRootImage = hero != null &&
+          hero.dataJson['image_base64'] != null &&
+          hero.dataJson['image_base64'].toString().isNotEmpty;
       rawSlides = [
         {
-          'type': (hero != null && hero.dataJson['image_base64'] != null && hero.dataJson['image_base64'].toString().isNotEmpty) ? 'IMAGE' : 'TEXT',
+          'type': hasRootImage ? 'IMAGE' : 'TEXT',
           'title': hero?.title ?? 'Sell Your Old Device',
           'subtitle': hero?.subtitle ?? 'Get the best value for your phone with instant doorstep payout.',
           'badge': hero?.dataJson['badge'] ?? 'Dolly · Certified Buyback',
@@ -964,25 +982,37 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             itemBuilder: (ctx, index) {
               final slide = rawSlides[index];
-              final isImage = slide['type']?.toString().toUpperCase() == 'IMAGE';
-              final imageBase64 = slide['image_base64']?.toString() ?? '';
-              final imageBytes = ImageHelper.decodeBase64(imageBase64);
+              final imageStr = (slide['image_base64'] ?? slide['image_url'] ?? '').toString();
+              final isImage = slide['type']?.toString().toUpperCase() == 'IMAGE' || imageStr.isNotEmpty;
+              final bool isNetworkUrl = imageStr.startsWith('http://') || imageStr.startsWith('https://');
+              final imageBytes = isNetworkUrl ? null : ImageHelper.decodeBase64(imageStr);
 
-              if (isImage && imageBytes != null) {
+              if (isImage && (imageBytes != null || isNetworkUrl)) {
                 return ClipRRect(
                   borderRadius: BorderRadius.circular(22),
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.memory(
-                        imageBytes,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: AppTheme.darkGreen,
-                          alignment: Alignment.center,
-                          child: const Icon(Icons.broken_image_rounded, color: Colors.white, size: 36),
+                      if (isNetworkUrl)
+                        Image.network(
+                          imageStr,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: AppTheme.darkGreen,
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.broken_image_rounded, color: Colors.white, size: 36),
+                          ),
+                        )
+                      else
+                        Image.memory(
+                          imageBytes!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: AppTheme.darkGreen,
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.broken_image_rounded, color: Colors.white, size: 36),
+                          ),
                         ),
-                      ),
                       if (slide['title'] != null && slide['title'].toString().isNotEmpty)
                         Positioned(
                           bottom: 10,

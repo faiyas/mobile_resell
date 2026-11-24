@@ -35,7 +35,8 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     @property
     def is_admin_role(self):
-        return self.role in ['ADMIN', 'SUPER_ADMIN'] or self.is_staff or self.is_superuser
+        role_str = str(self.role or '').strip().upper()
+        return role_str in ['ADMIN', 'SUPER_ADMIN'] or bool(self.is_staff) or bool(self.is_superuser)
     
     # Saved Customer Doorstep & Payout Details (Auto-filled on bookings)
     default_address = models.TextField(blank=True, default='')

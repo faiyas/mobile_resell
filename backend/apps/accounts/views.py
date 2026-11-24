@@ -7,15 +7,17 @@ from .models import User
 from .serializers import UserSerializer, RegisterSerializer, LoginSerializer
 from .authentication import generate_jwt_token
 
+def is_admin_user(user):
+    if not user or not user.is_authenticated:
+        return False
+    role_str = str(getattr(user, 'role', '') or '').strip().upper()
+    return role_str in ['ADMIN', 'SUPER_ADMIN'] or bool(getattr(user, 'is_staff', False)) or bool(getattr(user, 'is_superuser', False))
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_view(request):
     data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
-    is_admin = bool(request.user and request.user.is_authenticated and (
-        getattr(request.user, 'role', '') in ['ADMIN', 'SUPER_ADMIN'] or
-        getattr(request.user, 'is_staff', False) or
-        getattr(request.user, 'is_superuser', False)
-    ))
+    is_admin = is_admin_user(request.user)
     if not is_admin:
         data['role'] = 'CUSTOMER'
 
@@ -85,12 +87,7 @@ def me_view(request):
 @permission_classes([IsAuthenticated])
 def collection_agents_view(request):
     """List or create collection agents (Admin only)"""
-    is_admin = bool(
-        getattr(request.user, 'role', '') in ['ADMIN', 'SUPER_ADMIN'] or 
-        getattr(request.user, 'is_staff', False) or 
-        getattr(request.user, 'is_superuser', False)
-    )
-    if not is_admin:
+    if not is_admin_user(request.user):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
     
     if request.method == 'POST':
@@ -115,12 +112,7 @@ def collection_agents_view(request):
 @permission_classes([IsAuthenticated])
 def agent_detail_view(request, agent_id):
     """View, update or delete a field agent (Admin only)"""
-    is_admin = bool(
-        getattr(request.user, 'role', '') in ['ADMIN', 'SUPER_ADMIN'] or 
-        getattr(request.user, 'is_staff', False) or 
-        getattr(request.user, 'is_superuser', False)
-    )
-    if not is_admin:
+    if not is_admin_user(request.user):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     try:
@@ -186,12 +178,7 @@ def agent_detail_view(request, agent_id):
 @permission_classes([IsAuthenticated])
 def customers_view(request):
     """List and manage registered customers (Admin only)"""
-    is_admin = bool(
-        getattr(request.user, 'role', '') in ['ADMIN', 'SUPER_ADMIN'] or 
-        getattr(request.user, 'is_staff', False) or 
-        getattr(request.user, 'is_superuser', False)
-    )
-    if not is_admin:
+    if not is_admin_user(request.user):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     if request.method == 'POST':
@@ -230,12 +217,7 @@ def customers_view(request):
 @permission_classes([IsAuthenticated])
 def customer_detail_view(request, user_id):
     """View, update or toggle active state of a customer (Admin only)"""
-    is_admin = bool(
-        getattr(request.user, 'role', '') in ['ADMIN', 'SUPER_ADMIN'] or 
-        getattr(request.user, 'is_staff', False) or 
-        getattr(request.user, 'is_superuser', False)
-    )
-    if not is_admin:
+    if not is_admin_user(request.user):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     try:

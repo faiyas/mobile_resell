@@ -285,14 +285,20 @@ export default function AdminHeader({
             <div className="hidden sm:block text-left">
               <div className="flex items-center gap-1.5">
                 <p className="text-xs font-black text-slate-900 truncate max-w-[120px]">
-                  {currentUser?.full_name || 'Main Super Admin'}
+                  {currentUser?.full_name || (currentUser ? 'Logged User' : 'Not Logged In')}
                 </p>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-[9px] font-black uppercase text-amber-600 flex items-center gap-0.5">
-                  <Crown className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
-                  {currentUser?.role || 'ADMIN'}
+                <span className={`text-[9px] font-black uppercase flex items-center gap-0.5 ${
+                  (currentUser?.role || '').toUpperCase() === 'ADMIN' || (currentUser?.role || '').toUpperCase() === 'SUPER_ADMIN'
+                    ? 'text-amber-600'
+                    : 'text-rose-600'
+                }`}>
+                  {((currentUser?.role || '').toUpperCase() === 'ADMIN' || (currentUser?.role || '').toUpperCase() === 'SUPER_ADMIN') && (
+                    <Crown className="w-2.5 h-2.5 fill-amber-500 text-amber-500" />
+                  )}
+                  {currentUser?.role || 'GUEST'}
                 </span>
               </div>
             </div>
@@ -302,8 +308,9 @@ export default function AdminHeader({
           {profileOpen && (
             <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden z-50 animate-zoom-in">
               <div className="p-3 border-b border-slate-150 bg-slate-50">
-                <p className="text-xs font-black text-slate-900 truncate">{currentUser?.full_name || 'Administrator'}</p>
-                <p className="text-[11px] text-slate-500 truncate">{currentUser?.email || 'admin@dolly.in'}</p>
+                <p className="text-xs font-black text-slate-900 truncate">{currentUser?.full_name || 'Logged User'}</p>
+                <p className="text-[11px] text-slate-500 truncate">{currentUser?.email || (currentUser?.phone ? `Phone: ${currentUser.phone}` : 'No Email')}</p>
+                <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-wide">Role: <span className="text-[#0BAA4B]">{currentUser?.role || 'Guest'}</span></p>
               </div>
               <div className="p-1.5 space-y-0.5">
                 <button

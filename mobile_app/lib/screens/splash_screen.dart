@@ -65,12 +65,10 @@ class _SplashScreenState extends State<SplashScreen>
         // Step A: Init auth token and user state
         await api.init();
 
-        // Step B: Pre-warm backend and cache in parallel
+        // Step B: Pre-warm backend and delta-sync fresh CMS content in parallel
         await Future.wait([
           api.pingHealth().catchError((_) => false),
-          api.getCMSSections().catchError((_) => []),
-          api.getDeviceCategories().catchError((_) => []),
-          api.getBrands().catchError((_) => []),
+          CustomerCacheService.syncCustomerDataSilently(api).catchError((_) => false),
           DraftSellService.getDraft().catchError((_) => null),
         ]);
       } catch (e) {
@@ -169,37 +167,42 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Single Prominent Dolly Brand Logo with Ambient Glow
+                        // Single Prominent Dolly Brand 1:1 Logo Emblem with Ambient Glow
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 8),
+                          width: 140,
+                          height: 140,
                           decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(32),
                             boxShadow: [
                               BoxShadow(
-                                color: AppTheme.primaryGreen.withOpacity(0.25),
+                                color: AppTheme.primaryGreen.withOpacity(0.35),
                                 blurRadius: 40,
-                                spreadRadius: 4,
-                                offset: const Offset(0, 8),
+                                spreadRadius: 6,
+                                offset: const Offset(0, 10),
                               ),
                             ],
                           ),
-                          child: Image.asset(
-                            'assets/images/dolly_logo.png',
-                            width: 220,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Image.asset(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(32),
+                            child: Image.asset(
                               'assets/images/dolly_icon.png',
-                              width: 180,
+                              width: 140,
+                              height: 140,
                               fit: BoxFit.contain,
                               errorBuilder: (context, error, stackTrace) =>
-                                  const Text(
-                                'DOLLY',
-                                style: TextStyle(
-                                  fontSize: 36,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppTheme.primaryGreen,
-                                  letterSpacing: 2.0,
+                                  Image.asset(
+                                'assets/images/dolly_logo.png',
+                                width: 140,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Text(
+                                  'DOLLY',
+                                  style: TextStyle(
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.w900,
+                                    color: AppTheme.primaryGreen,
+                                    letterSpacing: 2.0,
+                                  ),
                                 ),
                               ),
                             ),

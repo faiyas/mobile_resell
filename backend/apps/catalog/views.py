@@ -11,7 +11,10 @@ from .serializers import (
 )
 
 def is_admin_user(user):
-    return user and user.is_authenticated and (user.role in ['ADMIN', 'SUPER_ADMIN'] or user.is_staff or user.is_superuser)
+    if not user or not user.is_authenticated:
+        return False
+    role_str = str(getattr(user, 'role', '') or '').strip().upper()
+    return role_str in ['ADMIN', 'SUPER_ADMIN'] or bool(getattr(user, 'is_staff', False)) or bool(getattr(user, 'is_superuser', False))
 
 # ================= 1. DEVICE CATEGORIES (Mobile, Tablet, Laptop, Watch, Dead Phone) =================
 @api_view(['GET', 'POST'])

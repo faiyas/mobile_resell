@@ -62,11 +62,11 @@ class CustomerCacheService {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // Parallel fetch from API
+      // Parallel fetch from API with forceRefresh to always capture admin CMS banner edits
       final results = await Future.wait([
-        api.getCMSSections(),
-        api.getDeviceCategories(),
-        api.getBrands(),
+        api.getCMSSections(forceRefresh: true),
+        api.getDeviceCategories(forceRefresh: true),
+        api.getBrands(forceRefresh: true),
       ]);
 
       final freshCms = results[0] as List<CMSSectionModel>;
