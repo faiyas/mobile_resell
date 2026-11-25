@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,6 +8,7 @@ import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
 import '../auth/auth_modal_sheet.dart';
 import '../sell_wizard/category_selection_screen.dart';
+import '../home_screen.dart';
 import '../../utils/contact_launcher.dart';
 import '../../utils/image_helper.dart';
 import '../../widgets/brand_logo.dart';
@@ -44,6 +46,89 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     } else {
       _loadRecentOrders();
     }
+  }
+
+  void _goToHomeScreen() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+      (route) => false,
+    );
+  }
+
+  void _showPaymentProofViewer(Uint8List bytes, String utr, String upiId) {
+    showDialog(
+      context: context,
+      builder: (zCtx) => Dialog(
+        backgroundColor: Colors.black,
+        insetPadding: const EdgeInsets.all(12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Stack(
+            children: [
+              Center(
+                child: InteractiveViewer(
+                  minScale: 1.0,
+                  maxScale: 5.0,
+                  child: Image.memory(bytes, fit: BoxFit.contain),
+                ),
+              ),
+              Positioned(
+                top: 10,
+                right: 10,
+                child: CircleAvatar(
+                  backgroundColor: Colors.black54,
+                  child: IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.white),
+                    onPressed: () => Navigator.pop(zCtx),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 14,
+                left: 16,
+                right: 16,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.85),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Verified Payout Receipt',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
+                      ),
+                      if (upiId.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            'UPI: $upiId',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'monospace'),
+                          ),
+                        ),
+                      if (utr.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            'Bank Ref / UTR: $utr',
+                            style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'monospace'),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _acceptOffer(SaleOrderModel order) async {
@@ -306,7 +391,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.textPrimary),
                 tooltip: 'Back to Home',
-                onPressed: () => Navigator.of(context).popUntil((route) => route.isFirst),
+                onPressed: _goToHomeScreen,
               )
             : (isDetailView && hasMultipleOrders
                 ? IconButton(
@@ -342,7 +427,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
         onPopInvokedWithResult: (didPop, result) {
           if (didPop) return;
           if (widget.isFromBooking) {
-            Navigator.of(context).popUntil((route) => route.isFirst);
+            _goToHomeScreen();
           }
         },
         child: GlassBackgroundMesh(
@@ -620,6 +705,223 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     );
   }
 
+  Widget _buildPayoutProofCard(SaleOrderModel order) {
+    final pay = order.payment;
+    final upiId = (order.beneficiaryUpiId != null && order.beneficiaryUpiId!.isNotEmpty)
+        ? order.beneficiaryUpiId!
+        : (pay?.beneficiaryUpiId ?? '');
+    final utr = pay?.utrNumber ?? '';
+    final amount = pay?.amount != null && pay!.amount > 0
+        ? pay.amount
+        : (order.finalPrice ?? order.estimatedPrice);
+    final proofBase64 = pay?.paymentProofBase64;
+    final bytes = (proofBase64 != null && proofBase64.isNotEmpty)
+        ? ImageHelper.decodeBase64(proofBase64)
+        : null;
+
+    return GlassContainer(
+      padding: const EdgeInsets.all(18),
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: AppTheme.primaryGreen, width: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.verified_rounded, color: AppTheme.primaryGreen, size: 24),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Payment Disbursed Successfully',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Instant buyback payment credited',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '₹${amount.toStringAsFixed(0)}',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 20,
+                  color: AppTheme.primaryGreen,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Divider(height: 1, color: Colors.grey.shade300),
+          const SizedBox(height: 12),
+
+          // UPI ID Row
+          if (upiId.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.account_balance_wallet_rounded, size: 18, color: AppTheme.primaryGreen),
+                  const SizedBox(width: 8),
+                  const Text('Paid to UPI ID:', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      upiId,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.textPrimary, fontFamily: 'monospace'),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: upiId));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('UPI ID copied to clipboard'), duration: Duration(seconds: 2), behavior: SnackBarBehavior.floating),
+                      );
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.copy_rounded, size: 16, color: AppTheme.primaryGreen),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // UTR / Reference Row
+          if (utr.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.receipt_rounded, size: 18, color: AppTheme.primaryGreen),
+                  const SizedBox(width: 8),
+                  const Text('Bank UTR / Txn Ref:', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      utr,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.textPrimary, fontFamily: 'monospace'),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: utr));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('UTR copied to clipboard'), duration: Duration(seconds: 2), behavior: SnackBarBehavior.floating),
+                      );
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(4),
+                      child: Icon(Icons.copy_rounded, size: 16, color: AppTheme.primaryGreen),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Payout Proof Image Preview
+          if (bytes != null) ...[
+            const Text(
+              'Official Bank Transfer Proof',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => _showPaymentProofViewer(bytes, utr, upiId),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      height: 180,
+                      width: double.infinity,
+                      color: Colors.black,
+                      child: Image.memory(
+                        bytes,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Container(
+                      height: 180,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withOpacity(0.1),
+                            Colors.black.withOpacity(0.65),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      bottom: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.75),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.zoom_in_rounded, size: 16, color: Colors.white),
+                            SizedBox(width: 6),
+                            Text(
+                              'Tap to View & Pinch to Zoom',
+                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   // =========================================================
   // VIEW B: AMAZON-STYLE ORDER DETAILS & TIMELINE
   // =========================================================
@@ -631,7 +933,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     if (order.status == 'OWNERSHIP_TRANSFERRED') currentStage = 5;
     if (order.status == 'PAYMENT_COMPLETED') currentStage = 6;
 
-    final isPaid = order.status == 'PAYMENT_COMPLETED';
+    final isPaid = order.status == 'PAYMENT_COMPLETED' || order.status == 'PAID' || order.payment != null;
     final isCancelled = order.status == 'CANCELLED';
 
     return Column(
@@ -662,7 +964,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                         const SizedBox(height: 4),
                         Text(
                           isPaid
-                              ? 'Paid ₹${order.finalPrice?.toStringAsFixed(0)}'
+                              ? 'Paid ₹${(order.payment?.amount ?? order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)}'
                               : '${order.pickupDate ?? "Today"} · ${order.pickupSlot ?? "Morning"}',
                           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17, color: AppTheme.textPrimary),
                         ),
@@ -690,6 +992,12 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
         ),
 
         const SizedBox(height: 14),
+
+        // Payout Proof & Bank Confirmation Card
+        if (isPaid || order.payment != null) ...[
+          _buildPayoutProofCard(order),
+          const SizedBox(height: 14),
+        ],
 
         // Action Banners: Review final offer / Cancelled
         if (order.status == 'FINAL_OFFER_SENT') ...[

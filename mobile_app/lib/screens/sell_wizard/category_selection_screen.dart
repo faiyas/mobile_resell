@@ -187,6 +187,31 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     }
   }
 
+  void _handleBack() {
+    if (_wizardStep == 3) {
+      setState(() {
+        _variant = null;
+        _wizardStep = 2;
+      });
+    } else if (_wizardStep == 2) {
+      setState(() {
+        _model = null;
+        _wizardStep = 1;
+      });
+    } else if (_wizardStep == 1) {
+      if (widget.selectedCategory != null) {
+        Navigator.pop(context);
+      } else {
+        setState(() {
+          _brand = null;
+          _wizardStep = 0;
+        });
+      }
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
   void _showCustomDeviceModal({String? initialCategory}) {
     final nameCtrl = TextEditingController();
     final brandCtrl = TextEditingController(text: initialCategory ?? 'Others');
@@ -392,29 +417,30 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                 ),
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back),
-                  onPressed: () {
-                    if (_wizardStep > 0) {
-                      setState(() => _wizardStep--);
-                    } else {
-                      Navigator.pop(context);
-                    }
-                  },
+                  onPressed: _handleBack,
                 ),
               ),
             ),
           ),
         ),
       ),
-      body: GlassBackgroundMesh(
-        child: _loading
-            ? const RecellBrandLoader(message: 'Fetching guaranteed buyback catalog...')
-            : _wizardStep == 0
-                ? _buildCategoryStep()
-                : _wizardStep == 1
-                    ? _buildBrandStep()
-                    : _wizardStep == 2
-                        ? _buildModelStep()
-                        : _buildVariantStep(),
+      body: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          _handleBack();
+        },
+        child: GlassBackgroundMesh(
+          child: _loading
+              ? const RecellBrandLoader(message: 'Fetching guaranteed buyback catalog...')
+              : _wizardStep == 0
+                  ? _buildCategoryStep()
+                  : _wizardStep == 1
+                      ? _buildBrandStep()
+                      : _wizardStep == 2
+                          ? _buildModelStep()
+                          : _buildVariantStep(),
+        ),
       ),
       bottomNavigationBar: _wizardStep == 3 && _variant != null
           ? Container(

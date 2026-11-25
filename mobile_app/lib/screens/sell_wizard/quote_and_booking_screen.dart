@@ -312,7 +312,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
           ),
         );
 
-        // Open live order tracking screen clearing the wizard back-stack so Back returns directly to Home
+        // Open live order tracking screen clearing the entire wizard stack completely
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(
@@ -321,7 +321,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
               isFromBooking: true,
             ),
           ),
-          (route) => route.isFirst,
+          (route) => false,
         );
       }
     } catch (err) {

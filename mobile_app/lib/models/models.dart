@@ -745,6 +745,8 @@ class PaymentData {
   final String paymentMethod;
   final String utrNumber;
   final String paymentProofBase64;
+  final String? beneficiaryUpiId;
+  final String? adminNotes;
   final String? paidByName;
   final String? paidAt;
 
@@ -754,6 +756,8 @@ class PaymentData {
     required this.paymentMethod,
     required this.utrNumber,
     required this.paymentProofBase64,
+    this.beneficiaryUpiId,
+    this.adminNotes,
     this.paidByName,
     this.paidAt,
   });
@@ -765,6 +769,8 @@ class PaymentData {
       paymentMethod: json['payment_method']?.toString() ?? 'UPI',
       utrNumber: json['utr_number']?.toString() ?? '',
       paymentProofBase64: json['payment_proof_base64']?.toString() ?? '',
+      beneficiaryUpiId: json['beneficiary_upi_id']?.toString(),
+      adminNotes: json['admin_notes']?.toString(),
       paidByName: json['paid_by_name']?.toString(),
       paidAt: json['paid_at']?.toString(),
     );
@@ -777,6 +783,8 @@ class PaymentData {
       'payment_method': paymentMethod,
       'utr_number': utrNumber,
       'payment_proof_base64': paymentProofBase64,
+      'beneficiary_upi_id': beneficiaryUpiId,
+      'admin_notes': adminNotes,
       'paid_by_name': paidByName,
       'paid_at': paidAt,
     };

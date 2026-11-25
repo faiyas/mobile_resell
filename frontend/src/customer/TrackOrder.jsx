@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { 
   Search, Smartphone, MapPin, Calendar, Clock, CheckCircle2, 
   XCircle, AlertCircle, FileText, IndianRupee, ShieldCheck, ChevronRight, 
-  ArrowLeft, Share2, PhoneCall, RefreshCw, Filter, PackageCheck, Truck
+  ArrowLeft, Share2, PhoneCall, RefreshCw, Filter, PackageCheck, Truck,
+  Copy, Check, ZoomIn
 } from 'lucide-react';
 import { api } from '../services/api';
 import ReceiptModal from './ReceiptModal';
+import ImageZoomModal from '../components/ImageZoomModal';
 
 export default function TrackOrder({ initialSaleCode, currentUser }) {
   const [query, setQuery] = useState(initialSaleCode || '');
@@ -18,6 +20,10 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
   // Receipt modal state
   const [receiptData, setReceiptData] = useState(null);
   const [loadingReceipt, setLoadingReceipt] = useState(false);
+
+  // Zoom lightbox state
+  const [zoomViewer, setZoomViewer] = useState(null);
+  const [copiedKey, setCopiedKey] = useState(null);
 
   // Order cancellation state
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -540,22 +546,96 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
               </span>
             </div>
 
-            {/* Payout Details */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
-              <div className="flex justify-between">
+            {/* Payout Details & Bank Proof */}
+            <div className={`p-4 rounded-2xl border text-xs space-y-2.5 ${selectedSale.payment || selectedSale.status === 'PAYMENT_COMPLETED' ? 'bg-emerald-50/70 border-emerald-300' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="flex items-center justify-between pb-1 border-b border-emerald-200/60">
+                <span className="font-extrabold text-[#17251C] flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  {selectedSale.payment || selectedSale.status === 'PAYMENT_COMPLETED' ? 'Payout Disbursed (Paid)' : 'Payout Destination'}
+                </span>
+                <span className="font-black text-emerald-700 text-sm">
+                  ₹{Number(selectedSale.payment?.amount || selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between">
                 <span className="text-slate-500">Payout Mode:</span>
-                <strong className="text-slate-800 font-mono">{selectedSale.beneficiary_type}</strong>
+                <strong className="text-slate-800 font-mono font-bold">{selectedSale.beneficiary_type || 'UPI'}</strong>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Destination Account / UPI:</span>
-                <strong className="text-slate-800 font-mono">
-                  {selectedSale.beneficiary_type === 'UPI' ? selectedSale.beneficiary_upi_id : selectedSale.beneficiary_account_no}
-                </strong>
+
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Beneficiary UPI ID:</span>
+                <div className="flex items-center gap-1.5">
+                  <strong className="text-slate-900 font-mono font-bold">
+                    {selectedSale.beneficiary_upi_id || (selectedSale.beneficiary_type === 'UPI' ? selectedSale.beneficiary_upi_id : selectedSale.beneficiary_account_no) || 'Not provided'}
+                  </strong>
+                  {selectedSale.beneficiary_upi_id && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedSale.beneficiary_upi_id);
+                        setCopiedKey('upi');
+                        setTimeout(() => setCopiedKey(null), 2000);
+                      }}
+                      className="text-slate-400 hover:text-emerald-600 p-0.5 rounded transition"
+                      title="Copy UPI ID"
+                    >
+                      {copiedKey === 'upi' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  )}
+                </div>
               </div>
+
               {selectedSale.payment?.utr_number && (
-                <div className="flex justify-between pt-1 border-t border-slate-200">
-                  <span className="text-emerald-700 font-bold">Bank Reference (UTR):</span>
-                  <strong className="text-emerald-800 font-mono font-bold">{selectedSale.payment.utr_number}</strong>
+                <div className="flex items-center justify-between pt-1 border-t border-emerald-200/50">
+                  <span className="text-emerald-800 font-bold">Bank Reference (UTR):</span>
+                  <div className="flex items-center gap-1.5">
+                    <strong className="text-emerald-900 font-mono font-bold">{selectedSale.payment.utr_number}</strong>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedSale.payment.utr_number);
+                        setCopiedKey('utr');
+                        setTimeout(() => setCopiedKey(null), 2000);
+                      }}
+                      className="text-emerald-600 hover:text-emerald-800 p-0.5 rounded transition"
+                      title="Copy UTR Number"
+                    >
+                      {copiedKey === 'utr' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Payout Proof Screenshot Preview */}
+              {selectedSale.payment?.payment_proof_base64 && (
+                <div className="pt-2 border-t border-emerald-200/60">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-emerald-900 font-bold text-[11px]">Official Bank Transfer Proof:</span>
+                    <button
+                      onClick={() => setZoomViewer({
+                        images: [{ image_base64: selectedSale.payment.payment_proof_base64, label: `Bank Transfer Proof • UTR ${selectedSale.payment.utr_number || ''}` }],
+                        initialIndex: 0
+                      })}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1 underline"
+                    >
+                      <ZoomIn className="w-3 h-3" /> View Fullscreen
+                    </button>
+                  </div>
+                  <div
+                    onClick={() => setZoomViewer({
+                      images: [{ image_base64: selectedSale.payment.payment_proof_base64, label: `Bank Transfer Proof • UTR ${selectedSale.payment.utr_number || ''}` }],
+                      initialIndex: 0
+                    })}
+                    className="relative rounded-xl overflow-hidden cursor-pointer group border border-emerald-300 max-h-48 bg-black/5"
+                  >
+                    <img
+                      src={selectedSale.payment.payment_proof_base64}
+                      alt="Bank Transfer Proof"
+                      className="w-full h-40 object-cover object-top group-hover:scale-105 transition duration-200"
+                    />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white font-bold text-xs gap-1.5">
+                      <ZoomIn className="w-4 h-4" /> Tap to Zoom Receipt
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -687,6 +767,15 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Zoomable Image Lightbox Modal */}
+      {zoomViewer && (
+        <ImageZoomModal
+          images={zoomViewer.images}
+          initialIndex={zoomViewer.initialIndex || 0}
+          onClose={() => setZoomViewer(null)}
+        />
       )}
 
     </div>

@@ -448,7 +448,13 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
           ),
         ),
       ),
-      body: GlassBackgroundMesh(
+      body: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          _previousStep();
+        },
+        child: GlassBackgroundMesh(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
           child: Column(
@@ -739,6 +745,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
             ],
           ),
         ),
+      ),
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
