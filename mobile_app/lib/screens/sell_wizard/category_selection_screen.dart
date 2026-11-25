@@ -26,7 +26,7 @@ class CategorySelectionScreen extends StatefulWidget {
 class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
   final ApiService _api = ApiService();
 
-  // Wizard Sub-steps: 0 = Category, 1 = Brand, 2 = Model & Variant
+  // Wizard Sub-steps: 0 = Category, 1 = Brand, 2 = Model, 3 = Storage Variant
   int _wizardStep = 0;
 
   DeviceCategoryModel? _category;
@@ -184,146 +184,12 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       setState(() {
         _variants = v;
         _variant = v.length == 1 ? v.first : null;
+        _wizardStep = 3;
         _loading = false;
       });
-      if (v.length > 1) {
-        _showVariantPickerSheet(model, v);
-      } else if (v.length == 1) {
-        _proceedToQuestionnaire();
-      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  void _showVariantPickerSheet(PhoneModelItem model, List<StorageVariantModel> variants) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.96),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: AppTheme.border,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    'Select Storage Variant',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${_brand?.name ?? ''} ${model.name} · Choose your device capacity to continue',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: MediaQuery.of(ctx).size.height * 0.48,
-                    ),
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: variants.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (_, idx) {
-                        final v = variants[idx];
-                        final isSelected = _variant?.id == v.id;
-                        return InkWell(
-                          borderRadius: BorderRadius.circular(18),
-                          onTap: () {
-                            setState(() => _variant = v);
-                            Navigator.pop(ctx);
-                            _proceedToQuestionnaire();
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                            decoration: BoxDecoration(
-                              color: isSelected ? AppTheme.lightGreen : Colors.white,
-                              borderRadius: BorderRadius.circular(18),
-                              border: Border.all(
-                                color: isSelected ? AppTheme.primaryGreen : AppTheme.border,
-                                width: isSelected ? 2 : 1.2,
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(Icons.sd_storage_rounded, color: AppTheme.primaryGreen, size: 20),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        v.ram != null && v.ram!.isNotEmpty ? '${v.storage} · ${v.ram} RAM' : v.storage,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 15,
-                                          color: AppTheme.textPrimary,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Up to ₹${v.basePrice.toStringAsFixed(0)}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w800,
-                                          color: AppTheme.darkGreen,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.arrow_forward_ios_rounded, size: 15, color: AppTheme.primaryGreen),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   void _showCustomDeviceModal({String? initialCategory}) {
@@ -525,7 +391,9 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                       ? 'Select Category'
                       : _wizardStep == 1
                           ? 'Select ${_category?.name ?? "Brand"}'
-                          : '${_brand?.name ?? ''} Models',
+                          : _wizardStep == 2
+                              ? '${_brand?.name ?? ''} Models'
+                              : 'Select Storage Variant',
                 ),
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back),
@@ -549,9 +417,11 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                 ? _buildCategoryStep()
                 : _wizardStep == 1
                     ? _buildBrandStep()
-                    : _buildModelStep(),
+                    : _wizardStep == 2
+                        ? _buildModelStep()
+                        : _buildVariantStep(),
       ),
-      bottomNavigationBar: _wizardStep == 2 && _variant != null
+      bottomNavigationBar: _wizardStep == 3 && _variant != null
           ? Container(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               color: Colors.transparent,
@@ -976,6 +846,178 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
           : AppTheme.lightGreen.withValues(alpha: 0.65),
       alignment: Alignment.center,
       child: const Icon(Icons.smartphone_rounded, size: 48, color: AppTheme.primaryGreen),
+    );
+  }
+
+  Widget _buildVariantStep() {
+    final modelImgBytes = ImageHelper.decodeBase64(_model?.imageBase64);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
+      children: [
+        GlassContainer(
+          borderRadius: 24,
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 68,
+                height: 68,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: modelImgBytes != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.memory(modelImgBytes, fit: BoxFit.contain),
+                      )
+                    : const Icon(Icons.phone_iphone_rounded, size: 32, color: AppTheme.primaryGreen),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${_brand?.name ?? ''} ${_model?.name ?? ''}'.trim(),
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Choose your device storage variant below to continue to condition questions.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 10),
+          child: Text(
+            'Available Storage Variants',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+        ),
+        if (_variants.isEmpty)
+          GlassContainer(
+            borderRadius: 22,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const Icon(Icons.sd_storage_outlined, size: 36, color: AppTheme.textSecondary),
+                const SizedBox(height: 10),
+                const Text(
+                  'No storage variants configured for this model yet.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _wizardStep = 2),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Choose Another Model'),
+                ),
+              ],
+            ),
+          )
+        else
+          ..._variants.map((v) {
+            final isSelected = _variant?.id == v.id;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () => setState(() => _variant = v),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppTheme.lightGreen : Colors.white.withValues(alpha: 0.92),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isSelected ? AppTheme.primaryGreen : AppTheme.border,
+                      width: isSelected ? 2.2 : 1.2,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppTheme.primaryGreen.withValues(alpha: 0.14),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(11),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppTheme.primaryGreen
+                              : AppTheme.primaryGreen.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.sd_storage_rounded,
+                          color: isSelected ? Colors.white : AppTheme.primaryGreen,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              v.ram != null && v.ram!.isNotEmpty
+                                  ? '${v.storage} · ${v.ram} RAM'
+                                  : v.storage,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Base Buyback Value: ₹${v.basePrice.toStringAsFixed(0)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.darkGreen,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isSelected)
+                        const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 24)
+                      else
+                        const Icon(Icons.radio_button_unchecked_rounded, color: AppTheme.border, size: 22),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+      ],
     );
   }
 
