@@ -21,11 +21,13 @@ def is_admin_user(user):
 @permission_classes([AllowAny])
 def categories_list_view(request):
     if request.method == 'GET':
+        from django.db.models import Count
         show_all = request.GET.get('all', 'false').lower() == 'true'
         if show_all and is_admin_user(request.user):
             categories = DeviceCategory.objects.all()
         else:
             categories = DeviceCategory.objects.filter(is_active=True)
+        categories = categories.annotate(annotated_brands_count=Count('brands'))
         return Response(DeviceCategorySerializer(categories, many=True).data)
 
     elif request.method == 'POST':
@@ -80,11 +82,13 @@ def brands_list_view(request):
             brands = brands.filter(category_id=category_id)
 
         if include_models:
-            brands = brands.prefetch_related(
+            brands = brands.select_related('category').prefetch_related(
                 Prefetch('models', queryset=PhoneModel.objects.filter(is_active=True).prefetch_related('variants'))
             )
             serializer = BrandSerializer(brands, many=True)
         else:
+            from django.db.models import Count
+            brands = brands.select_related('category').annotate(annotated_models_count=Count('models'))
             serializer = BrandBasicSerializer(brands, many=True)
         return Response(serializer.data)
 
@@ -128,10 +132,11 @@ def brand_detail_view(request, pk):
 @permission_classes([AllowAny])
 def series_list_view(request):
     if request.method == 'GET':
-        from django.db.models import Max
+        from django.db.models import Max, Count
         brand_id = request.GET.get('brand')
-        queryset = DeviceSeries.objects.filter(is_active=True).annotate(
-            max_year=Max('models__release_year')
+        queryset = DeviceSeries.objects.filter(is_active=True).select_related('brand').annotate(
+            max_year=Max('models__release_year'),
+            annotated_models_count=Count('models'),
         ).order_by('-max_year', 'display_order', 'name')
         if brand_id:
             queryset = queryset.filter(brand_id=brand_id)

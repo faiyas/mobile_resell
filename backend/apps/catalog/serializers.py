@@ -2,19 +2,27 @@ from rest_framework import serializers
 from .models import DeviceCategory, Brand, DeviceSeries, PhoneModel, StorageVariant, CMSHomeSection
 
 class DeviceCategorySerializer(serializers.ModelSerializer):
-    brands_count = serializers.IntegerField(source='brands.count', read_only=True)
+    brands_count = serializers.SerializerMethodField()
 
     class Meta:
         model = DeviceCategory
         fields = ['id', 'name', 'slug', 'subtitle', 'icon_name', 'image_base64', 'display_order', 'is_active', 'brands_count']
 
+    def get_brands_count(self, obj):
+        val = getattr(obj, 'annotated_brands_count', None)
+        return val if val is not None else obj.brands.count()
+
 class DeviceSeriesSerializer(serializers.ModelSerializer):
     brand_name = serializers.ReadOnlyField(source='brand.name')
-    models_count = serializers.IntegerField(source='models.count', read_only=True)
+    models_count = serializers.SerializerMethodField()
 
     class Meta:
         model = DeviceSeries
         fields = ['id', 'brand', 'brand_name', 'name', 'display_order', 'is_active', 'models_count']
+
+    def get_models_count(self, obj):
+        val = getattr(obj, 'annotated_models_count', None)
+        return val if val is not None else obj.models.count()
 
 class StorageVariantSerializer(serializers.ModelSerializer):
     brand_name = serializers.ReadOnlyField(source='model.brand.name')
@@ -50,12 +58,16 @@ class BrandSerializer(serializers.ModelSerializer):
         return PhoneModelSerializer(active_models, many=True).data
 
 class BrandBasicSerializer(serializers.ModelSerializer):
-    models_count = serializers.IntegerField(source='models.count', read_only=True)
+    models_count = serializers.SerializerMethodField()
     category_name = serializers.ReadOnlyField(source='category.name')
 
     class Meta:
         model = Brand
         fields = ['id', 'category', 'category_name', 'name', 'slug', 'logo_base64', 'is_active', 'display_order', 'models_count']
+
+    def get_models_count(self, obj):
+        val = getattr(obj, 'annotated_models_count', None)
+        return val if val is not None else obj.models.count()
 
 class CMSHomeSectionSerializer(serializers.ModelSerializer):
     class Meta:
