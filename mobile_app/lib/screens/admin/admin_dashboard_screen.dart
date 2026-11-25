@@ -297,6 +297,151 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
+  void _showResetCustomerPasswordDialog({String? initialPhone, String? customerName, int? customerId}) {
+    final phoneCtrl = TextEditingController(text: initialPhone ?? '');
+    final passCtrl = TextEditingController(text: 'Dolly${1000 + (DateTime.now().millisecondsSinceEpoch % 9000)}');
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassContainer(
+            padding: const EdgeInsets.all(22),
+            borderRadius: BorderRadius.circular(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.amber.shade200),
+                      ),
+                      child: const Icon(Icons.vpn_key_rounded, color: Colors.amber, size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Admin Password Reset',
+                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                          ),
+                          Text(
+                            customerName != null ? 'For: $customerName' : 'Override without old password',
+                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Admins can directly set a customer\'s password without needing their old password (useful for phone support).',
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Customer Mobile Number *',
+                    hintText: '10-digit mobile number',
+                    prefixIcon: const Icon(Icons.phone_rounded, size: 18),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: passCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'New Password *',
+                    hintText: 'Minimum 6 characters',
+                    prefixIcon: const Icon(Icons.lock_reset_rounded, size: 18),
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.shuffle_rounded, size: 18),
+                      tooltip: 'Generate Random Password',
+                      onPressed: () {
+                        setModalState(() {
+                          passCtrl.text = 'Dolly${1000 + (DateTime.now().millisecondsSinceEpoch % 9000)}';
+                        });
+                      },
+                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryGreen,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      ),
+                      onPressed: isSaving ? null : () async {
+                        final phone = phoneCtrl.text.trim();
+                        final newPass = passCtrl.text.trim();
+                        if (phone.isEmpty || newPass.length < 6) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please enter valid mobile & password (min 6 chars)')),
+                          );
+                          return;
+                        }
+                        setModalState(() => isSaving = true);
+                        try {
+                          await _api.adminResetCustomerPassword(
+                            customerId: customerId,
+                            phone: phone,
+                            newPassword: newPass,
+                          );
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('✓ Password for $phone updated to: $newPass'),
+                                duration: const Duration(seconds: 4),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setModalState(() => isSaving = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Failed: $e')),
+                            );
+                          }
+                        }
+                      },
+                      child: isSaving
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Set Password', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showAssignAgentDialog(SaleOrderModel order) {
     if (_agents.isEmpty) {
       showDialog(
@@ -1101,6 +1246,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                         ],
                                       ),
                                     ),
+                                    IconButton(
+                                      icon: const Icon(Icons.vpn_key_rounded, color: Colors.white, size: 22),
+                                      tooltip: 'Reset Customer Password',
+                                      onPressed: () => _showResetCustomerPasswordDialog(),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1275,9 +1425,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                 style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.textPrimary),
               ),
               const SizedBox(height: 4),
-              Text(
-                'Customer: ${order.customerName} · ${order.customerPhone}',
-                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Customer: ${order.customerName} · ${order.customerPhone}',
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => _showResetCustomerPasswordDialog(
+                      initialPhone: order.customerPhone,
+                      customerName: order.customerName,
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.vpn_key_rounded, size: 13, color: AppTheme.primaryGreen),
+                          SizedBox(width: 3),
+                          Text('Reset Pwd', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 8),
               if (order.beneficiaryUpiId != null && order.beneficiaryUpiId!.isNotEmpty)
@@ -1466,9 +1640,33 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            '${order.customerName} · ${order.customerPhone}',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '${order.customerName} · ${order.customerPhone}',
+                                  style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () => _showResetCustomerPasswordDialog(
+                                  initialPhone: order.customerPhone,
+                                  customerName: order.customerName,
+                                ),
+                                borderRadius: BorderRadius.circular(6),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.vpn_key_rounded, size: 12, color: AppTheme.primaryGreen),
+                                      SizedBox(width: 3),
+                                      Text('Reset Pwd', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           if (order.pickupSlot != null) ...[
                             const SizedBox(height: 4),

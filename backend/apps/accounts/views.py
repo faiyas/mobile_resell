@@ -138,6 +138,13 @@ def agent_detail_view(request, agent_id):
             agent.set_password(new_pass)
         if 'is_active' in data:
             agent.is_active = bool(data['is_active'])
+        # Admin can override agent password directly without requiring old password
+        new_pwd = data.get('password') or data.get('new_password')
+        if new_pwd and str(new_pwd).strip():
+            new_pwd_str = str(new_pwd).strip()
+            if len(new_pwd_str) < 6:
+                return Response({'detail': 'Password must be at least 6 characters long'}, status=status.HTTP_400_BAD_REQUEST)
+            agent.set_password(new_pwd_str)
         agent.save()
         return Response({
             'message': 'Agent details updated successfully',
@@ -253,6 +260,13 @@ def customer_detail_view(request, user_id):
             customer.pincode = str(data['pincode']).strip()
         if 'default_upi_id' in data:
             customer.default_upi_id = str(data['default_upi_id']).strip()
+        # Admin can override customer password directly without requiring old password
+        new_pwd = data.get('password') or data.get('new_password')
+        if new_pwd and str(new_pwd).strip():
+            new_pwd_str = str(new_pwd).strip()
+            if len(new_pwd_str) < 6:
+                return Response({'detail': 'Password must be at least 6 characters long'}, status=status.HTTP_400_BAD_REQUEST)
+            customer.set_password(new_pwd_str)
         customer.save()
         return Response({
             'message': 'Customer details updated successfully',
@@ -278,6 +292,49 @@ def customer_detail_view(request, user_id):
             'message': f"Customer '{cust_name}' deleted successfully",
             'deleted': True
         }, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def admin_reset_customer_password_view(request, user_id=None):
+    """
+    Admin overrides a customer's password directly without requiring their old password.
+    Accepts user_id in URL path or customer_id / phone in request body.
+    """
+    if not is_admin_user(request.user):
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    target_user = None
+    if user_id:
+        try:
+            target_user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'detail': f'User ID #{user_id} not found'}, status=status.HTTP_404_NOT_FOUND)
+    else:
+        phone = request.data.get('phone')
+        user_pk = request.data.get('user_id') or request.data.get('customer_id')
+        if user_pk:
+            target_user = User.objects.filter(pk=user_pk).first()
+        elif phone:
+            raw_phone = ''.join(c for c in str(phone) if c.isdigit())
+            if len(raw_phone) >= 10:
+                raw_phone = raw_phone[-10:]
+            target_user = User.objects.filter(phone__endswith=raw_phone).first()
+
+    if not target_user:
+        return Response({'detail': 'Customer account could not be found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    new_password = request.data.get('new_password') or request.data.get('password')
+    if not new_password or len(str(new_password).strip()) < 6:
+        return Response({'detail': 'New password must be at least 6 characters long'}, status=status.HTTP_400_BAD_REQUEST)
+
+    new_pwd_str = str(new_password).strip()
+    target_user.set_password(new_pwd_str)
+    target_user.save()
+
+    return Response({
+        'message': f"Password for {target_user.full_name or target_user.phone} successfully updated by Admin without requiring old password.",
+        'customer': UserSerializer(target_user).data
+    })
 
 @api_view(['POST', 'DELETE'])
 @permission_classes([IsAuthenticated])

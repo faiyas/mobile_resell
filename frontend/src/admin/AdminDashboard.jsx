@@ -202,7 +202,14 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   const [editCustPincode, setEditCustPincode] = useState('');
   const [editCustUpi, setEditCustUpi] = useState('');
   const [editCustActive, setEditCustActive] = useState(true);
+  const [editCustPassword, setEditCustPassword] = useState('');
   const [editCustLoading, setEditCustLoading] = useState(false);
+
+  // Admin Quick Password Reset for Customers (No Old Password Required)
+  const [resetPwdCustomer, setResetPwdCustomer] = useState(null);
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetPwdLoading, setResetPwdLoading] = useState(false);
+  const [resetPwdError, setResetPwdError] = useState('');
 
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
@@ -256,6 +263,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
     setEditCustPincode(c.pincode || '');
     setEditCustUpi(c.default_upi_id || '');
     setEditCustActive(c.is_active !== false);
+    setEditCustPassword('');
   };
 
   const handleSaveCustomer = async (e) => {
@@ -263,7 +271,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
     if (!editingCustomer) return;
     setEditCustLoading(true);
     try {
-      await api.updateCustomer(editingCustomer.id, {
+      const payload = {
         full_name: editCustName.trim(),
         phone: editCustPhone.trim(),
         email: editCustEmail.trim(),
@@ -272,15 +280,41 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
         pincode: editCustPincode.trim(),
         default_upi_id: editCustUpi.trim(),
         is_active: editCustActive,
-      });
+      };
+      if (editCustPassword.trim()) {
+        payload.password = editCustPassword.trim();
+      }
+      await api.updateCustomer(editingCustomer.id, payload);
       setSuccessToast(`✓ Customer "${editCustName}" updated successfully!`);
       setEditingCustomer(null);
+      setEditCustPassword('');
       const freshCusts = await api.getCustomers().catch(() => []);
       setCustomers(freshCusts);
     } catch (err) {
       alert(err.message || 'Failed to update customer');
     } finally {
       setEditCustLoading(false);
+    }
+  };
+
+  const handleAdminResetPassword = async (e) => {
+    e.preventDefault();
+    if (!resetPwdCustomer) return;
+    if (!resetNewPassword || resetNewPassword.length < 6) {
+      setResetPwdError('Password must be at least 6 characters long.');
+      return;
+    }
+    setResetPwdLoading(true);
+    setResetPwdError('');
+    try {
+      await api.adminResetCustomerPassword(resetPwdCustomer.id, resetNewPassword);
+      setSuccessToast(`✓ New password set for ${resetPwdCustomer.full_name || resetPwdCustomer.phone}!`);
+      setResetPwdCustomer(null);
+      setResetNewPassword('');
+    } catch (err) {
+      setResetPwdError(err.message || 'Failed to reset customer password.');
+    } finally {
+      setResetPwdLoading(false);
     }
   };
 
@@ -1268,6 +1302,19 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
                             <button
                               type="button"
+                              onClick={() => {
+                                setResetPwdCustomer(c);
+                                setResetNewPassword(`Dolly${Math.floor(1000 + Math.random() * 9000)}`);
+                                setResetPwdError('');
+                              }}
+                              className="p-1 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition"
+                              title="Reset Password (No Old Password Required)"
+                            >
+                              <KeyRound className="w-3.5 h-3.5" />
+                            </button>
+
+                            <button
+                              type="button"
                               onClick={() => handlePromoteToAgent(c)}
                               className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-[10px] font-extrabold transition"
                               title="Promote this customer to a Field Collection Agent"
@@ -2221,6 +2268,22 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Change Password (Admin Override)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Leave blank to keep unchanged (min 6 characters)"
+                  value={editCustPassword}
+                  onChange={(e) => setEditCustPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-[#0BAA4B] outline-none"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Admins can set a new password directly without needing the customer's old password.
+                </p>
+              </div>
+
               <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
@@ -2254,6 +2317,100 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
                     </>
                   ) : (
                     <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ================= MODAL: ADMIN OVERRIDE CUSTOMER PASSWORD ================= */}
+      {resetPwdCustomer && createPortal(
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden animate-scale-up">
+            <div className="bg-gradient-to-r from-amber-600 to-amber-700 p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center">
+                  <KeyRound className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base">Reset Customer Password</h3>
+                  <p className="text-xs text-amber-100">No old password required (Admin Direct Override)</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResetPwdCustomer(null)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAdminResetPassword} className="p-6 space-y-4">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-black text-slate-800">{resetPwdCustomer.full_name || 'Customer'}</p>
+                  <p className="text-[11px] font-mono text-slate-500 font-bold">Mobile: {resetPwdCustomer.phone || '—'}</p>
+                </div>
+                <span className="px-2.5 py-1 bg-amber-100 text-amber-800 text-[10px] font-black uppercase rounded-lg">
+                  Customer #{resetPwdCustomer.id}
+                </span>
+              </div>
+
+              {resetPwdError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-bold rounded-xl flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                  <span>{resetPwdError}</span>
+                </div>
+              )}
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-700">New Password *</label>
+                  <button
+                    type="button"
+                    onClick={() => setResetNewPassword(`Dolly${Math.floor(1000 + Math.random() * 9000)}`)}
+                    className="text-[11px] font-bold text-amber-600 hover:text-amber-800 hover:underline flex items-center gap-1"
+                  >
+                    <span>Generate Suggested</span>
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={resetNewPassword}
+                  onChange={(e) => setResetNewPassword(e.target.value)}
+                  placeholder="Enter at least 6 characters"
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs font-bold font-mono focus:ring-2 focus:ring-amber-500 outline-none"
+                />
+                <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
+                  The customer will be able to log in with this password immediately on both Mobile App & Web.
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setResetPwdCustomer(null)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetPwdLoading}
+                  className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold rounded-xl text-xs shadow-md transition flex items-center gap-2 disabled:opacity-50 active:scale-98"
+                >
+                  {resetPwdLoading ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Setting New Password...</span>
+                    </>
+                  ) : (
+                    <span>Set New Password</span>
                   )}
                 </button>
               </div>

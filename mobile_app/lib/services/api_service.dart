@@ -262,6 +262,32 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> adminResetCustomerPassword({
+    int? customerId,
+    String? phone,
+    required String newPassword,
+  }) async {
+    final url = Uri.parse(
+      customerId != null
+          ? '${ApiConfig.baseUrl}/auth/customers/$customerId/reset-password/'
+          : '${ApiConfig.baseUrl}/auth/customers/reset-password/',
+    );
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode({
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        'new_password': newPassword.trim(),
+      }),
+    );
+    final data = jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      return data;
+    } else {
+      throw Exception(data['detail'] ?? data['message'] ?? 'Failed to reset customer password');
+    }
+  }
+
   Future<Map<String, dynamic>> createAgent(Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/auth/agents/');
     final res = await http.post(

@@ -78,6 +78,8 @@ export const api = {
   getCustomers: (search = '') => request(`/auth/customers/${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   createCustomer: (data) => request('/auth/customers/', { method: 'POST', body: JSON.stringify(data) }),
   updateCustomer: (id, data) => request(`/auth/customers/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+  adminResetCustomerPassword: (id, newPassword) => request(`/auth/customers/${id}/reset-password/`, { method: 'POST', body: JSON.stringify({ new_password: newPassword }) }),
+  adminResetCustomerPasswordByPhone: (phone, newPassword) => request('/auth/customers/reset-password/', { method: 'POST', body: JSON.stringify({ phone, new_password: newPassword }) }),
   toggleCustomerActive: (id) => request(`/auth/customers/${id}/?action=toggle`, { method: 'DELETE' }),
   deleteCustomer: (id) => request(`/auth/customers/${id}/?action=delete`, { method: 'DELETE' }),
 
