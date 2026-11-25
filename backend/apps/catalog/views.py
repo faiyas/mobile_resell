@@ -128,8 +128,11 @@ def brand_detail_view(request, pk):
 @permission_classes([AllowAny])
 def series_list_view(request):
     if request.method == 'GET':
+        from django.db.models import Max
         brand_id = request.GET.get('brand')
-        queryset = DeviceSeries.objects.filter(is_active=True)
+        queryset = DeviceSeries.objects.filter(is_active=True).annotate(
+            max_year=Max('models__release_year')
+        ).order_by('-max_year', 'display_order', 'name')
         if brand_id:
             queryset = queryset.filter(brand_id=brand_id)
         return Response(DeviceSeriesSerializer(queryset, many=True).data)
@@ -408,10 +411,13 @@ def catalog_sync_bundle_view(request):
     Lightweight single-request offline sync bundle for mobile app background sync.
     Returns active series, models + variants (without heavy base64 images), and condition steps/options.
     """
+    from django.db.models import Max
     from apps.valuation.models import ConditionCategory
     from apps.valuation.serializers import ConditionCategorySerializer
 
-    series_qs = DeviceSeries.objects.filter(is_active=True).values('id', 'brand_id', 'name', 'display_order')
+    series_qs = DeviceSeries.objects.filter(is_active=True).annotate(
+        max_year=Max('models__release_year')
+    ).order_by('-max_year', 'display_order', 'name').values('id', 'brand_id', 'name', 'display_order')
     models_qs = PhoneModel.objects.filter(is_active=True).prefetch_related('variants').order_by('-release_year', 'name')
 
     models_data = []

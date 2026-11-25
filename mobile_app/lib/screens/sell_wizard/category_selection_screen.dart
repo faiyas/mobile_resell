@@ -103,8 +103,33 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     try {
       final s = await _api.getSeries(brandId: brand.id);
       final m = await _api.getModels(brandId: brand.id);
+
+      // Sort series chips so the latest generations appear first
+      final maxYearBySeries = <int, int>{};
+      for (final modelItem in m) {
+        final sid = modelItem.seriesId;
+        if (sid != null) {
+          final prev = maxYearBySeries[sid] ?? 0;
+          if (modelItem.releaseYear > prev) {
+            maxYearBySeries[sid] = modelItem.releaseYear;
+          }
+        }
+      }
+      int extractSeriesNum(String name) {
+        final match = RegExp(r'(\d+)').firstMatch(name);
+        return match != null ? (int.tryParse(match.group(1)!) ?? 0) : 0;
+      }
+      final sortedSeries = List<SeriesModel>.from(s)
+        ..sort((a, b) {
+          final yearCmp = (maxYearBySeries[b.id] ?? 0).compareTo(maxYearBySeries[a.id] ?? 0);
+          if (yearCmp != 0) return yearCmp;
+          final numCmp = extractSeriesNum(b.name).compareTo(extractSeriesNum(a.name));
+          if (numCmp != 0) return numCmp;
+          return a.name.compareTo(b.name);
+        });
+
       setState(() {
-        _seriesList = s;
+        _seriesList = sortedSeries;
         _models = m;
         if (m.isNotEmpty) {
           _selectModel(m.first);
