@@ -165,6 +165,8 @@ def series_detail_view(request, pk):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
+        # Cascade delete all models & variants belonging to this series
+        PhoneModel.objects.filter(series=series).delete()
         series.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -352,4 +354,104 @@ def system_settings_view(request):
         }
     )
     return Response(section.data_json)
+
+
+# ================= 8. BULK DELETE & OFFLINE SYNC BUNDLE =================
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def catalog_bulk_delete_view(request):
+    """Bulk delete brands, series (with models), models, or variants (Admin only)"""
+    if not is_admin_user(request.user):
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    target = str(request.data.get('target', '')).strip().lower()
+    ids = request.data.get('ids', [])
+    delete_all = bool(request.data.get('all', False))
+
+    if not delete_all and (not isinstance(ids, list) or len(ids) == 0):
+        return Response({'detail': 'Provide ids list or set all=true'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from django.db import transaction
+    with transaction.atomic():
+        if target == 'brands':
+            qs = Brand.objects.all() if delete_all else Brand.objects.filter(id__in=ids)
+            count = qs.count()
+            qs.delete()  # Cascades to series, models, variants, and brand-specific condition steps
+        elif target == 'series':
+            qs = DeviceSeries.objects.all() if delete_all else DeviceSeries.objects.filter(id__in=ids)
+            count = qs.count()
+            PhoneModel.objects.filter(series__in=qs).delete()
+            qs.delete()
+        elif target == 'models':
+            qs = PhoneModel.objects.all() if delete_all else PhoneModel.objects.filter(id__in=ids)
+            count = qs.count()
+            qs.delete()  # Cascades to variants
+        elif target == 'variants':
+            qs = StorageVariant.objects.all() if delete_all else StorageVariant.objects.filter(id__in=ids)
+            count = qs.count()
+            qs.delete()
+        else:
+            return Response({'detail': f'Unsupported target: {target}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({'deleted': count, 'target': target, 'message': f'Successfully deleted {count} {target}'})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def catalog_sync_bundle_view(request):
+    """
+    Lightweight single-request offline sync bundle for mobile app background sync.
+    Returns active series, models + variants (without heavy base64 images), and condition steps/options.
+    """
+    from apps.valuation.models import ConditionCategory
+    from apps.valuation.serializers import ConditionCategorySerializer
+
+    series_qs = DeviceSeries.objects.filter(is_active=True).values('id', 'brand_id', 'name', 'display_order')
+    models_qs = PhoneModel.objects.filter(is_active=True).prefetch_related('variants').order_by('-release_year', 'name')
+
+    models_data = []
+    for m in models_qs:
+        variants_list = [
+            {
+                'id': v.id,
+                'model': m.id,
+                'ram': v.ram,
+                'storage': v.storage,
+                'base_price': str(v.base_price),
+                'min_price': str(v.min_price),
+                'is_active': v.is_active,
+            }
+            for v in m.variants.all() if v.is_active
+        ]
+        models_data.append({
+            'id': m.id,
+            'brand': m.brand_id,
+            'series': m.series_id,
+            'name': m.name,
+            'slug': m.slug,
+            'release_year': m.release_year,
+            'has_warranty': m.has_warranty,
+            'is_active': m.is_active,
+            'variants': variants_list,
+        })
+
+    series_data = [
+        {
+            'id': s['id'],
+            'brand': s['brand_id'],
+            'name': s['name'],
+            'display_order': s['display_order'],
+            'is_active': True,
+        }
+        for s in series_qs
+    ]
+
+    conditions_qs = ConditionCategory.objects.filter(is_active=True).prefetch_related('options').order_by('step_number', 'display_order')
+    conditions_data = ConditionCategorySerializer(conditions_qs, many=True).data
+
+    return Response({
+        'series': series_data,
+        'models': models_data,
+        'conditions': conditions_data,
+    })
 

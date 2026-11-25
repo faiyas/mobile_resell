@@ -112,6 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadInitialData() async {
     // 1. Instant 0ms Load from Local Device Storage (No spinner if cache exists)
+    await CustomerCacheService.hydrateApiFromLocalCache(_api);
     final cachedCms = await CustomerCacheService.getCachedCMSSections();
     final cachedCats = await CustomerCacheService.getCachedCategories();
     final cachedBrands = await CustomerCacheService.getCachedBrands();

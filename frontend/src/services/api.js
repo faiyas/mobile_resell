@@ -111,12 +111,14 @@ export const api = {
   createVariant: (data) => request('/catalog/variants/', { method: 'POST', body: JSON.stringify(data) }),
   updateVariant: (id, data) => request(`/catalog/variants/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteVariant: (id) => request(`/catalog/variants/${id}/`, { method: 'DELETE' }),
+  bulkDeleteCatalog: (target, ids = [], all = false) => request('/catalog/bulk-delete/', { method: 'POST', body: JSON.stringify({ target, ids, all }) }),
 
   // Valuation & Dynamic Pricing
   getConditionCategories: (all = false, brandId = '') => request(`/valuation/conditions/?all=${all}${brandId ? `&brand=${brandId}` : ''}`),
   createConditionCategory: (data) => request('/valuation/conditions/', { method: 'POST', body: JSON.stringify(data) }),
   updateConditionCategory: (id, data) => request(`/valuation/conditions/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteConditionCategory: (id) => request(`/valuation/conditions/${id}/`, { method: 'DELETE' }),
+  bulkDeleteValuation: (target, ids = [], all = false) => request('/valuation/bulk-delete/', { method: 'POST', body: JSON.stringify({ target, ids, all }) }),
   copyQuestionsFromBrand: (sourceBrandId, targetBrandId, markMandatory = true) =>
     request('/valuation/conditions/copy-from-brand/', {
       method: 'POST',

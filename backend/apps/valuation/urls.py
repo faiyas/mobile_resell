@@ -3,7 +3,7 @@ from .views import (
     condition_categories_view, condition_category_detail_view,
     condition_options_view, condition_option_detail_view,
     calculate_estimate_view, price_history_list_view,
-    copy_questions_from_brand_view
+    copy_questions_from_brand_view, valuation_bulk_delete_view
 )
 
 urlpatterns = [
@@ -23,4 +23,7 @@ urlpatterns = [
     
     # Price History & Audit Log
     path('pricing/history/', price_history_list_view, name='valuation-price-history'),
+
+    # Bulk Delete
+    path('bulk-delete/', valuation_bulk_delete_view, name='valuation-bulk-delete'),
 ]

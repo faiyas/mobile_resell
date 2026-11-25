@@ -17,7 +17,53 @@ class ApiService {
   List<CMSSectionModel>? _cachedCMSSections;
   List<DeviceCategoryModel>? _cachedCategories;
   final Map<String, List<BrandModel>> _cachedBrands = {};
+  List<SeriesModel>? _cachedSeries;
+  List<PhoneModelItem>? _cachedModels;
   List<ConditionCategoryModel>? _cachedConditions;
+
+  void hydrateOfflineBundle({
+    List<SeriesModel>? series,
+    List<PhoneModelItem>? models,
+    List<ConditionCategoryModel>? conditions,
+  }) {
+    if (series != null && series.isNotEmpty) _cachedSeries = series;
+    if (models != null && models.isNotEmpty) _cachedModels = models;
+    if (conditions != null && conditions.isNotEmpty) _cachedConditions = conditions;
+  }
+
+  Future<String?> fetchSyncBundleRaw() async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/sync-bundle/');
+    try {
+      final res = await http.get(url, headers: _headers);
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map) {
+          if (decoded['series'] is List) {
+            _cachedSeries = (decoded['series'] as List)
+                .whereType<Map>()
+                .map((item) => SeriesModel.fromJson(Map<String, dynamic>.from(item)))
+                .toList();
+          }
+          if (decoded['models'] is List) {
+            _cachedModels = (decoded['models'] as List)
+                .whereType<Map>()
+                .map((item) => PhoneModelItem.fromJson(Map<String, dynamic>.from(item)))
+                .toList();
+          }
+          if (decoded['conditions'] is List) {
+            _cachedConditions = (decoded['conditions'] as List)
+                .whereType<Map>()
+                .map((item) => ConditionCategoryModel.fromJson(Map<String, dynamic>.from(item)))
+                .toList();
+          }
+        }
+        return res.body;
+      }
+    } catch (e) {
+      debugPrint('Error fetching sync bundle: $e');
+    }
+    return null;
+  }
 
   UserModel? get currentUser => _currentUser;
   bool get isAuthenticated => _token != null;
@@ -260,7 +306,11 @@ class ApiService {
     return _cachedBrands[cacheKey] ?? [];
   }
 
-  Future<List<SeriesModel>> getSeries({int? brandId}) async {
+  Future<List<SeriesModel>> getSeries({int? brandId, bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedSeries != null && _cachedSeries!.isNotEmpty) {
+      if (brandId == null) return _cachedSeries!;
+      return _cachedSeries!.where((s) => s.brandId == brandId).toList();
+    }
     var endpoint = '${ApiConfig.baseUrl}/catalog/series/';
     if (brandId != null) {
       endpoint += '?brand=$brandId';
@@ -269,12 +319,21 @@ class ApiService {
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       final List list = jsonDecode(res.body);
-      return list.map((item) => SeriesModel.fromJson(Map<String, dynamic>.from(item))).toList();
+      final items = list.map((item) => SeriesModel.fromJson(Map<String, dynamic>.from(item))).toList();
+      if (brandId == null) _cachedSeries = items;
+      return items;
     }
     return [];
   }
 
-  Future<List<PhoneModelItem>> getModels({int? brandId, int? seriesId}) async {
+  Future<List<PhoneModelItem>> getModels({int? brandId, int? seriesId, bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedModels != null && _cachedModels!.isNotEmpty) {
+      return _cachedModels!.where((m) {
+        if (brandId != null && m.brandId != brandId) return false;
+        if (seriesId != null && m.seriesId != seriesId) return false;
+        return true;
+      }).toList();
+    }
     var endpoint = '${ApiConfig.baseUrl}/catalog/models/?';
     if (brandId != null) endpoint += 'brand=$brandId&';
     if (seriesId != null) endpoint += 'series=$seriesId&';
@@ -282,12 +341,21 @@ class ApiService {
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       final List list = jsonDecode(res.body);
-      return list.map((item) => PhoneModelItem.fromJson(Map<String, dynamic>.from(item))).toList();
+      final items = list.map((item) => PhoneModelItem.fromJson(Map<String, dynamic>.from(item))).toList();
+      if (brandId == null && seriesId == null) _cachedModels = items;
+      return items;
     }
     return [];
   }
 
-  Future<List<StorageVariantModel>> getVariants(int modelId) async {
+  Future<List<StorageVariantModel>> getVariants(int modelId, {bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedModels != null && _cachedModels!.isNotEmpty) {
+      for (final m in _cachedModels!) {
+        if (m.id == modelId && m.variants.isNotEmpty) {
+          return m.variants;
+        }
+      }
+    }
     final url = Uri.parse('${ApiConfig.baseUrl}/catalog/variants/?model=$modelId');
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
@@ -299,10 +367,11 @@ class ApiService {
 
   // ================= 4. DYNAMIC QUESTIONNAIRE =================
   Future<List<ConditionCategoryModel>> getConditionCategories({int? brandId, bool forceRefresh = false}) async {
-    final query = brandId != null ? '?brand=$brandId' : '';
-    if (!forceRefresh && brandId == null && _cachedConditions != null && _cachedConditions!.isNotEmpty) {
-      return _cachedConditions!;
+    if (!forceRefresh && _cachedConditions != null && _cachedConditions!.isNotEmpty) {
+      if (brandId == null) return _cachedConditions!;
+      return _cachedConditions!.where((c) => c.brand == null || c.brand == brandId).toList();
     }
+    final query = brandId != null ? '?brand=$brandId' : '';
     final url = Uri.parse('${ApiConfig.baseUrl}/valuation/conditions/$query');
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {

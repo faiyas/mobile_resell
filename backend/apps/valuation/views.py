@@ -478,3 +478,32 @@ def copy_questions_from_brand_view(request):
     except Exception as e:
         return Response({'detail': f'Failed to copy questions: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def valuation_bulk_delete_view(request):
+    """Bulk delete questionnaire steps (categories) or deduction options (Admin only)"""
+    if not getattr(request.user, 'is_admin_role', False):
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    target = str(request.data.get('target', '')).strip().lower()
+    ids = request.data.get('ids', [])
+    delete_all = bool(request.data.get('all', False))
+
+    if not delete_all and (not isinstance(ids, list) or len(ids) == 0):
+        return Response({'detail': 'Provide ids list or set all=true'}, status=status.HTTP_400_BAD_REQUEST)
+
+    with transaction.atomic():
+        if target == 'categories':
+            qs = ConditionCategory.objects.all() if delete_all else ConditionCategory.objects.filter(id__in=ids)
+            count = qs.count()
+            qs.delete()  # Cascades to ConditionOption
+        elif target == 'options':
+            qs = ConditionOption.objects.all() if delete_all else ConditionOption.objects.filter(id__in=ids)
+            count = qs.count()
+            qs.delete()
+        else:
+            return Response({'detail': f'Unsupported target: {target}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({'deleted': count, 'target': target, 'message': f'Successfully deleted {count} {target}'})
+

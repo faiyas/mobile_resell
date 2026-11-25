@@ -5,7 +5,8 @@ from .views import (
     series_list_view, series_detail_view,
     models_list_view, model_detail_view, 
     variants_list_create_view, variant_detail_view,
-    cms_sections_view, system_settings_view
+    cms_sections_view, system_settings_view,
+    catalog_bulk_delete_view, catalog_sync_bundle_view
 )
 
 urlpatterns = [
@@ -34,4 +35,8 @@ urlpatterns = [
 
     # System Operational Settings
     path('settings/', system_settings_view, name='catalog-system-settings'),
+
+    # Bulk Delete & Mobile Offline Sync Bundle
+    path('bulk-delete/', catalog_bulk_delete_view, name='catalog-bulk-delete'),
+    path('sync-bundle/', catalog_sync_bundle_view, name='catalog-sync-bundle'),
 ]

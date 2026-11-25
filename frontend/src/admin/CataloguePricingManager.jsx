@@ -50,6 +50,47 @@ function ResponsiveModal({ isOpen, onClose, title, children, maxWidth = 'max-w-m
   );
 }
 
+function BulkActionBar({ totalCount, selectedIds, onToggleSelectAll, onDeleteSelected, onDeleteAll, itemName = 'items', loading = false }) {
+  const allSelected = totalCount > 0 && selectedIds.length === totalCount;
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <label className="flex items-center gap-2 text-xs font-bold text-slate-700 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={allSelected}
+          onChange={onToggleSelectAll}
+          disabled={totalCount === 0 || loading}
+          className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
+        />
+        <span>Select All ({totalCount} {itemName})</span>
+      </label>
+
+      <div className="flex items-center gap-2">
+        {selectedIds.length > 0 && (
+          <button
+            type="button"
+            disabled={loading}
+            onClick={onDeleteSelected}
+            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete Selected ({selectedIds.length})</span>
+          </button>
+        )}
+        <button
+          type="button"
+          disabled={totalCount === 0 || loading}
+          onClick={onDeleteAll}
+          className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs rounded-xl transition flex items-center gap-1.5 disabled:opacity-50"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+          <span>Delete All {itemName}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function CataloguePricingManager({ initialSubTab = 'brands', onSubTabChange }) {
   // Sub-tabs: 'brands' | 'models' | 'variants' | 'categories' | 'deductions' | 'simulator' | 'history'
   const [subTab, setSubTab] = useState(initialSubTab);
@@ -181,6 +222,43 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
   const showFeedback = (type, message) => {
     setFeedback({ type, message });
     setTimeout(() => setFeedback({ type: '', message: '' }), 4000);
+  };
+
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectedSeriesIds, setSelectedSeriesIds] = useState([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  useEffect(() => {
+    setSelectedIds([]);
+    setSelectedSeriesIds([]);
+  }, [subTab]);
+
+  const toggleSelectId = (id) => {
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  };
+
+  const handleBulkDelete = async (scope, target, allFlag = false, customIds = null, warningText = '') => {
+    const idsToDelete = customIds ?? selectedIds;
+    if (!allFlag && idsToDelete.length === 0) return;
+
+    const label = allFlag ? `ALL ${target}` : `${idsToDelete.length} selected ${target}`;
+    const extra = warningText ? `\n\n${warningText}` : '';
+    if (!window.confirm(`Are you sure you want to permanently delete ${label}?${extra}`)) return;
+
+    setBulkDeleting(true);
+    try {
+      const res = scope === 'valuation'
+        ? await api.bulkDeleteValuation(target, idsToDelete, allFlag)
+        : await api.bulkDeleteCatalog(target, idsToDelete, allFlag);
+      showFeedback('success', res.message || `Deleted ${res.deleted || ''} ${target}`);
+      setSelectedIds([]);
+      setSelectedSeriesIds([]);
+      await loadAllData();
+    } catch (err) {
+      showFeedback('error', err.message || `Failed to delete ${target}`);
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   const loadAllData = async () => {
@@ -1455,6 +1533,27 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             })}
           </div>
 
+          <BulkActionBar
+            totalCount={categories.filter(cat => {
+              if (!selectedBrandQuestionMapping) return true;
+              if (selectedBrandQuestionMapping === 'universal') return !cat.brand;
+              return !cat.brand || String(cat.brand) === selectedBrandQuestionMapping;
+            }).length}
+            selectedIds={selectedIds}
+            itemName="Steps"
+            loading={bulkDeleting}
+            onToggleSelectAll={() => {
+              const filteredIds = categories.filter(cat => {
+                if (!selectedBrandQuestionMapping) return true;
+                if (selectedBrandQuestionMapping === 'universal') return !cat.brand;
+                return !cat.brand || String(cat.brand) === selectedBrandQuestionMapping;
+              }).map(c => c.id);
+              setSelectedIds(selectedIds.length === filteredIds.length ? [] : filteredIds);
+            }}
+            onDeleteSelected={() => handleBulkDelete('valuation', 'categories', false, selectedIds, 'Deleting steps will also delete all attached deduction options.')}
+            onDeleteAll={() => handleBulkDelete('valuation', 'categories', true, [], 'This will delete ALL questionnaire steps and their options!')}
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Left Column: Filtered Steps List */}
             <div className="space-y-2">
@@ -1504,7 +1603,18 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                             : 'bg-white border-slate-200 hover:border-slate-300'
                         }`}
                       >
-                        <div className="min-w-0 pr-2">
+                        <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(cat.id)}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              toggleSelectId(cat.id);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] shrink-0 cursor-pointer"
+                          />
+                          <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className="text-[9px] font-mono font-black text-[#087C38] uppercase">
                               Step {cat.step_number || (idx + 1)}
@@ -1526,6 +1636,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                           </div>
                           <h5 className="font-extrabold text-slate-900 text-xs truncate mt-0.5">{cat.name}</h5>
                           <span className="text-[10px] text-slate-400">{catOpts.length} Options Attached</span>
+                          </div>
                         </div>
                         <span className={`text-[10px] font-black shrink-0 px-2 py-0.5 rounded-full ${
                           cat.selection_type === 'MULTIPLE' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
@@ -1867,17 +1978,37 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             </button>
           </div>
 
+          <BulkActionBar
+            totalCount={brands.length}
+            selectedIds={selectedIds}
+            itemName="Brands"
+            loading={bulkDeleting}
+            onToggleSelectAll={() => setSelectedIds(selectedIds.length === brands.length ? [] : brands.map(b => b.id))}
+            onDeleteSelected={() => handleBulkDelete('catalog', 'brands', false, selectedIds, 'Deleting a brand will permanently delete ALL of its Series, Models, and Storage Variants.')}
+            onDeleteAll={() => handleBulkDelete('catalog', 'brands', true, [], 'WARNING: This will permanently delete ALL Brands, Series, Models, and Storage Variants!')}
+          />
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {brands.map((b) => (
               <div 
                 key={b.id} 
                 className={`bg-white rounded-2xl border p-5 shadow-sm transition flex flex-col justify-between ${
-                  b.is_active ? 'border-slate-200' : 'border-rose-200 bg-rose-50/20 opacity-75'
+                  selectedIds.includes(b.id)
+                    ? 'border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20'
+                    : b.is_active ? 'border-slate-200' : 'border-rose-200 bg-rose-50/20 opacity-75'
                 }`}
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] font-mono text-slate-400">Order #{b.display_order}</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(b.id)}
+                        onChange={() => toggleSelectId(b.id)}
+                        className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
+                      />
+                      <span className="text-[10px] font-mono text-slate-400">Order #{b.display_order}</span>
+                    </div>
                     <button
                       onClick={() => handleToggleBrandActive(b)}
                       className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -1953,18 +2084,112 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             </div>
           </div>
 
+          {/* Series Quick-Manage & Bulk Delete Panel */}
+          {(() => {
+            const filteredSeries = seriesList.filter(s => filterBrandId ? String(s.brand) === String(filterBrandId) : true);
+            return (
+              <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-700">
+                      Device Series ({filteredSeries.length})
+                    </h4>
+                    <p className="text-[11px] text-slate-500">Deleting a series also deletes all Models & Variants inside it.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={filteredSeries.length === 0 || bulkDeleting}
+                      onClick={() => setSelectedSeriesIds(selectedSeriesIds.length === filteredSeries.length ? [] : filteredSeries.map(s => s.id))}
+                      className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-xl transition"
+                    >
+                      {selectedSeriesIds.length === filteredSeries.length && filteredSeries.length > 0 ? 'Unselect All Series' : 'Select All Series'}
+                    </button>
+                    {selectedSeriesIds.length > 0 && (
+                      <button
+                        type="button"
+                        disabled={bulkDeleting}
+                        onClick={() => handleBulkDelete('catalog', 'series', false, selectedSeriesIds, 'Deleting these series will also permanently delete ALL Models & Variants in them.')}
+                        className="px-2.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-xl transition flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" /> Delete Selected Series ({selectedSeriesIds.length})
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      disabled={filteredSeries.length === 0 || bulkDeleting}
+                      onClick={() => handleBulkDelete('catalog', 'series', !filterBrandId, filterBrandId ? filteredSeries.map(s => s.id) : [], 'This will delete ALL displayed Series and ALL Models & Variants inside them!')}
+                      className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-[11px] rounded-xl transition flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" /> Delete All Series
+                    </button>
+                  </div>
+                </div>
+                {filteredSeries.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pt-1">
+                    {filteredSeries.map(s => {
+                      const isSel = selectedSeriesIds.includes(s.id);
+                      const bName = brands.find(b => b.id === s.brand)?.name;
+                      return (
+                        <label
+                          key={s.id}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold cursor-pointer transition ${
+                            isSel ? 'bg-rose-50 border-rose-300 text-rose-800' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSel}
+                            onChange={() => setSelectedSeriesIds(prev => prev.includes(s.id) ? prev.filter(x => x !== s.id) : [...prev, s.id])}
+                            className="w-3.5 h-3.5 rounded text-rose-600 focus:ring-rose-500"
+                          />
+                          <span>{!filterBrandId && bName ? `${bName} · ` : ''}{s.name}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {(() => {
+            const filteredModels = models.filter(m => filterBrandId ? (m.brand === parseInt(filterBrandId) || m.brand?.id === parseInt(filterBrandId)) : true);
+            return (
+              <BulkActionBar
+                totalCount={filteredModels.length}
+                selectedIds={selectedIds}
+                itemName="Models"
+                loading={bulkDeleting}
+                onToggleSelectAll={() => setSelectedIds(selectedIds.length === filteredModels.length ? [] : filteredModels.map(m => m.id))}
+                onDeleteSelected={() => handleBulkDelete('catalog', 'models', false, selectedIds, 'Deleting models will also delete all their Storage Variants.')}
+                onDeleteAll={() => handleBulkDelete('catalog', 'models', !filterBrandId, filterBrandId ? filteredModels.map(m => m.id) : [], 'This will delete ALL displayed Models and their Storage Variants!')}
+              />
+            );
+          })()}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {models
               .filter(m => filterBrandId ? (m.brand === parseInt(filterBrandId) || m.brand?.id === parseInt(filterBrandId)) : true)
               .map((m) => {
                 const modelVariants = variants.filter(v => v.model === m.id || v.model_id === m.id);
                 return (
-                  <div key={m.id} className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col justify-between">
+                  <div key={m.id} className={`bg-white rounded-2xl border p-4 shadow-sm flex flex-col justify-between ${
+                    selectedIds.includes(m.id) ? 'border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20' : 'border-slate-200'
+                  }`}>
                     <div>
                       <div className="flex justify-between items-start">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                          {m.brand_name || 'Brand'}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(m.id)}
+                            onChange={() => toggleSelectId(m.id)}
+                            className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
+                          />
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                            {m.brand_name || 'Brand'}
+                          </span>
+                        </div>
                         <button
                           onClick={() => handleToggleModelActive(m)}
                           className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
@@ -2042,11 +2267,29 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             </button>
           </div>
 
+          <BulkActionBar
+            totalCount={variants.length}
+            selectedIds={selectedIds}
+            itemName="Storage Variants"
+            loading={bulkDeleting}
+            onToggleSelectAll={() => setSelectedIds(selectedIds.length === variants.length ? [] : variants.map(v => v.id))}
+            onDeleteSelected={() => handleBulkDelete('catalog', 'variants', false, selectedIds)}
+            onDeleteAll={() => handleBulkDelete('catalog', 'variants', true, [], 'This will delete ALL Storage Variants & Base Prices!')}
+          />
+
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-900 text-white uppercase text-[10px] tracking-wider font-bold">
                   <tr>
+                    <th className="py-3 px-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={variants.length > 0 && selectedIds.length === variants.length}
+                        onChange={() => setSelectedIds(selectedIds.length === variants.length ? [] : variants.map(v => v.id))}
+                        className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
+                      />
+                    </th>
                     <th className="py-3 px-4">Brand & Model</th>
                     <th className="py-3 px-4">Spec / Storage</th>
                     <th className="py-3 px-4">Configured Base Price</th>
@@ -2057,7 +2300,15 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {variants.map((v) => (
-                    <tr key={v.id} className="hover:bg-slate-50 transition">
+                    <tr key={v.id} className={`hover:bg-slate-50 transition ${selectedIds.includes(v.id) ? 'bg-emerald-50/40' : ''}`}>
+                      <td className="py-3 px-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(v.id)}
+                          onChange={() => toggleSelectId(v.id)}
+                          className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
+                        />
+                      </td>
                       <td className="py-3 px-4 font-bold text-slate-900">
                         {v.brand_name} {v.model_name}
                       </td>
@@ -2183,11 +2434,29 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             </button>
           </div>
 
+          <BulkActionBar
+            totalCount={options.length}
+            selectedIds={selectedIds}
+            itemName="Deduction Rules"
+            loading={bulkDeleting}
+            onToggleSelectAll={() => setSelectedIds(selectedIds.length === options.length ? [] : options.map(o => o.id))}
+            onDeleteSelected={() => handleBulkDelete('valuation', 'options', false, selectedIds)}
+            onDeleteAll={() => handleBulkDelete('valuation', 'options', true, [], 'This will delete ALL Deduction Rules & Options!')}
+          />
+
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-900 text-white uppercase text-[10px] tracking-wider font-bold">
                   <tr>
+                    <th className="py-3 px-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={options.length > 0 && selectedIds.length === options.length}
+                        onChange={() => setSelectedIds(selectedIds.length === options.length ? [] : options.map(o => o.id))}
+                        className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
+                      />
+                    </th>
                     <th className="py-3 px-4">Condition Title & Description</th>
                     <th className="py-3 px-4">Category</th>
                     <th className="py-3 px-4">Deduction Method & Amount</th>
@@ -2198,7 +2467,15 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {options.map((opt) => (
-                    <tr key={opt.id} className="hover:bg-slate-50 transition">
+                    <tr key={opt.id} className={`hover:bg-slate-50 transition ${selectedIds.includes(opt.id) ? 'bg-emerald-50/40' : ''}`}>
+                      <td className="py-3 px-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(opt.id)}
+                          onChange={() => toggleSelectId(opt.id)}
+                          className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
+                        />
+                      </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
                           {opt.image_base64 ? (

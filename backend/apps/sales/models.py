@@ -37,8 +37,8 @@ class PhoneSale(models.Model):
     customer_phone = models.CharField(max_length=20, db_index=True)
     customer_email = models.EmailField(blank=True, db_index=True)
 
-    # Variant is optional to support 'Others' category custom devices
-    variant = models.ForeignKey(StorageVariant, on_delete=models.PROTECT, related_name='sales', null=True, blank=True)
+    # Variant is optional to support 'Others' category custom devices or archived SKUs
+    variant = models.ForeignKey(StorageVariant, on_delete=models.SET_NULL, related_name='sales', null=True, blank=True)
     
     # Custom Device Fields (for Others, Tablets, Dead Phones without fixed SKUs)
     is_custom_device = models.BooleanField(default=False)
@@ -110,7 +110,7 @@ class PhoneSale(models.Model):
 
 class PhoneSaleConditionAnswer(models.Model):
     sale = models.ForeignKey(PhoneSale, on_delete=models.CASCADE, related_name='answers')
-    option = models.ForeignKey(ConditionOption, on_delete=models.PROTECT, null=True, blank=True)
+    option = models.ForeignKey(ConditionOption, on_delete=models.SET_NULL, null=True, blank=True)
     step_name = models.CharField(max_length=150, blank=True, default='')
     custom_text = models.CharField(max_length=500, blank=True, default='')
     deduction_applied = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)

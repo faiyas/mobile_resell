@@ -12,7 +12,32 @@ class CustomerCacheService {
   static const String _keyCms = 'customer_cache_cms_sections_v2';
   static const String _keyCategories = 'customer_cache_device_categories_v2';
   static const String _keyBrands = 'customer_cache_brands_v2';
+  static const String _keySyncBundle = 'customer_cache_sync_bundle_v1';
   static const String _keyLastSync = 'customer_cache_last_sync_timestamp';
+
+  /// Hydrates ApiService memory with cached Series, Models, Variants & Questionnaires
+  static Future<void> hydrateApiFromLocalCache(ApiService api) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_keySyncBundle);
+      if (raw == null || raw.isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is Map) {
+        final series = decoded['series'] is List
+            ? (decoded['series'] as List).whereType<Map>().map((j) => SeriesModel.fromJson(Map<String, dynamic>.from(j))).toList()
+            : null;
+        final models = decoded['models'] is List
+            ? (decoded['models'] as List).whereType<Map>().map((j) => PhoneModelItem.fromJson(Map<String, dynamic>.from(j))).toList()
+            : null;
+        final conditions = decoded['conditions'] is List
+            ? (decoded['conditions'] as List).whereType<Map>().map((j) => ConditionCategoryModel.fromJson(Map<String, dynamic>.from(j))).toList()
+            : null;
+        api.hydrateOfflineBundle(series: series, models: models, conditions: conditions);
+      }
+    } catch (e) {
+      debugPrint('Error hydrating offline bundle: $e');
+    }
+  }
 
   /// Instant synchronous/cached read of CMS Sections
   static Future<List<CMSSectionModel>> getCachedCMSSections() async {
@@ -62,16 +87,18 @@ class CustomerCacheService {
     try {
       final prefs = await SharedPreferences.getInstance();
 
-      // Parallel fetch from API with forceRefresh to always capture admin CMS banner edits
-      final results = await Future.wait([
+      // Parallel fetch from API with forceRefresh to always capture admin CMS & catalog edits
+      final results = await Future.wait<dynamic>([
         api.getCMSSections(forceRefresh: true),
         api.getDeviceCategories(forceRefresh: true),
         api.getBrands(forceRefresh: true),
+        api.fetchSyncBundleRaw(),
       ]);
 
       final freshCms = results[0] as List<CMSSectionModel>;
       final freshCats = results[1] as List<DeviceCategoryModel>;
       final freshBrands = results[2] as List<BrandModel>;
+      final rawBundle = results[3] as String?;
 
       bool hasChanges = false;
 
@@ -127,6 +154,15 @@ class CustomerCacheService {
         final oldBrands = prefs.getString(_keyBrands);
         if (oldBrands != serializedBrands) {
           await prefs.setString(_keyBrands, serializedBrands);
+          hasChanges = true;
+        }
+      }
+
+      // 4. Check Series, Models, Variants & Questionnaires Bundle
+      if (rawBundle != null && rawBundle.isNotEmpty) {
+        final oldBundle = prefs.getString(_keySyncBundle);
+        if (oldBundle != rawBundle) {
+          await prefs.setString(_keySyncBundle, rawBundle);
           hasChanges = true;
         }
       }
