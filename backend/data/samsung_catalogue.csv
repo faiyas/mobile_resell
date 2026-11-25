@@ -1,0 +1,432 @@
+Catalogue ID,Brand ID,Brand,Series,Model Name,Launch Year,RAM,Storage Variant,Mint Condition Buyback (₹),Lower Condition Buyback (₹),Difference (₹),Lifecycle Status (indicative),Warranty Status,Price Type
+SAM-001,2,Samsung,S Series,Galaxy S21 FE 5G,2022,6GB,128GB,13200,12700,500,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-002,2,Samsung,S Series,Galaxy S21 FE 5G,2022,8GB,128GB,13600,12900,700,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-003,2,Samsung,S Series,Galaxy S21 FE 5G,2022,8GB,256GB,14900,14100,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-004,2,Samsung,S Series,Galaxy S22,2022,8GB,128GB,17100,16300,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-005,2,Samsung,S Series,Galaxy S22,2022,8GB,256GB,18400,17400,1000,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-006,2,Samsung,S Series,Galaxy S22+,2022,8GB,128GB,19600,18600,1000,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-007,2,Samsung,S Series,Galaxy S22+,2022,8GB,256GB,20900,20400,500,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-008,2,Samsung,S Series,Galaxy S22 Ultra,2022,12GB,256GB,26600,26100,500,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-009,2,Samsung,S Series,Galaxy S22 Ultra,2022,12GB,512GB,28900,28200,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-010,2,Samsung,S Series,Galaxy S22 Ultra,2022,12GB,1TB,31400,30600,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-011,2,Samsung,S Series,Galaxy S23 FE,2023,8GB,128GB,19100,18400,700,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-012,2,Samsung,S Series,Galaxy S23 FE,2023,8GB,256GB,20400,19600,800,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-013,2,Samsung,S Series,Galaxy S23,2023,8GB,128GB,23600,22800,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-014,2,Samsung,S Series,Galaxy S23,2023,8GB,256GB,24900,23900,1000,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-015,2,Samsung,S Series,Galaxy S23+,2023,8GB,256GB,28900,27900,1000,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-016,2,Samsung,S Series,Galaxy S23+,2023,8GB,512GB,31200,30700,500,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-017,2,Samsung,S Series,Galaxy S23 Ultra,2023,12GB,256GB,36600,36100,500,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-018,2,Samsung,S Series,Galaxy S23 Ultra,2023,12GB,512GB,38900,38200,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-019,2,Samsung,S Series,Galaxy S23 Ultra,2023,12GB,1TB,41400,40600,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-020,2,Samsung,S Series,Galaxy S24 FE,2024,8GB,128GB,25100,24400,700,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-021,2,Samsung,S Series,Galaxy S24 FE,2024,8GB,256GB,26400,25600,800,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-022,2,Samsung,S Series,Galaxy S24,2024,8GB,128GB,30100,29300,800,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-023,2,Samsung,S Series,Galaxy S24,2024,8GB,256GB,31400,30400,1000,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-024,2,Samsung,S Series,Galaxy S24+,2024,12GB,256GB,36600,35600,1000,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-025,2,Samsung,S Series,Galaxy S24+,2024,12GB,512GB,38900,38400,500,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-026,2,Samsung,S Series,Galaxy S24 Ultra,2024,12GB,256GB,45600,45100,500,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-027,2,Samsung,S Series,Galaxy S24 Ultra,2024,12GB,512GB,47900,47200,700,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-028,2,Samsung,S Series,Galaxy S24 Ultra,2024,12GB,1TB,50400,49600,800,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-029,2,Samsung,S Series,Galaxy S25 FE,2025,8GB,128GB,33600,32900,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-030,2,Samsung,S Series,Galaxy S25 FE,2025,8GB,256GB,34900,34100,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-031,2,Samsung,S Series,Galaxy S25,2025,12GB,128GB,38800,38000,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-032,2,Samsung,S Series,Galaxy S25,2025,12GB,256GB,40100,39100,1000,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-033,2,Samsung,S Series,Galaxy S25+,2025,12GB,256GB,45600,44600,1000,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-034,2,Samsung,S Series,Galaxy S25+,2025,12GB,512GB,47900,47400,500,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-035,2,Samsung,S Series,Galaxy S25 Edge,2025,12GB,256GB,47600,46600,1000,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-036,2,Samsung,S Series,Galaxy S25 Edge,2025,12GB,512GB,49900,49400,500,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-037,2,Samsung,S Series,Galaxy S25 Ultra,2025,12GB,256GB,56600,56100,500,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-038,2,Samsung,S Series,Galaxy S25 Ultra,2025,12GB,512GB,58900,58200,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-039,2,Samsung,S Series,Galaxy S25 Ultra,2025,12GB,1TB,61400,60600,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-040,2,Samsung,S Series,Galaxy S26,2026,12GB,256GB,54600,53800,800,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-041,2,Samsung,S Series,Galaxy S26,2026,12GB,512GB,56900,55900,1000,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-042,2,Samsung,S Series,Galaxy S26+,2026,12GB,256GB,62600,61600,1000,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-043,2,Samsung,S Series,Galaxy S26+,2026,12GB,512GB,64900,64400,500,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-044,2,Samsung,S Series,Galaxy S26 Ultra,2026,12GB,256GB,72600,72100,500,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-045,2,Samsung,S Series,Galaxy S26 Ultra,2026,12GB,512GB,74900,74200,700,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-046,2,Samsung,S Series,Galaxy S26 Ultra,2026,16GB,1TB,78200,77400,800,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-047,2,Samsung,A Series,Galaxy A03 Core,2021,2GB,32GB,1800,800,1000,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-048,2,Samsung,A Series,Galaxy A12,2021,4GB,64GB,3000,2200,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-049,2,Samsung,A Series,Galaxy A12,2021,4GB,128GB,3900,2900,1000,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-050,2,Samsung,A Series,Galaxy A22 4G,2021,6GB,128GB,5700,5000,700,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-051,2,Samsung,A Series,Galaxy A22 5G,2021,6GB,128GB,6200,5500,700,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-052,2,Samsung,A Series,Galaxy A52s 5G,2021,6GB,128GB,8700,7900,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-053,2,Samsung,A Series,Galaxy A52s 5G,2021,8GB,128GB,9100,8100,1000,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-054,2,Samsung,A Series,Galaxy A13,2022,4GB,64GB,3500,2700,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-055,2,Samsung,A Series,Galaxy A13,2022,4GB,128GB,4400,3400,1000,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-056,2,Samsung,A Series,Galaxy A13,2022,6GB,128GB,4700,4200,500,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-057,2,Samsung,A Series,Galaxy A23 5G,2022,6GB,128GB,6700,6000,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-058,2,Samsung,A Series,Galaxy A23 5G,2022,8GB,128GB,7100,6300,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-059,2,Samsung,A Series,Galaxy A33 5G,2022,6GB,128GB,7700,7000,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-060,2,Samsung,A Series,Galaxy A33 5G,2022,8GB,128GB,8100,7300,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-061,2,Samsung,A Series,Galaxy A53 5G,2022,6GB,128GB,9200,8500,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-062,2,Samsung,A Series,Galaxy A53 5G,2022,8GB,128GB,9600,8800,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-063,2,Samsung,A Series,Galaxy A14 5G,2023,4GB,64GB,5000,4300,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-064,2,Samsung,A Series,Galaxy A14 5G,2023,4GB,128GB,5900,5100,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-065,2,Samsung,A Series,Galaxy A14 5G,2023,6GB,128GB,6200,5200,1000,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-066,2,Samsung,A Series,Galaxy A24 4G,2023,6GB,128GB,7700,7000,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-067,2,Samsung,A Series,Galaxy A24 4G,2023,8GB,128GB,8100,7300,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-068,2,Samsung,A Series,Galaxy A34 5G,2023,8GB,128GB,11100,10400,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-069,2,Samsung,A Series,Galaxy A34 5G,2023,8GB,256GB,12400,11600,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-070,2,Samsung,A Series,Galaxy A54 5G,2023,8GB,128GB,13100,12400,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-071,2,Samsung,A Series,Galaxy A54 5G,2023,8GB,256GB,14400,13600,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-072,2,Samsung,A Series,Galaxy A15 5G,2024,6GB,128GB,8200,7500,700,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-073,2,Samsung,A Series,Galaxy A15 5G,2024,8GB,128GB,8600,7800,800,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-074,2,Samsung,A Series,Galaxy A25 5G,2024,8GB,128GB,10600,9900,700,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-075,2,Samsung,A Series,Galaxy A25 5G,2024,8GB,256GB,11900,11100,800,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-076,2,Samsung,A Series,Galaxy A16 5G,2024,8GB,128GB,10100,9400,700,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-077,2,Samsung,A Series,Galaxy A16 5G,2024,8GB,256GB,11400,10600,800,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-078,2,Samsung,A Series,Galaxy A26 5G,2025,8GB,128GB,13100,12400,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-079,2,Samsung,A Series,Galaxy A26 5G,2025,8GB,256GB,14400,13600,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-080,2,Samsung,A Series,Galaxy A36 5G,2025,8GB,128GB,16100,15400,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-081,2,Samsung,A Series,Galaxy A36 5G,2025,8GB,256GB,17400,16600,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-082,2,Samsung,A Series,Galaxy A56 5G,2025,8GB,128GB,19600,18900,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-083,2,Samsung,A Series,Galaxy A56 5G,2025,8GB,256GB,20900,20100,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-084,2,Samsung,A Series,Galaxy A17 5G,2025,6GB,128GB,11700,11000,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-085,2,Samsung,A Series,Galaxy A17 5G,2025,8GB,128GB,12100,11300,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-086,2,Samsung,A Series,Galaxy A17 5G,2025,8GB,256GB,13400,12400,1000,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-087,2,Samsung,A Series,Galaxy A57 5G,2026,8GB,128GB,21100,20400,700,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-088,2,Samsung,A Series,Galaxy A57 5G,2026,8GB,256GB,22400,21600,800,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-089,2,Samsung,A Series,Galaxy A37 5G,2026,8GB,128GB,18100,17400,700,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-090,2,Samsung,A Series,Galaxy A37 5G,2026,8GB,256GB,19400,18600,800,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-091,2,Samsung,M Series,Galaxy M12,2021,4GB,64GB,2500,1700,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-092,2,Samsung,M Series,Galaxy M12,2021,6GB,128GB,3700,2700,1000,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-093,2,Samsung,M Series,Galaxy M32,2021,4GB,64GB,3500,2700,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-094,2,Samsung,M Series,Galaxy M32,2021,6GB,128GB,4700,3700,1000,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-095,2,Samsung,M Series,Galaxy M32 5G,2021,6GB,128GB,5700,5000,700,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-096,2,Samsung,M Series,Galaxy M52 5G,2021,6GB,128GB,7700,7000,700,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-097,2,Samsung,M Series,Galaxy M52 5G,2021,8GB,128GB,8100,7300,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-098,2,Samsung,M Series,Galaxy M13 4G,2022,4GB,64GB,3000,2300,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-099,2,Samsung,M Series,Galaxy M13 4G,2022,4GB,128GB,3900,3100,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-100,2,Samsung,M Series,Galaxy M13 5G,2022,4GB,64GB,4000,3300,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-101,2,Samsung,M Series,Galaxy M13 5G,2022,6GB,128GB,5200,4400,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-102,2,Samsung,M Series,Galaxy M23 5G,2022,4GB,128GB,5900,5200,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-103,2,Samsung,M Series,Galaxy M23 5G,2022,6GB,128GB,6200,5400,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-104,2,Samsung,M Series,Galaxy M33 5G,2022,6GB,128GB,7700,7000,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-105,2,Samsung,M Series,Galaxy M33 5G,2022,8GB,128GB,8100,7300,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-106,2,Samsung,M Series,Galaxy M53 5G,2022,6GB,128GB,9200,8500,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-107,2,Samsung,M Series,Galaxy M53 5G,2022,8GB,128GB,9600,8800,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-108,2,Samsung,M Series,Galaxy M14 5G,2023,4GB,128GB,5900,5200,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-109,2,Samsung,M Series,Galaxy M14 5G,2023,6GB,128GB,6200,5400,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-110,2,Samsung,M Series,Galaxy M34 5G,2023,6GB,128GB,8700,8000,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-111,2,Samsung,M Series,Galaxy M34 5G,2023,8GB,128GB,9100,8300,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-112,2,Samsung,M Series,Galaxy M54 5G,2023,8GB,128GB,12100,11400,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-113,2,Samsung,M Series,Galaxy M54 5G,2023,8GB,256GB,13400,12600,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-114,2,Samsung,M Series,Galaxy M15 5G,2024,4GB,128GB,7400,6700,700,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-115,2,Samsung,M Series,Galaxy M15 5G,2024,6GB,128GB,7700,6900,800,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-116,2,Samsung,M Series,Galaxy M15 5G,2024,8GB,128GB,8100,7100,1000,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-117,2,Samsung,M Series,Galaxy M35 5G,2024,6GB,128GB,10700,10000,700,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-118,2,Samsung,M Series,Galaxy M35 5G,2024,8GB,128GB,11100,10300,800,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-119,2,Samsung,M Series,Galaxy M35 5G,2024,8GB,256GB,12400,11400,1000,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-120,2,Samsung,M Series,Galaxy M55 5G,2024,8GB,128GB,14100,13400,700,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-121,2,Samsung,M Series,Galaxy M55 5G,2024,8GB,256GB,15400,14600,800,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-122,2,Samsung,M Series,Galaxy M55s 5G,2024,8GB,128GB,13600,12800,800,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-123,2,Samsung,M Series,Galaxy M55s 5G,2024,8GB,256GB,14900,13900,1000,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-124,2,Samsung,M Series,Galaxy M16 5G,2025,6GB,128GB,9700,9000,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-125,2,Samsung,M Series,Galaxy M16 5G,2025,8GB,128GB,10100,9300,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-126,2,Samsung,M Series,Galaxy M36 5G,2025,6GB,128GB,11700,11000,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-127,2,Samsung,M Series,Galaxy M36 5G,2025,8GB,128GB,12100,11300,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-128,2,Samsung,M Series,Galaxy M17 5G,2025,6GB,128GB,12200,11500,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-129,2,Samsung,M Series,Galaxy M17 5G,2025,8GB,128GB,12600,11800,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-130,2,Samsung,M Series,Galaxy M47 5G,2026,8GB,128GB,19100,18400,700,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-131,2,Samsung,M Series,Galaxy M47 5G,2026,8GB,256GB,20400,19600,800,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-132,2,Samsung,F Series,Galaxy F12,2021,4GB,64GB,2500,1700,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-133,2,Samsung,F Series,Galaxy F12,2021,4GB,128GB,3400,2400,1000,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-134,2,Samsung,F Series,Galaxy F22,2021,4GB,64GB,3500,2700,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-135,2,Samsung,F Series,Galaxy F22,2021,6GB,128GB,4700,3700,1000,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-136,2,Samsung,F Series,Galaxy F42 5G,2021,6GB,128GB,6200,5500,700,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-137,2,Samsung,F Series,Galaxy F42 5G,2021,8GB,128GB,6600,5800,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-138,2,Samsung,F Series,Galaxy F13,2022,4GB,64GB,3000,2200,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-139,2,Samsung,F Series,Galaxy F13,2022,4GB,128GB,3900,2900,1000,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-140,2,Samsung,F Series,Galaxy F23 5G,2022,4GB,128GB,5900,5200,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-141,2,Samsung,F Series,Galaxy F23 5G,2022,6GB,128GB,6200,5400,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-142,2,Samsung,F Series,Galaxy F04,2023,4GB,64GB,2500,1700,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-143,2,Samsung,F Series,Galaxy F14 5G,2023,4GB,128GB,5400,4700,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-144,2,Samsung,F Series,Galaxy F14 5G,2023,6GB,128GB,5700,4900,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-145,2,Samsung,F Series,Galaxy F34 5G,2023,6GB,128GB,8200,7500,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-146,2,Samsung,F Series,Galaxy F34 5G,2023,8GB,128GB,8600,7800,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-147,2,Samsung,F Series,Galaxy F54 5G,2023,8GB,256GB,13400,12700,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-148,2,Samsung,F Series,Galaxy F15 5G,2024,4GB,128GB,7400,6700,700,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-149,2,Samsung,F Series,Galaxy F15 5G,2024,6GB,128GB,7700,6900,800,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-150,2,Samsung,F Series,Galaxy F15 5G,2024,8GB,128GB,8100,7100,1000,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-151,2,Samsung,F Series,Galaxy F05,2024,4GB,64GB,3500,2700,800,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-152,2,Samsung,F Series,Galaxy F05,2024,4GB,128GB,4400,3400,1000,Current / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-153,2,Samsung,F Series,Galaxy F06 5G,2025,4GB,128GB,6400,5700,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-154,2,Samsung,F Series,Galaxy F06 5G,2025,6GB,128GB,6700,5900,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-155,2,Samsung,F Series,Galaxy F16 5G,2025,6GB,128GB,9200,8500,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-156,2,Samsung,F Series,Galaxy F16 5G,2025,8GB,128GB,9600,8800,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-157,2,Samsung,F Series,Galaxy F36 5G,2025,6GB,128GB,11700,11000,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-158,2,Samsung,F Series,Galaxy F36 5G,2025,8GB,128GB,12100,11300,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-159,2,Samsung,F Series,Galaxy F56 5G,2025,8GB,128GB,16600,15900,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-160,2,Samsung,F Series,Galaxy F56 5G,2025,8GB,256GB,17900,17100,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-161,2,Samsung,F Series,Galaxy F70e 5G,2026,6GB,128GB,13200,12400,800,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-162,2,Samsung,F Series,Galaxy F70e 5G,2026,8GB,128GB,13600,12600,1000,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-163,2,Samsung,F Series,Galaxy F70 Pro 5G,2026,8GB,128GB,20600,19900,700,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-164,2,Samsung,F Series,Galaxy F70 Pro 5G,2026,8GB,256GB,21900,21100,800,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-165,2,Samsung,Z Series,Galaxy Z Flip3 5G,2021,8GB,128GB,10600,9900,700,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-166,2,Samsung,Z Series,Galaxy Z Flip3 5G,2021,8GB,256GB,11900,11100,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-167,2,Samsung,Z Series,Galaxy Z Fold3 5G,2021,12GB,256GB,21600,20900,700,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-168,2,Samsung,Z Series,Galaxy Z Fold3 5G,2021,12GB,512GB,23900,23100,800,Discontinued / legacy,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-169,2,Samsung,Z Series,Galaxy Z Flip4 5G,2022,8GB,128GB,14100,13400,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-170,2,Samsung,Z Series,Galaxy Z Flip4 5G,2022,8GB,256GB,15400,14600,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-171,2,Samsung,Z Series,Galaxy Z Flip4 5G,2022,8GB,512GB,17700,16700,1000,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-172,2,Samsung,Z Series,Galaxy Z Fold4 5G,2022,12GB,256GB,28600,27900,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-173,2,Samsung,Z Series,Galaxy Z Fold4 5G,2022,12GB,512GB,30900,30100,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-174,2,Samsung,Z Series,Galaxy Z Fold4 5G,2022,12GB,1TB,33400,32400,1000,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-175,2,Samsung,Z Series,Galaxy Z Flip5 5G,2023,8GB,256GB,20900,20200,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-176,2,Samsung,Z Series,Galaxy Z Flip5 5G,2023,8GB,512GB,23200,22400,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-177,2,Samsung,Z Series,Galaxy Z Fold5 5G,2023,12GB,256GB,37600,36900,700,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-178,2,Samsung,Z Series,Galaxy Z Fold5 5G,2023,12GB,512GB,39900,39100,800,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-179,2,Samsung,Z Series,Galaxy Z Fold5 5G,2023,12GB,1TB,42400,41400,1000,Discontinued,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-180,2,Samsung,Z Series,Galaxy Z Flip6 5G,2024,12GB,256GB,29600,28900,700,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-181,2,Samsung,Z Series,Galaxy Z Flip6 5G,2024,12GB,512GB,31900,31100,800,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-182,2,Samsung,Z Series,Galaxy Z Fold6 5G,2024,12GB,256GB,48600,47900,700,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-183,2,Samsung,Z Series,Galaxy Z Fold6 5G,2024,12GB,512GB,50900,50100,800,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-184,2,Samsung,Z Series,Galaxy Z Fold6 5G,2024,12GB,1TB,53400,52400,1000,Discontinued / remaining stock,NON-WARRANTY provisional — verify serial/IMEI and service coverage,Indicative starter buyback estimate — validate before publishing
+SAM-185,2,Samsung,Z Series,Galaxy Z Flip7 FE,2025,8GB,128GB,32600,31900,700,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-186,2,Samsung,Z Series,Galaxy Z Flip7 FE,2025,8GB,256GB,33900,33100,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-187,2,Samsung,Z Series,Galaxy Z Flip7,2025,12GB,256GB,41600,40800,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-188,2,Samsung,Z Series,Galaxy Z Flip7,2025,12GB,512GB,43900,42900,1000,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-189,2,Samsung,Z Series,Galaxy Z Fold7,2025,12GB,256GB,68600,67800,800,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-190,2,Samsung,Z Series,Galaxy Z Fold7,2025,12GB,512GB,70900,69900,1000,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-191,2,Samsung,Z Series,Galaxy Z Fold7,2025,16GB,1TB,74200,73700,500,Current / recent,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-192,2,Samsung,Z Series,Galaxy Z TriFold,2025,16GB,512GB,91700,91200,500,Current / limited availability,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-193,2,Samsung,Z Series,Galaxy Z Flip8,2026,12GB,256GB,47600,46800,800,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-194,2,Samsung,Z Series,Galaxy Z Flip8,2026,12GB,512GB,49900,48900,1000,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-195,2,Samsung,Z Series,Galaxy Z Fold8,2026,12GB,256GB,79600,78800,800,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-196,2,Samsung,Z Series,Galaxy Z Fold8,2026,12GB,512GB,81900,80900,1000,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-197,2,Samsung,Z Series,Galaxy Z Fold8,2026,16GB,1TB,85200,84700,500,Current,"Check invoice, activation date and IMEI; warranty may be active",Indicative starter buyback estimate — validate before publishing
+SAM-0198,2,Samsung,S Series,Galaxy S7,2016,4GB,32GB,2500,1750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0199,2,Samsung,S Series,Galaxy S7 edge,2016,4GB,32GB,3000,2250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0200,2,Samsung,S Series,Galaxy S8,2017,4GB,64GB,3000,2250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0201,2,Samsung,S Series,Galaxy S8+,2017,4GB,64GB,3500,2750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0202,2,Samsung,S Series,Galaxy S8+,2017,6GB,128GB,4000,3250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0203,2,Samsung,S Series,Galaxy S9,2018,4GB,64GB,4000,3250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0204,2,Samsung,S Series,Galaxy S9,2018,4GB,128GB,4500,3750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0205,2,Samsung,S Series,Galaxy S9+,2018,6GB,64GB,4500,3750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0206,2,Samsung,S Series,Galaxy S9+,2018,6GB,128GB,5000,4250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0207,2,Samsung,S Series,Galaxy S9+,2018,6GB,256GB,5500,4750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0208,2,Samsung,S Series,Galaxy S10e,2019,6GB,128GB,5500,4750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0209,2,Samsung,S Series,Galaxy S10,2019,8GB,128GB,6500,5750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0210,2,Samsung,S Series,Galaxy S10,2019,8GB,512GB,7000,6250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0211,2,Samsung,S Series,Galaxy S10+,2019,8GB,128GB,7000,6250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0212,2,Samsung,S Series,Galaxy S10+,2019,8GB,512GB,7500,6750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0213,2,Samsung,S Series,Galaxy S10+,2019,12GB,1TB,8000,7250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0214,2,Samsung,S Series,Galaxy S10 Lite,2020,8GB,128GB,7000,6250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0215,2,Samsung,Note Series,Galaxy Note,2011,1GB,16GB,0,0,0,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0216,2,Samsung,Note Series,Galaxy Note II,2012,2GB,16GB,0,0,0,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0217,2,Samsung,Note Series,Galaxy Note II,2012,2GB,32GB,0,0,0,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0218,2,Samsung,Note Series,Galaxy Note 3,2013,3GB,16GB,0,0,0,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0219,2,Samsung,Note Series,Galaxy Note 3,2013,3GB,32GB,0,0,0,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0220,2,Samsung,Note Series,Galaxy Note 3 Neo,2014,2GB,16GB,0,0,0,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0221,2,Samsung,Note Series,Galaxy Note 4,2014,3GB,32GB,0,0,0,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0222,2,Samsung,Note Series,Galaxy Note Edge,2014,3GB,32GB,0,0,0,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0223,2,Samsung,Note Series,Galaxy Note 5,2015,4GB,32GB,500,0,500,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0224,2,Samsung,Note Series,Galaxy Note 5,2015,4GB,64GB,700,0,700,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0225,2,Samsung,Note Series,Galaxy Note 7,2016,4GB,64GB,0,0,0,Recalled / discontinued,Not applicable – recalled model,Do not accept for normal buyback
+SAM-0226,2,Samsung,Note Series,Galaxy Note FE,2017,4GB,64GB,2500,1750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0227,2,Samsung,Note Series,Galaxy Note 8,2017,6GB,64GB,3500,2750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0228,2,Samsung,Note Series,Galaxy Note 8,2017,6GB,128GB,4000,3250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0229,2,Samsung,Note Series,Galaxy Note 8,2017,6GB,256GB,4500,3750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0230,2,Samsung,Note Series,Galaxy Note 9,2018,6GB,128GB,4500,3750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0231,2,Samsung,Note Series,Galaxy Note 9,2018,8GB,512GB,5500,4750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0232,2,Samsung,Note Series,Galaxy Note 10,2019,8GB,256GB,6000,5250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0233,2,Samsung,Note Series,Galaxy Note 10+,2019,12GB,256GB,7000,6250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0234,2,Samsung,Note Series,Galaxy Note 10+,2019,12GB,512GB,7500,6750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0235,2,Samsung,Note Series,Galaxy Note 10 Lite,2020,6GB,128GB,5000,4250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0236,2,Samsung,Note Series,Galaxy Note 10 Lite,2020,8GB,128GB,5500,4750,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0237,2,Samsung,Note Series,Galaxy Note 20,2020,8GB,256GB,7000,6250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0238,2,Samsung,Note Series,Galaxy Note 20 Ultra,2020,12GB,256GB,9000,8250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0239,2,Samsung,Note Series,Galaxy Note 20 Ultra,2020,12GB,512GB,10000,9250,750,Discontinued,Check IMEI/serial and original invoice; warranty not assumed,Indicative estimate; verify live market value
+SAM-0240,2,Samsung,A Series,Galaxy A2 Core,2019,1GB,8GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0241,2,Samsung,A Series,Galaxy A2 Core,2019,2GB,16GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0242,2,Samsung,A Series,Galaxy A3 (2015),2015,1GB,16GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0243,2,Samsung,A Series,Galaxy A5 (2015),2015,2GB,16GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0244,2,Samsung,A Series,Galaxy A5 (2016),2016,2GB,16GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0245,2,Samsung,A Series,Galaxy A5 (2017),2017,3GB,32GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0246,2,Samsung,A Series,Galaxy A6,2018,3GB,32GB,1500,750,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0247,2,Samsung,A Series,Galaxy A6,2018,4GB,64GB,1800,1050,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0248,2,Samsung,A Series,Galaxy A6+,2018,4GB,64GB,2000,1250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0249,2,Samsung,A Series,Galaxy A7 (2016),2016,3GB,16GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0250,2,Samsung,A Series,Galaxy A7 (2017),2017,3GB,32GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0251,2,Samsung,A Series,Galaxy A7 (2018),2018,4GB,64GB,1800,1050,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0252,2,Samsung,A Series,Galaxy A7 (2018),2018,6GB,128GB,2200,1450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0253,2,Samsung,A Series,Galaxy A8 (2018),2018,4GB,32GB,2000,1250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0254,2,Samsung,A Series,Galaxy A8 (2018),2018,4GB,64GB,2300,1550,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0255,2,Samsung,A Series,Galaxy A8+ (2018),2018,6GB,64GB,2500,1750,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0256,2,Samsung,A Series,Galaxy A8 Star,2018,6GB,64GB,2200,1450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0257,2,Samsung,A Series,Galaxy A9 (2018),2018,6GB,128GB,2500,1750,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0258,2,Samsung,A Series,Galaxy A9 (2018),2018,8GB,128GB,2800,2050,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0259,2,Samsung,A Series,Galaxy A10,2019,2GB,32GB,1200,450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0260,2,Samsung,A Series,Galaxy A10s,2019,2GB,32GB,1300,550,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0261,2,Samsung,A Series,Galaxy A10s,2019,3GB,32GB,1500,750,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0262,2,Samsung,A Series,Galaxy A20,2019,3GB,32GB,1600,850,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0263,2,Samsung,A Series,Galaxy A20s,2019,3GB,32GB,1600,850,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0264,2,Samsung,A Series,Galaxy A20s,2019,4GB,64GB,1900,1150,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0265,2,Samsung,A Series,Galaxy A30,2019,4GB,64GB,2200,1450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0266,2,Samsung,A Series,Galaxy A30s,2019,4GB,64GB,2300,1550,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0267,2,Samsung,A Series,Galaxy A40,2019,4GB,64GB,2200,1450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0268,2,Samsung,A Series,Galaxy A50,2019,4GB,64GB,2500,1750,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0269,2,Samsung,A Series,Galaxy A50,2019,6GB,64GB,2800,2050,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0270,2,Samsung,A Series,Galaxy A50s,2019,4GB,128GB,2800,2050,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0271,2,Samsung,A Series,Galaxy A50s,2019,6GB,128GB,3100,2350,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0272,2,Samsung,A Series,Galaxy A70,2019,6GB,128GB,3000,2250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0273,2,Samsung,A Series,Galaxy A70s,2019,6GB,128GB,3200,2450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0274,2,Samsung,A Series,Galaxy A70s,2019,8GB,128GB,3500,2750,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0275,2,Samsung,A Series,Galaxy A80,2019,8GB,128GB,3500,2750,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0276,2,Samsung,A Series,Galaxy A01,2020,2GB,16GB,1000,250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0277,2,Samsung,A Series,Galaxy A01,2020,2GB,32GB,1200,450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0278,2,Samsung,A Series,Galaxy A01 Core,2020,1GB,16GB,500,0,500,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0279,2,Samsung,A Series,Galaxy A01 Core,2020,2GB,32GB,700,0,700,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0280,2,Samsung,A Series,Galaxy A11,2020,2GB,32GB,1000,250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0281,2,Samsung,A Series,Galaxy A11,2020,3GB,32GB,1200,450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0282,2,Samsung,A Series,Galaxy A21s,2020,4GB,64GB,1800,1050,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0283,2,Samsung,A Series,Galaxy A21s,2020,6GB,64GB,2000,1250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0284,2,Samsung,A Series,Galaxy A21s,2020,6GB,128GB,2200,1450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0285,2,Samsung,A Series,Galaxy A31,2020,6GB,128GB,2500,1750,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0286,2,Samsung,A Series,Galaxy A41,2020,4GB,64GB,2200,1450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0287,2,Samsung,A Series,Galaxy A51,2020,6GB,128GB,3500,2750,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0288,2,Samsung,A Series,Galaxy A51,2020,8GB,128GB,3800,3050,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0289,2,Samsung,A Series,Galaxy A71,2020,8GB,128GB,4000,3250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0290,2,Samsung,A Series,Galaxy A02,2021,2GB,32GB,1000,250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0291,2,Samsung,A Series,Galaxy A02,2021,3GB,32GB,1200,450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0292,2,Samsung,A Series,Galaxy A02s,2021,3GB,32GB,1300,550,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0293,2,Samsung,A Series,Galaxy A02s,2021,4GB,64GB,1500,750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0294,2,Samsung,A Series,Galaxy A12,2021,6GB,128GB,2200,1450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0295,2,Samsung,A Series,Galaxy A22,2021,6GB,128GB,2800,2050,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0296,2,Samsung,A Series,Galaxy A22 5G,2021,8GB,128GB,3300,2550,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0297,2,Samsung,A Series,Galaxy A32,2021,6GB,128GB,3000,2250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0298,2,Samsung,A Series,Galaxy A32,2021,8GB,128GB,3300,2550,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0299,2,Samsung,A Series,Galaxy A32 5G,2021,8GB,128GB,3200,2450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0300,2,Samsung,A Series,Galaxy A52,2021,6GB,128GB,4200,3450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0301,2,Samsung,A Series,Galaxy A52,2021,8GB,128GB,4500,3750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0302,2,Samsung,A Series,Galaxy A52 5G,2021,8GB,128GB,4500,3750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0303,2,Samsung,A Series,Galaxy A72,2021,8GB,128GB,5000,4250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0304,2,Samsung,A Series,Galaxy A72,2021,8GB,256GB,5500,4750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0305,2,Samsung,A Series,Galaxy A03,2022,3GB,32GB,1300,550,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0306,2,Samsung,A Series,Galaxy A03,2022,4GB,64GB,1600,850,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0307,2,Samsung,A Series,Galaxy A03s,2021,3GB,32GB,1300,550,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0308,2,Samsung,A Series,Galaxy A03s,2021,4GB,64GB,1600,850,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0309,2,Samsung,A Series,Galaxy A13 5G,2022,4GB,64GB,2500,1750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0310,2,Samsung,A Series,Galaxy A23,2022,6GB,128GB,2800,2050,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0311,2,Samsung,A Series,Galaxy A23,2022,8GB,128GB,3000,2250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0312,2,Samsung,A Series,Galaxy A73 5G,2022,8GB,128GB,5500,4750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0313,2,Samsung,A Series,Galaxy A73 5G,2022,8GB,256GB,6000,5250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0314,2,Samsung,A Series,Galaxy A04,2022,4GB,64GB,1800,1050,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0315,2,Samsung,A Series,Galaxy A04e,2022,3GB,32GB,1200,450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0316,2,Samsung,A Series,Galaxy A04e,2022,3GB,64GB,1400,650,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0317,2,Samsung,A Series,Galaxy A04s,2022,4GB,64GB,1800,1050,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0318,2,Samsung,A Series,Galaxy A04s,2022,4GB,128GB,2000,1250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0319,2,Samsung,A Series,Galaxy A14,2023,4GB,64GB,2200,1450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0320,2,Samsung,A Series,Galaxy A14,2023,4GB,128GB,2400,1650,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0321,2,Samsung,A Series,Galaxy A14,2023,6GB,128GB,2700,1950,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0322,2,Samsung,A Series,Galaxy A14 5G,2023,8GB,128GB,3300,2550,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0323,2,Samsung,A Series,Galaxy A24,2023,6GB,128GB,3500,2750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0324,2,Samsung,A Series,Galaxy A24,2023,8GB,128GB,3800,3050,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0325,2,Samsung,A Series,Galaxy A34 5G,2023,6GB,128GB,4500,3750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0326,2,Samsung,A Series,Galaxy A05,2023,4GB,64GB,1800,1050,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0327,2,Samsung,A Series,Galaxy A05,2023,6GB,128GB,2200,1450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0328,2,Samsung,A Series,Galaxy A05s,2023,4GB,64GB,2000,1250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0329,2,Samsung,A Series,Galaxy A05s,2023,6GB,128GB,2400,1650,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0330,2,Samsung,A Series,Galaxy A15,2024,6GB,128GB,3000,2250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0331,2,Samsung,A Series,Galaxy A15,2024,8GB,128GB,3300,2550,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0332,2,Samsung,A Series,Galaxy A35 5G,2024,8GB,128GB,5000,4250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0333,2,Samsung,A Series,Galaxy A35 5G,2024,8GB,256GB,5400,4650,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0334,2,Samsung,A Series,Galaxy A55 5G,2024,8GB,128GB,6500,5750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0335,2,Samsung,A Series,Galaxy A55 5G,2024,8GB,256GB,7000,6250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0336,2,Samsung,A Series,Galaxy A55 5G,2024,12GB,256GB,7500,6750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0337,2,Samsung,A Series,Galaxy A06,2024,4GB,64GB,2200,1450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0338,2,Samsung,A Series,Galaxy A06,2024,4GB,128GB,2400,1650,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0339,2,Samsung,A Series,Galaxy A06,2024,6GB,128GB,2700,1950,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0340,2,Samsung,A Series,Galaxy A06 5G,2025,4GB,64GB,2800,2050,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0341,2,Samsung,A Series,Galaxy A06 5G,2025,4GB,128GB,3000,2250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0342,2,Samsung,A Series,Galaxy A06 5G,2025,6GB,128GB,3300,2550,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0343,2,Samsung,A Series,Galaxy A16 5G,2025,6GB,128GB,3800,3050,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0344,2,Samsung,A Series,Galaxy A56 5G,2025,12GB,256GB,9000,8250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0345,2,Samsung,M Series,Galaxy M01,2020,3GB,32GB,1200,450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0346,2,Samsung,M Series,Galaxy M01s,2020,3GB,32GB,1200,450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0347,2,Samsung,M Series,Galaxy M01 Core,2020,1GB,16GB,500,0,500,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0348,2,Samsung,M Series,Galaxy M01 Core,2020,2GB,32GB,700,0,700,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0349,2,Samsung,M Series,Galaxy M02,2021,2GB,32GB,900,150,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0350,2,Samsung,M Series,Galaxy M02,2021,3GB,32GB,1100,350,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0351,2,Samsung,M Series,Galaxy M02s,2021,3GB,32GB,1200,450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0352,2,Samsung,M Series,Galaxy M02s,2021,4GB,64GB,1400,650,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0353,2,Samsung,M Series,Galaxy M10,2019,2GB,16GB,900,150,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0354,2,Samsung,M Series,Galaxy M10,2019,3GB,32GB,1200,450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0355,2,Samsung,M Series,Galaxy M10s,2019,3GB,32GB,1300,550,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0356,2,Samsung,M Series,Galaxy M11,2020,3GB,32GB,1300,550,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0357,2,Samsung,M Series,Galaxy M11,2020,4GB,64GB,1500,750,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0358,2,Samsung,M Series,Galaxy M13,2022,4GB,64GB,2000,1250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0359,2,Samsung,M Series,Galaxy M13,2022,4GB,128GB,2200,1450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0360,2,Samsung,M Series,Galaxy M13,2022,6GB,128GB,2500,1750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0361,2,Samsung,M Series,Galaxy M20,2019,3GB,32GB,1400,650,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0362,2,Samsung,M Series,Galaxy M20,2019,4GB,64GB,1700,950,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0363,2,Samsung,M Series,Galaxy M21,2020,4GB,64GB,1800,1050,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0364,2,Samsung,M Series,Galaxy M21,2020,6GB,128GB,2100,1350,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0365,2,Samsung,M Series,Galaxy M21 2021 Edition,2021,4GB,64GB,1900,1150,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0366,2,Samsung,M Series,Galaxy M21 2021 Edition,2021,6GB,128GB,2200,1450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0367,2,Samsung,M Series,Galaxy M30,2019,4GB,64GB,1800,1050,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0368,2,Samsung,M Series,Galaxy M30,2019,6GB,128GB,2200,1450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0369,2,Samsung,M Series,Galaxy M30s,2019,4GB,64GB,2000,1250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0370,2,Samsung,M Series,Galaxy M30s,2019,6GB,128GB,2400,1650,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0371,2,Samsung,M Series,Galaxy M31,2020,6GB,64GB,2500,1750,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0372,2,Samsung,M Series,Galaxy M31,2020,6GB,128GB,2800,2050,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0373,2,Samsung,M Series,Galaxy M31,2020,8GB,128GB,3000,2250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0374,2,Samsung,M Series,Galaxy M31s,2020,6GB,128GB,2800,2050,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0375,2,Samsung,M Series,Galaxy M31s,2020,8GB,128GB,3200,2450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0376,2,Samsung,M Series,Galaxy M40,2019,6GB,128GB,2200,1450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0377,2,Samsung,M Series,Galaxy M42 5G,2021,6GB,128GB,3000,2250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0378,2,Samsung,M Series,Galaxy M42 5G,2021,8GB,128GB,3300,2550,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0379,2,Samsung,M Series,Galaxy M51,2020,6GB,128GB,3000,2250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0380,2,Samsung,M Series,Galaxy M51,2020,8GB,128GB,3300,2550,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0381,2,Samsung,M Series,Galaxy M55 5G,2024,12GB,256GB,6500,5750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0382,2,Samsung,M Series,Galaxy M05,2024,4GB,64GB,2000,1250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0383,2,Samsung,M Series,Galaxy M05,2024,4GB,128GB,2200,1450,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0384,2,Samsung,F Series,Galaxy F02s,2021,3GB,32GB,1100,350,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0385,2,Samsung,F Series,Galaxy F02s,2021,4GB,64GB,1300,550,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0386,2,Samsung,F Series,Galaxy F55 5G,2024,8GB,128GB,5500,4750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0387,2,Samsung,F Series,Galaxy F55 5G,2024,8GB,256GB,6000,5250,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0388,2,Samsung,F Series,Galaxy F55 5G,2024,12GB,256GB,6500,5750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0389,2,Samsung,F Series,Galaxy F06 5G,2025,4GB,64GB,2500,1750,750,Check current status,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0390,2,Samsung,J Series,Galaxy J1,2015,512MB,4GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0391,2,Samsung,J Series,Galaxy J2,2015,1GB,8GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0392,2,Samsung,J Series,Galaxy J2 (2016),2016,1.5GB,8GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0393,2,Samsung,J Series,Galaxy J2 Pro (2018),2018,2GB,16GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0394,2,Samsung,J Series,Galaxy J3 (2016),2016,1.5GB,8GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0395,2,Samsung,J Series,Galaxy J3 Pro,2017,2GB,16GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0396,2,Samsung,J Series,Galaxy J4,2018,2GB,16GB,500,0,500,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0397,2,Samsung,J Series,Galaxy J4,2018,3GB,32GB,700,0,700,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0398,2,Samsung,J Series,Galaxy J4+,2018,2GB,16GB,500,0,500,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0399,2,Samsung,J Series,Galaxy J4+,2018,3GB,32GB,700,0,700,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0400,2,Samsung,J Series,Galaxy J5,2015,1.5GB,8GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0401,2,Samsung,J Series,Galaxy J5 (2016),2016,2GB,16GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0402,2,Samsung,J Series,Galaxy J5 Prime,2016,2GB,16GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0403,2,Samsung,J Series,Galaxy J6,2018,3GB,32GB,800,50,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0404,2,Samsung,J Series,Galaxy J6,2018,4GB,64GB,1000,250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0405,2,Samsung,J Series,Galaxy J6+,2018,3GB,32GB,800,50,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0406,2,Samsung,J Series,Galaxy J7,2015,1.5GB,16GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0407,2,Samsung,J Series,Galaxy J7 (2016),2016,2GB,16GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0408,2,Samsung,J Series,Galaxy J7 Prime,2016,3GB,16GB,500,0,500,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0409,2,Samsung,J Series,Galaxy J7 Prime,2016,3GB,32GB,700,0,700,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0410,2,Samsung,J Series,Galaxy J7 Pro,2017,3GB,64GB,700,0,700,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0411,2,Samsung,J Series,Galaxy J8,2018,4GB,64GB,1000,250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0412,2,Samsung,C / On Series,Galaxy C7 Pro,2017,4GB,64GB,1000,250,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0413,2,Samsung,C / On Series,Galaxy C9 Pro,2016,6GB,64GB,1200,450,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0414,2,Samsung,C / On Series,Galaxy On5,2015,1.5GB,8GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0415,2,Samsung,C / On Series,Galaxy On7,2015,1.5GB,8GB,0,0,0,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0416,2,Samsung,C / On Series,Galaxy On7 Prime,2018,3GB,32GB,500,0,500,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0417,2,Samsung,C / On Series,Galaxy On7 Prime,2018,4GB,64GB,700,0,700,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0418,2,Samsung,C / On Series,Galaxy On8 (2018),2018,4GB,64GB,800,50,750,Discontinued,Verify by IMEI/serial and invoice,Indicative estimate – verify live resale value
+SAM-0419,2,Samsung,S Series,Galaxy S20,2020,8GB,128GB,5500,4750,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0420,2,Samsung,S Series,Galaxy S20 5G,2020,12GB,128GB,6000,5250,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0421,2,Samsung,S Series,Galaxy S20+,2020,8GB,128GB,6500,5750,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0422,2,Samsung,S Series,Galaxy S20+ 5G,2020,12GB,128GB,7000,6250,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0423,2,Samsung,S Series,Galaxy S20+ 5G,2020,12GB,256GB,7500,6750,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0424,2,Samsung,S Series,Galaxy S20 Ultra 5G,2020,12GB,128GB,8500,7750,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0425,2,Samsung,S Series,Galaxy S20 Ultra 5G,2020,12GB,256GB,9000,8250,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0426,2,Samsung,S Series,Galaxy S20 Ultra 5G,2020,16GB,512GB,10000,9250,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0427,2,Samsung,S Series,Galaxy S20 FE,2020,8GB,128GB,5000,4250,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0428,2,Samsung,S Series,Galaxy S20 FE 5G,2021,8GB,128GB,6000,5250,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0429,2,Samsung,S Series,Galaxy S20 FE 5G,2021,8GB,256GB,6500,5750,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0430,2,Samsung,S Series,Galaxy S20 FE 2022,2022,8GB,128GB,6500,5750,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
+SAM-0431,2,Samsung,S Series,Galaxy S20 Enterprise Edition,2020,8GB,128GB,4500,3750,750,Discontinued,Verify IMEI/serial and original invoice; warranty not assumed,Indicative estimate – verify live resale value
