@@ -131,11 +131,10 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       setState(() {
         _seriesList = sortedSeries;
         _models = m;
-        if (m.isNotEmpty) {
-          _selectModel(m.first);
-        } else {
-          _loading = false;
-        }
+        _model = null;
+        _variant = null;
+        _variants = [];
+        _loading = false;
       });
     } catch (_) {
       setState(() => _loading = false);
@@ -154,14 +153,10 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       );
       setState(() {
         _models = m;
-        if (m.isNotEmpty) {
-          _selectModel(m.first);
-        } else {
-          _model = null;
-          _variants = [];
-          _variant = null;
-          _loading = false;
-        }
+        _model = null;
+        _variant = null;
+        _variants = [];
+        _loading = false;
       });
     } catch (_) {
       setState(() => _loading = false);
