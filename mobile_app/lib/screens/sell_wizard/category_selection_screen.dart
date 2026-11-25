@@ -497,6 +497,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
           ),
           const SizedBox(height: 18),
           GridView.builder(
+            padding: EdgeInsets.zero,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

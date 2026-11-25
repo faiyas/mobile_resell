@@ -884,6 +884,7 @@ class _AgentInspectionScreenState extends State<AgentInspectionScreen> {
 
                                       // 4 Slots Grid
                                       GridView.count(
+                                        padding: EdgeInsets.zero,
                                         shrinkWrap: true,
                                         physics: const NeverScrollableScrollPhysics(),
                                         crossAxisCount: 2,

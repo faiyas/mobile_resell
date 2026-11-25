@@ -502,6 +502,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
 
               // Visual Option Cards Grid
               GridView.builder(
+                padding: EdgeInsets.zero,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
