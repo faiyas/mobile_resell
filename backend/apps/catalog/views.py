@@ -372,22 +372,27 @@ def catalog_bulk_delete_view(request):
         return Response({'detail': 'Provide ids list or set all=true'}, status=status.HTTP_400_BAD_REQUEST)
 
     from django.db import transaction
+    from apps.sales.models import PhoneSale
     with transaction.atomic():
         if target == 'brands':
             qs = Brand.objects.all() if delete_all else Brand.objects.filter(id__in=ids)
+            PhoneSale.objects.filter(variant__model__brand__in=qs).update(variant=None)
             count = qs.count()
             qs.delete()  # Cascades to series, models, variants, and brand-specific condition steps
         elif target == 'series':
             qs = DeviceSeries.objects.all() if delete_all else DeviceSeries.objects.filter(id__in=ids)
+            PhoneSale.objects.filter(variant__model__series__in=qs).update(variant=None)
             count = qs.count()
             PhoneModel.objects.filter(series__in=qs).delete()
             qs.delete()
         elif target == 'models':
             qs = PhoneModel.objects.all() if delete_all else PhoneModel.objects.filter(id__in=ids)
+            PhoneSale.objects.filter(variant__model__in=qs).update(variant=None)
             count = qs.count()
             qs.delete()  # Cascades to variants
         elif target == 'variants':
             qs = StorageVariant.objects.all() if delete_all else StorageVariant.objects.filter(id__in=ids)
+            PhoneSale.objects.filter(variant__in=qs).update(variant=None)
             count = qs.count()
             qs.delete()
         else:

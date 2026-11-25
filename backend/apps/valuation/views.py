@@ -493,13 +493,20 @@ def valuation_bulk_delete_view(request):
     if not delete_all and (not isinstance(ids, list) or len(ids) == 0):
         return Response({'detail': 'Provide ids list or set all=true'}, status=status.HTTP_400_BAD_REQUEST)
 
+    from apps.sales.models import PhoneSaleConditionAnswer
+
     with transaction.atomic():
         if target == 'categories':
             qs = ConditionCategory.objects.all() if delete_all else ConditionCategory.objects.filter(id__in=ids)
+            opt_ids = list(ConditionOption.objects.filter(category__in=qs).values_list('id', flat=True))
+            if opt_ids:
+                PhoneSaleConditionAnswer.objects.filter(option_id__in=opt_ids).update(option=None)
             count = qs.count()
-            qs.delete()  # Cascades to ConditionOption
+            ConditionOption.objects.filter(category__in=qs).delete()
+            qs.delete()
         elif target == 'options':
             qs = ConditionOption.objects.all() if delete_all else ConditionOption.objects.filter(id__in=ids)
+            PhoneSaleConditionAnswer.objects.filter(option__in=qs).update(option=None)
             count = qs.count()
             qs.delete()
         else:

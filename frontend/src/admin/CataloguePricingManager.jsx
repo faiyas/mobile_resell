@@ -255,7 +255,9 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
       setSelectedSeriesIds([]);
       await loadAllData();
     } catch (err) {
-      showFeedback('error', err.message || `Failed to delete ${target}`);
+      const msg = err.message || `Failed to delete ${target}`;
+      showFeedback('error', msg);
+      alert(msg);
     } finally {
       setBulkDeleting(false);
     }
@@ -327,6 +329,8 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
           display_order: cData[0].display_order || 0,
           is_active: cData[0].is_active
         });
+      } else {
+        setSelectedQuestionStep(null);
       }
 
       // Default simulator selections
