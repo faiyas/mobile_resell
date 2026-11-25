@@ -786,10 +786,14 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     if (item.imageBase64 != null && item.imageBase64!.trim().isNotEmpty) {
       final bytes = ImageHelper.decodeBase64(item.imageBase64);
       if (bytes != null) {
-        return SizedBox.expand(
+        return Container(
+          width: double.infinity,
+          height: double.infinity,
+          color: Colors.white,
+          padding: const EdgeInsets.all(8),
           child: Image.memory(
             bytes,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             errorBuilder: (_, __, ___) => Container(
               color: isSelected
                   ? AppTheme.primaryGreen.withValues(alpha: 0.16)
