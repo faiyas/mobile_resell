@@ -14,6 +14,7 @@ import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import OperationsDashboardView from './OperationsDashboardView';
 import SystemSettingsView from './SystemSettingsView';
+import ImageZoomModal from '../components/ImageZoomModal';
 
 export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'sales' | 'customers' | 'payouts' | ...
@@ -57,6 +58,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   const [overrideReason, setOverrideReason] = useState('');
   const [savingPrice, setSavingPrice] = useState(false);
   const [priceEditError, setPriceEditError] = useState('');
+  const [zoomViewer, setZoomViewer] = useState(null);
 
   // Edit condition option modal
   const [editingOption, setEditingOption] = useState(null);
@@ -1733,10 +1735,16 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
                         <span className="block font-bold text-slate-700 mb-1">Physical Device Photos (Proof):</span>
                         <div className="grid grid-cols-4 gap-2">
                           {traceSale.inspection.photos.map((ph, idx) => (
-                            <div key={idx} className="border border-slate-200 rounded-lg overflow-hidden bg-white p-1 text-center">
-                              <img src={ph.image_base64} alt={ph.label} className="w-full h-16 object-contain rounded" />
-                              <span className="text-[9px] text-slate-500 block truncate">{ph.label}</span>
-                            </div>
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setZoomViewer({ images: traceSale.inspection.photos, index: idx })}
+                              title="Click to open & zoom"
+                              className="group border border-slate-200 hover:border-indigo-400 hover:ring-2 hover:ring-indigo-200 rounded-lg overflow-hidden bg-white p-1 text-center cursor-zoom-in transition"
+                            >
+                              <img src={ph.image_base64} alt={ph.label} className="w-full h-16 object-contain rounded group-hover:scale-105 transition" />
+                              <span className="text-[9px] text-slate-500 block truncate mt-0.5">{ph.label}</span>
+                            </button>
                           ))}
                         </div>
                       </div>
@@ -2439,6 +2447,15 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Zoomable Image Lightbox */}
+      {zoomViewer && (
+        <ImageZoomModal
+          images={zoomViewer.images}
+          initialIndex={zoomViewer.index}
+          onClose={() => setZoomViewer(null)}
+        />
       )}
 
     </div>

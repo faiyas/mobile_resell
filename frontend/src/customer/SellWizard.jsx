@@ -325,6 +325,9 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
     } else {
       setSelectedVariant(null);
     }
+    setTimeout(() => {
+      document.getElementById('sell-variant-panel')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 60);
   };
 
   const toggleOptionCode = (code, exclusiveGroup) => {
@@ -717,7 +720,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
             </div>
 
             {/* Storage Variants Column */}
-            <div className="glass-panel rounded-3xl p-5 shadow-sm space-y-4">
+            <div id="sell-variant-panel" className="glass-panel rounded-3xl p-5 shadow-sm space-y-4">
               <h4 className="font-black text-sm text-[#17251C] flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-[#0BAA4B]" />
                 Select Storage Variant:

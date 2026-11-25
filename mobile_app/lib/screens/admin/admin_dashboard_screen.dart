@@ -909,11 +909,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Expanded(
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: bytes != null
-                                          ? Image.memory(bytes, width: double.infinity, fit: BoxFit.cover)
-                                          : const Center(child: Icon(Icons.broken_image)),
+                                    child: GestureDetector(
+                                      onTap: bytes == null
+                                          ? null
+                                          : () => showDialog(
+                                                context: context,
+                                                builder: (zCtx) => Dialog(
+                                                  backgroundColor: Colors.black,
+                                                  insetPadding: const EdgeInsets.all(12),
+                                                  child: Stack(
+                                                    children: [
+                                                      InteractiveViewer(
+                                                        minScale: 1.0,
+                                                        maxScale: 5.0,
+                                                        child: Center(
+                                                          child: Image.memory(bytes, fit: BoxFit.contain),
+                                                        ),
+                                                      ),
+                                                      Positioned(
+                                                        top: 8,
+                                                        right: 8,
+                                                        child: IconButton(
+                                                          icon: const Icon(Icons.close, color: Colors.white),
+                                                          onPressed: () => Navigator.pop(zCtx),
+                                                        ),
+                                                      ),
+                                                      Positioned(
+                                                        bottom: 12,
+                                                        left: 16,
+                                                        child: Text(
+                                                          p.label,
+                                                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: bytes != null
+                                            ? Image.memory(bytes, width: double.infinity, fit: BoxFit.cover)
+                                            : const Center(child: Icon(Icons.broken_image)),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 6),

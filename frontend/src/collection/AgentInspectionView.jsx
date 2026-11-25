@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { fileToBase64 } from '../utils/imageCompressor';
+import ImageZoomModal from '../components/ImageZoomModal';
 
 export default function AgentInspectionView({ currentUser }) {
   const [assignedSales, setAssignedSales] = useState([]);
@@ -13,6 +14,7 @@ export default function AgentInspectionView({ currentUser }) {
   const [saleDetails, setSaleDetails] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [zoomViewer, setZoomViewer] = useState(null);
 
   // Inspection form state
   const [switchesOn, setSwitchesOn] = useState(true);
@@ -670,7 +672,13 @@ export default function AgentInspectionView({ currentUser }) {
                 <div className="flex gap-2 pt-1 overflow-x-auto pb-1">
                   {photos.map((p, i) => (
                     <div key={i} className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-slate-200 overflow-hidden shrink-0 group shadow-sm bg-black">
-                      <img src={p.image_base64} alt={p.label} className="w-full h-full object-cover" />
+                      <img
+                        src={p.image_base64}
+                        alt={p.label}
+                        onClick={() => setZoomViewer({ images: photos, index: i })}
+                        title="Click to zoom"
+                        className="w-full h-full object-cover cursor-zoom-in group-hover:scale-105 transition"
+                      />
                       <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[8px] text-center py-0.5 truncate px-1">
                         {p.label}
                       </span>
@@ -827,6 +835,14 @@ export default function AgentInspectionView({ currentUser }) {
         )}
 
       </div>
+
+      {zoomViewer && (
+        <ImageZoomModal
+          images={zoomViewer.images}
+          initialIndex={zoomViewer.index}
+          onClose={() => setZoomViewer(null)}
+        />
+      )}
 
     </div>
   );

@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Printer, ShieldCheck, CheckCircle2, Smartphone, Download, ExternalLink } from 'lucide-react';
+import ImageZoomModal from '../components/ImageZoomModal';
 
 export default function ReceiptModal({ receiptData, onClose }) {
+  const [zoomOpen, setZoomOpen] = useState(false);
   if (!receiptData) return null;
 
   const handlePrint = () => {
@@ -118,7 +120,11 @@ export default function ReceiptModal({ receiptData, onClose }) {
               <span className="text-xs font-bold text-slate-700 block mb-2">
                 📸 Uploaded Bank / UPI Payment Confirmation Proof (Base64 Stored):
               </span>
-              <div className="max-h-60 overflow-hidden rounded-lg bg-slate-950 flex items-center justify-center p-2 border border-slate-300">
+              <div
+                onClick={() => setZoomOpen(true)}
+                title="Click to open & zoom"
+                className="max-h-60 overflow-hidden rounded-lg bg-slate-950 flex items-center justify-center p-2 border border-slate-300 cursor-zoom-in hover:ring-2 hover:ring-emerald-400 transition"
+              >
                 <img 
                   src={receiptData.payment_proof_base64} 
                   alt="Payment Proof" 
@@ -126,6 +132,13 @@ export default function ReceiptModal({ receiptData, onClose }) {
                 />
               </div>
             </div>
+          )}
+          {zoomOpen && receiptData.payment_proof_base64 && (
+            <ImageZoomModal
+              images={[{ image_base64: receiptData.payment_proof_base64, label: 'Payment Confirmation Proof' }]}
+              initialIndex={0}
+              onClose={() => setZoomOpen(false)}
+            />
           )}
 
           {/* Legal Handover statement */}

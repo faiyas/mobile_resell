@@ -171,6 +171,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
   Future<void> _selectModel(PhoneModelItem model) async {
     setState(() {
       _model = model;
+      _variant = null;
       _loading = true;
     });
 
@@ -179,14 +180,150 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       if (v.isEmpty) {
         v = await _api.getVariants(model.id);
       }
+      if (!mounted) return;
       setState(() {
         _variants = v;
-        if (v.isNotEmpty) _variant = v.first;
+        _variant = v.length == 1 ? v.first : null;
         _loading = false;
       });
+      if (v.length > 1) {
+        _showVariantPickerSheet(model, v);
+      } else if (v.length == 1) {
+        _proceedToQuestionnaire();
+      }
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _showVariantPickerSheet(PhoneModelItem model, List<StorageVariantModel> variants) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.96),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppTheme.border,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Select Storage Variant',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${_brand?.name ?? ''} ${model.name} · Choose your device capacity to continue',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(ctx).size.height * 0.48,
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: variants.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (_, idx) {
+                        final v = variants[idx];
+                        final isSelected = _variant?.id == v.id;
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(18),
+                          onTap: () {
+                            setState(() => _variant = v);
+                            Navigator.pop(ctx);
+                            _proceedToQuestionnaire();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            decoration: BoxDecoration(
+                              color: isSelected ? AppTheme.lightGreen : Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(
+                                color: isSelected ? AppTheme.primaryGreen : AppTheme.border,
+                                width: isSelected ? 2 : 1.2,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.sd_storage_rounded, color: AppTheme.primaryGreen, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        v.ram != null && v.ram!.isNotEmpty ? '${v.storage} · ${v.ram} RAM' : v.storage,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 15,
+                                          color: AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'Up to ₹${v.basePrice.toStringAsFixed(0)}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppTheme.darkGreen,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward_ios_rounded, size: 15, color: AppTheme.primaryGreen),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showCustomDeviceModal({String? initialCategory}) {
@@ -444,9 +581,9 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Estimated Base Value',
-                                  style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
+                                Text(
+                                  'Estimated Base Value · ${_variant!.storage}',
+                                  style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.bold),
                                 ),
                                 Text(
                                   '₹${_variant!.basePrice.toStringAsFixed(0)}',
@@ -915,46 +1052,6 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                   },
                 ),
         ),
-
-        // Storage Variants Selector
-        if (_model != null && _variants.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: GlassContainer(
-              borderRadius: 22,
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Select Storage Variant for ${_model!.name}:',
-                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: _variants.map((v) {
-                      final isSelected = _variant?.id == v.id;
-                      return ChoiceChip(
-                        label: Text('${v.storage} (₹${v.basePrice.toStringAsFixed(0)})'),
-                        selected: isSelected,
-                        selectedColor: AppTheme.lightGreen,
-                        labelStyle: TextStyle(
-                          color: isSelected ? AppTheme.darkGreen : AppTheme.textPrimary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11,
-                        ),
-                        onSelected: (val) {
-                          if (val) setState(() => _variant = v);
-                        },
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-          ),
       ],
     );
   }

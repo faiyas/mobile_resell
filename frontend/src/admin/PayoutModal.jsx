@@ -7,6 +7,7 @@ import {
 import QRCode from 'qrcode';
 import { api } from '../services/api';
 import { fileToBase64 } from '../utils/imageCompressor';
+import ImageZoomModal from '../components/ImageZoomModal';
 
 export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
   if (!sale) return null;
@@ -176,8 +177,8 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
                 {saleDetail.inspection.photos.map((p, idx) => (
                   <div
                     key={p.id || idx}
-                    onClick={() => setLightboxPhoto(p)}
-                    className="group relative cursor-pointer rounded-xl overflow-hidden border border-emerald-200 bg-white hover:ring-2 hover:ring-emerald-500 transition aspect-square shadow-xs"
+                    onClick={() => setLightboxPhoto({ images: saleDetail.inspection.photos, index: idx })}
+                    className="group relative cursor-zoom-in rounded-xl overflow-hidden border border-emerald-200 bg-white hover:ring-2 hover:ring-emerald-500 transition aspect-square shadow-xs"
                     title={`Click to zoom ${p.label}`}
                   >
                     <img
@@ -433,31 +434,13 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
 
       </div>
 
-      {/* Lightbox Photo Preview Modal */}
+      {/* Zoomable Lightbox Photo Preview Modal */}
       {lightboxPhoto && (
-        <div 
-          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
-          onClick={() => setLightboxPhoto(null)}
-        >
-          <div className="relative max-w-lg w-full bg-slate-900 rounded-2xl overflow-hidden p-3 border border-slate-700 text-center" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between pb-2 px-1 text-white">
-              <span className="font-bold text-xs">{lightboxPhoto.label}</span>
-              <button 
-                type="button"
-                onClick={() => setLightboxPhoto(null)}
-                className="p-1 text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <img 
-              src={lightboxPhoto.image_base64?.startsWith('data:') ? lightboxPhoto.image_base64 : `data:image/jpeg;base64,${lightboxPhoto.image_base64}`} 
-              alt={lightboxPhoto.label}
-              className="max-h-[70vh] w-auto mx-auto rounded-xl object-contain shadow-2xl"
-            />
-            <p className="text-[10px] text-slate-400 mt-2 font-mono">1103 RECELL · Doorstep QC Physical Proof</p>
-          </div>
-        </div>
+        <ImageZoomModal
+          images={lightboxPhoto.images}
+          initialIndex={lightboxPhoto.index}
+          onClose={() => setLightboxPhoto(null)}
+        />
       )}
     </div>,
     document.body
