@@ -169,6 +169,99 @@ class ApiService {
     }
   }
 
+  // ================= 1B. FAST2SMS CUSTOMER OTP & RESET =================
+  Future<Map<String, dynamic>> sendCustomerOtp(String phone, {String purpose = 'REGISTRATION'}) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/customer/send-otp/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode({'phone': phone.trim(), 'purpose': purpose}),
+    );
+
+    final data = jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      return Map<String, dynamic>.from(data);
+    } else {
+      final bool fallback = data['fallback_to_admin'] == true;
+      final String adminPhone = data['admin_phone']?.toString() ?? '9025232453';
+      final String msg = data['message']?.toString() ?? data['detail']?.toString() ?? 'Failed to send OTP';
+      return {
+        'success': false,
+        'fallback_to_admin': fallback,
+        'admin_phone': adminPhone,
+        'message': msg,
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> verifyRegisterCustomer({
+    required String fullName,
+    required String phone,
+    required String password,
+    required String otpCode,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/customer/verify-register/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode({
+        'full_name': fullName.trim(),
+        'phone': phone.trim(),
+        'password': password,
+        'otp_code': otpCode.trim(),
+      }),
+    );
+
+    final data = jsonDecode(res.body);
+    if (res.statusCode == 201) {
+      final user = UserModel.fromJson(data['user']);
+      await saveAuth(data['token'], user);
+      return {'success': true, 'user': user};
+    } else {
+      final bool fallback = data['fallback_to_admin'] == true;
+      final String adminPhone = data['admin_phone']?.toString() ?? '9025232453';
+      final String msg = data['detail']?.toString() ?? data['message']?.toString() ?? 'Verification failed';
+      throw {
+        'detail': msg,
+        'fallback_to_admin': fallback,
+        'admin_phone': adminPhone,
+      };
+    }
+  }
+
+  Future<Map<String, dynamic>> resetCustomerPassword({
+    required String phone,
+    required String otpCode,
+    required String newPassword,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/customer/reset-password/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode({
+        'phone': phone.trim(),
+        'otp_code': otpCode.trim(),
+        'new_password': newPassword,
+      }),
+    );
+
+    final data = jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      final user = UserModel.fromJson(data['user']);
+      await saveAuth(data['token'], user);
+      return {'success': true, 'user': user};
+    } else {
+      final bool fallback = data['fallback_to_admin'] == true;
+      final String adminPhone = data['admin_phone']?.toString() ?? '9025232453';
+      final String msg = data['detail']?.toString() ?? data['message']?.toString() ?? 'Password reset failed';
+      throw {
+        'detail': msg,
+        'fallback_to_admin': fallback,
+        'admin_phone': adminPhone,
+      };
+    }
+  }
+
   Future<Map<String, dynamic>> createAgent(Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/auth/agents/');
     final res = await http.post(

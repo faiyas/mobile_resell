@@ -82,3 +82,28 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.email} ({self.get_role_display()})"
+
+
+class PhoneOTP(models.Model):
+    PURPOSE_CHOICES = (
+        ('REGISTRATION', 'Customer Registration'),
+        ('PASSWORD_RESET', 'Forgot / Reset Password'),
+    )
+
+    phone = models.CharField(max_length=20, db_index=True)
+    otp_code = models.CharField(max_length=10)
+    purpose = models.CharField(max_length=30, choices=PURPOSE_CHOICES, default='REGISTRATION')
+    is_verified = models.BooleanField(default=False)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+
+    def __str__(self):
+        return f"OTP for {self.phone} ({self.purpose}) - Verified: {self.is_verified}"

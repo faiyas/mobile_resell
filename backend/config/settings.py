@@ -196,3 +196,7 @@ LOGGING = {
         },
     },
 }
+
+# Fast2SMS OTP Configuration for Customer Verification
+FAST2SMS_API_KEY = os.environ.get('FAST2SMS_API_KEY', '')
+ADMIN_SUPPORT_PHONE = os.environ.get('ADMIN_SUPPORT_PHONE', '9025232453')
