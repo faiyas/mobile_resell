@@ -3,6 +3,20 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables from .env file if present
+for possible_env in [BASE_DIR / '.env', BASE_DIR.parent / '.env']:
+    if possible_env.exists():
+        try:
+            with open(possible_env, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        k, v = line.split('=', 1)
+                        os.environ[k.strip()] = v.strip().strip('"').strip("'")
+            break
+        except Exception:
+            pass
+
 SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-mobile-buyback-platform-secret-key-2026')
 
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
