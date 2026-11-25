@@ -311,7 +311,7 @@ def admin_reset_customer_password_view(request, user_id=None):
             return Response({'detail': f'User ID #{user_id} not found'}, status=status.HTTP_404_NOT_FOUND)
     else:
         phone = request.data.get('phone')
-        user_pk = request.data.get('user_id') or request.data.get('customer_id')
+        user_pk = request.data.get('user_id') or request.data.get('customer_id') or request.data.get('agent_id')
         if user_pk:
             target_user = User.objects.filter(pk=user_pk).first()
         elif phone:
@@ -321,7 +321,7 @@ def admin_reset_customer_password_view(request, user_id=None):
             target_user = User.objects.filter(phone__endswith=raw_phone).first()
 
     if not target_user:
-        return Response({'detail': 'Customer account could not be found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'detail': 'User account could not be found.'}, status=status.HTTP_404_NOT_FOUND)
 
     new_password = request.data.get('new_password') or request.data.get('password')
     if not new_password or len(str(new_password).strip()) < 6:
@@ -332,7 +332,8 @@ def admin_reset_customer_password_view(request, user_id=None):
     target_user.save()
 
     return Response({
-        'message': f"Password for {target_user.full_name or target_user.phone} successfully updated by Admin without requiring old password.",
+        'message': f"Password for {target_user.full_name or target_user.phone} ({target_user.get_role_display()}) successfully updated by Admin without requiring old password.",
+        'user': UserSerializer(target_user).data,
         'customer': UserSerializer(target_user).data
     })
 

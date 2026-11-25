@@ -70,6 +70,7 @@ export const api = {
   getAgents: () => request('/auth/agents/'),
   createAgent: (data) => request('/auth/agents/', { method: 'POST', body: JSON.stringify(data) }),
   updateAgent: (id, data) => request(`/auth/agents/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
+  adminResetAgentPassword: (id, newPassword) => request(`/auth/agents/${id}/reset-password/`, { method: 'POST', body: JSON.stringify({ new_password: newPassword }) }),
   deleteAgent: (id) => request(`/auth/agents/${id}/`, { method: 'DELETE' }),
   changePassword: (data) => request('/auth/change-password/', { method: 'POST', body: JSON.stringify(data) }),
   getCustomers: (search = '') => request(`/auth/customers/${search ? `?search=${encodeURIComponent(search)}` : ''}`),

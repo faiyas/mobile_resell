@@ -12,9 +12,11 @@ urlpatterns = [
     path('change-password/', change_password_view, name='auth-change-password'),
     path('agents/', collection_agents_view, name='auth-agents'),
     path('agents/<int:agent_id>/', agent_detail_view, name='auth-agent-detail'),
+    path('agents/<int:user_id>/reset-password/', admin_reset_customer_password_view, name='auth-admin-reset-agent-password-by-id'),
     path('customers/', customers_view, name='auth-customers'),
     path('customers/<int:user_id>/', customer_detail_view, name='auth-customer-detail'),
     path('customers/<int:user_id>/reset-password/', admin_reset_customer_password_view, name='auth-admin-reset-customer-password-by-id'),
     path('customers/reset-password/', admin_reset_customer_password_view, name='auth-admin-reset-customer-password'),
+    path('users/reset-password/', admin_reset_customer_password_view, name='auth-admin-reset-user-password'),
     path('delete-account/', delete_account_view, name='auth-delete-account'),
 ]

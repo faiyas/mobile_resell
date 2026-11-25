@@ -196,6 +196,39 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> adminResetAgentPassword({
+    required int agentId,
+    required String newPassword,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/agents/$agentId/');
+    final res = await http.patch(
+      url,
+      headers: _headers,
+      body: jsonEncode({'password': newPassword.trim()}),
+    );
+    final data = jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      return data;
+    } else {
+      throw Exception(data['detail'] ?? data['message'] ?? 'Failed to reset agent password');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateAgent(int id, Map<String, dynamic> data) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/agents/$id/');
+    final res = await http.patch(
+      url,
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    final json = jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      return json;
+    } else {
+      throw Exception(json['detail'] ?? json['message'] ?? 'Failed to update agent');
+    }
+  }
+
   Future<Map<String, dynamic>> createAgent(Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/auth/agents/');
     final res = await http.post(

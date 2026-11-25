@@ -297,7 +297,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     );
   }
 
-  void _showResetCustomerPasswordDialog({String? initialPhone, String? customerName, int? customerId}) {
+  void _showResetPasswordDialog({
+    String? initialPhone,
+    String? customerName,
+    int? customerId,
+    AgentUserModel? initialAgent,
+    bool targetAgent = false,
+  }) {
+    bool isAgent = targetAgent || initialAgent != null;
+    AgentUserModel? selectedAgent = initialAgent ?? (_agents.isNotEmpty ? _agents.first : null);
     final phoneCtrl = TextEditingController(text: initialPhone ?? '');
     final passCtrl = TextEditingController(text: 'Dolly${1000 + (DateTime.now().millisecondsSinceEpoch % 9000)}');
     bool isSaving = false;
@@ -310,136 +318,256 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
           child: GlassContainer(
             padding: const EdgeInsets.all(22),
             borderRadius: BorderRadius.circular(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber.shade200),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.amber.shade200),
+                        ),
+                        child: const Icon(Icons.vpn_key_rounded, color: Colors.amber, size: 22),
                       ),
-                      child: const Icon(Icons.vpn_key_rounded, color: Colors.amber, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Admin Password Reset',
-                            style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-                          ),
-                          Text(
-                            customerName != null ? 'For: $customerName' : 'Override without old password',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                          ),
-                        ],
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isAgent ? 'Reset Agent Password' : 'Reset Customer Password',
+                              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                            ),
+                            const Text(
+                              'Admin Override (No old password needed)',
+                              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Admins can directly set a customer\'s password without needing their old password (useful for phone support).',
-                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: 'Customer Mobile Number *',
-                    hintText: '10-digit mobile number',
-                    prefixIcon: const Icon(Icons.phone_rounded, size: 18),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'New Password *',
-                    hintText: 'Minimum 6 characters',
-                    prefixIcon: const Icon(Icons.lock_reset_rounded, size: 18),
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.shuffle_rounded, size: 18),
-                      tooltip: 'Generate Random Password',
-                      onPressed: () {
-                        setModalState(() {
-                          passCtrl.text = 'Dolly${1000 + (DateTime.now().millisecondsSinceEpoch % 9000)}';
-                        });
-                      },
+                  const SizedBox(height: 14),
+
+                  // Toggle between Customer and Agent
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: isSaving ? null : () => Navigator.pop(ctx),
-                      child: const Text('Cancel'),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryGreen,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      ),
-                      onPressed: isSaving ? null : () async {
-                        final phone = phoneCtrl.text.trim();
-                        final newPass = passCtrl.text.trim();
-                        if (phone.isEmpty || newPass.length < 6) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter valid mobile & password (min 6 chars)')),
-                          );
-                          return;
-                        }
-                        setModalState(() => isSaving = true);
-                        try {
-                          await _api.adminResetCustomerPassword(
-                            customerId: customerId,
-                            phone: phone,
-                            newPassword: newPass,
-                          );
-                          if (ctx.mounted) Navigator.pop(ctx);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('✓ Password for $phone updated to: $newPass'),
-                                duration: const Duration(seconds: 4),
-                                behavior: SnackBarBehavior.floating,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setModalState(() => isAgent = false),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: !isAgent ? Colors.white : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: !isAgent
+                                    ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 4)]
+                                    : null,
                               ),
-                            );
-                          }
-                        } catch (e) {
-                          setModalState(() => isSaving = false);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Failed: $e')),
-                            );
-                          }
-                        }
-                      },
-                      child: isSaving
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Set Password', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              child: Center(
+                                child: Text(
+                                  'Customer',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    color: !isAgent ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () => setModalState(() => isAgent = true),
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isAgent ? Colors.white : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: isAgent
+                                    ? [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 4)]
+                                    : null,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  'Collection Agent',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    color: isAgent ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  if (!isAgent) ...[
+                    TextField(
+                      controller: phoneCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Customer Mobile Number *',
+                        hintText: '10-digit mobile number',
+                        prefixIcon: const Icon(Icons.phone_rounded, size: 18),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ] else ...[
+                    if (_agents.isNotEmpty)
+                      DropdownButtonFormField<int>(
+                        value: selectedAgent?.id ?? _agents.first.id,
+                        decoration: InputDecoration(
+                          labelText: 'Select Agent Account *',
+                          prefixIcon: const Icon(Icons.badge_rounded, size: 18),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: _agents.map((ag) {
+                          return DropdownMenuItem<int>(
+                            value: ag.id,
+                            child: Text('${ag.fullName} (${ag.phone})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setModalState(() {
+                              selectedAgent = _agents.firstWhere((a) => a.id == val);
+                            });
+                          }
+                        },
+                      )
+                    else
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Text('No active agents found in roster.', style: TextStyle(color: Colors.red, fontSize: 12)),
+                      ),
                   ],
-                ),
-              ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'New Password *',
+                      hintText: 'Minimum 6 characters',
+                      prefixIcon: const Icon(Icons.lock_reset_rounded, size: 18),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.shuffle_rounded, size: 18),
+                        tooltip: 'Generate Random Password',
+                        onPressed: () {
+                          setModalState(() {
+                            passCtrl.text = 'Dolly${1000 + (DateTime.now().millisecondsSinceEpoch % 9000)}';
+                          });
+                        },
+                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryGreen,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        ),
+                        onPressed: isSaving ? null : () async {
+                          final newPass = passCtrl.text.trim();
+                          if (newPass.length < 6) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Password must be at least 6 characters')),
+                            );
+                            return;
+                          }
+
+                          setModalState(() => isSaving = true);
+                          try {
+                            if (isAgent) {
+                              final targetAg = selectedAgent ?? (_agents.isNotEmpty ? _agents.first : null);
+                              if (targetAg == null) {
+                                throw Exception('Please select a collection agent');
+                              }
+                              await _api.adminResetAgentPassword(agentId: targetAg.id, newPassword: newPass);
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('✓ Password for Agent ${targetAg.fullName} updated to: $newPass'),
+                                    duration: const Duration(seconds: 4),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            } else {
+                              final phone = phoneCtrl.text.trim();
+                              if (phone.isEmpty) {
+                                throw Exception('Please enter customer mobile number');
+                              }
+                              await _api.adminResetCustomerPassword(
+                                customerId: customerId,
+                                phone: phone,
+                                newPassword: newPass,
+                              );
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('✓ Password for Customer $phone updated to: $newPass'),
+                                    duration: const Duration(seconds: 4),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            setModalState(() => isSaving = false);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed: $e')),
+                              );
+                            }
+                          }
+                        },
+                        child: isSaving
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : const Text('Set Password', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  void _showResetCustomerPasswordDialog({String? initialPhone, String? customerName, int? customerId}) {
+    _showResetPasswordDialog(initialPhone: initialPhone, customerName: customerName, customerId: customerId, targetAgent: false);
   }
 
   void _showAssignAgentDialog(SaleOrderModel order) {
@@ -528,7 +656,29 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                     ],
                   ),
                   const SizedBox(height: 18),
-                  const Text('Select Pickup Specialist:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textPrimary)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Select Pickup Specialist:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textPrimary)),
+                      InkWell(
+                        onTap: () {
+                          final currentAg = _agents.firstWhere((a) => a.id == selectedAgentId, orElse: () => _agents.first);
+                          _showResetPasswordDialog(initialAgent: currentAg, targetAgent: true);
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.vpn_key_rounded, size: 12, color: AppTheme.primaryGreen),
+                              SizedBox(width: 3),
+                              Text('Change Password', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 6),
                   DropdownButtonFormField<int>(
                     value: selectedAgentId,
@@ -1248,8 +1398,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.vpn_key_rounded, color: Colors.white, size: 22),
-                                      tooltip: 'Reset Customer Password',
-                                      onPressed: () => _showResetCustomerPasswordDialog(),
+                                      tooltip: 'Admin Password Reset (Customer & Agent)',
+                                      onPressed: () => _showResetPasswordDialog(),
                                     ),
                                   ],
                                 ),
