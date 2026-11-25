@@ -66,9 +66,6 @@ export const api = {
   // Auth
   login: (credentials) => request('/auth/login/', { method: 'POST', body: JSON.stringify(credentials) }),
   register: (payload) => request('/auth/register/', { method: 'POST', body: JSON.stringify(payload) }),
-  sendCustomerOtp: (data) => request('/auth/customer/send-otp/', { method: 'POST', body: JSON.stringify(data) }),
-  verifyRegisterCustomer: (data) => request('/auth/customer/verify-register/', { method: 'POST', body: JSON.stringify(data) }),
-  resetCustomerPassword: (data) => request('/auth/customer/reset-password/', { method: 'POST', body: JSON.stringify(data) }),
   getMe: () => request('/auth/me/'),
   getAgents: () => request('/auth/agents/'),
   createAgent: (data) => request('/auth/agents/', { method: 'POST', body: JSON.stringify(data) }),
