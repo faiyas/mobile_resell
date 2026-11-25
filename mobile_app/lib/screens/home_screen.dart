@@ -889,7 +889,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 20),
 
-            // 3. 3 QUICK SERVICE FEATURE BOXES (Instant Valuation, Track Pickup, My Payout)
+            // 3. 2 QUICK SERVICE RECTANGLE BOXES (Instant Valuation, Track Pickup)
             _buildQuickActionBoxes(),
 
             const SizedBox(height: 22),
@@ -1246,15 +1246,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ================= 3 QUICK SERVICE FEATURE BOXES =================
+  // ================= 2 QUICK SERVICE FEATURE RECTANGLES =================
   Widget _buildQuickActionBoxes() {
     return Row(
       children: [
         Expanded(
-          child: _buildQuickBox(
+          child: _buildQuickRectangleCard(
             icon: Icons.smartphone_rounded,
-            title: 'Instant\nValuation',
-            subtitle: 'Get 60s Quote',
+            title: 'Instant Valuation',
+            subtitle: 'Get 60s Live Quote',
             color: AppTheme.primaryGreen,
             bgColor: AppTheme.lightGreen.withOpacity(0.6),
             onTap: () {
@@ -1265,27 +1265,14 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
-          child: _buildQuickBox(
+          child: _buildQuickRectangleCard(
             icon: Icons.local_shipping_outlined,
-            title: 'Track\nPickup',
-            subtitle: 'Agent Status',
+            title: 'Track Pickup',
+            subtitle: 'Live Status & Payout',
             color: Colors.amber.shade800,
             bgColor: Colors.amber.shade50,
-            onTap: () {
-              setState(() => _currentIndex = 1);
-            },
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _buildQuickBox(
-            icon: Icons.account_balance_wallet_outlined,
-            title: 'My\nPayout',
-            subtitle: 'UPI Receipt',
-            color: Colors.purple.shade700,
-            bgColor: Colors.purple.shade50,
             onTap: () {
               setState(() => _currentIndex = 1);
             },
@@ -1295,7 +1282,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildQuickBox({
+  Widget _buildQuickRectangleCard({
     required IconData icon,
     required String title,
     required String subtitle,
@@ -1307,7 +1294,7 @@ class _HomeScreenState extends State<HomeScreen> {
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
@@ -1315,13 +1302,12 @@ class _HomeScreenState extends State<HomeScreen> {
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.02),
-              blurRadius: 8,
+              blurRadius: 10,
               offset: const Offset(0, 3),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(10),
@@ -1329,27 +1315,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: bgColor,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 11,
-                color: AppTheme.textPrimary,
-                height: 1.2,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textSecondary,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
