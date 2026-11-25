@@ -423,7 +423,7 @@ def catalog_sync_bundle_view(request):
             }
             for v in m.variants.all() if v.is_active
         ]
-        models_data.append({
+        model_entry = {
             'id': m.id,
             'brand': m.brand_id,
             'series': m.series_id,
@@ -433,7 +433,10 @@ def catalog_sync_bundle_view(request):
             'has_warranty': m.has_warranty,
             'is_active': m.is_active,
             'variants': variants_list,
-        })
+        }
+        if m.image_base64:
+            model_entry['image_base64'] = m.image_base64
+        models_data.append(model_entry)
 
     series_data = [
         {

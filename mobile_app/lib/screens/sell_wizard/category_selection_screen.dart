@@ -782,23 +782,34 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     return const Icon(Icons.phone_android, color: AppTheme.primaryGreen, size: 30);
   }
 
-  Widget _buildModelIcon(PhoneModelItem item) {
+  Widget _buildModelImageArea(PhoneModelItem item, bool isSelected) {
     if (item.imageBase64 != null && item.imageBase64!.trim().isNotEmpty) {
       final bytes = ImageHelper.decodeBase64(item.imageBase64);
       if (bytes != null) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+        return SizedBox.expand(
           child: Image.memory(
             bytes,
-            width: 34,
-            height: 34,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Icon(Icons.smartphone, size: 28, color: AppTheme.primaryGreen),
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: isSelected
+                  ? AppTheme.primaryGreen.withValues(alpha: 0.16)
+                  : AppTheme.lightGreen.withValues(alpha: 0.65),
+              alignment: Alignment.center,
+              child: const Icon(Icons.smartphone_rounded, size: 48, color: AppTheme.primaryGreen),
+            ),
           ),
         );
       }
     }
-    return const Icon(Icons.smartphone, size: 28, color: AppTheme.primaryGreen);
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: isSelected
+          ? AppTheme.primaryGreen.withValues(alpha: 0.16)
+          : AppTheme.lightGreen.withValues(alpha: 0.65),
+      alignment: Alignment.center,
+      child: const Icon(Icons.smartphone_rounded, size: 48, color: AppTheme.primaryGreen),
+    );
   }
 
   Widget _buildModelStep() {
@@ -838,39 +849,37 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
 
                     return GlassContainer(
                       borderRadius: 20,
-                      padding: const EdgeInsets.all(12),
+                      padding: EdgeInsets.zero,
                       border: Border.all(
                         color: isSelected ? AppTheme.primaryGreen : Colors.white.withValues(alpha: 0.85),
                         width: isSelected ? 2.5 : 1.5,
                       ),
                       onTap: () => _selectModel(item),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? AppTheme.primaryGreen.withValues(alpha: 0.2)
-                                  : AppTheme.lightGreen.withValues(alpha: 0.7),
-                              borderRadius: BorderRadius.circular(14),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: _buildModelImageArea(item, isSelected),
                             ),
-                            child: _buildModelIcon(item),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            item.name,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'Year: ${item.releaseYear}',
-                            style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
-                          ),
-                        ],
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              color: Colors.white.withValues(alpha: 0.92),
+                              child: Text(
+                                item.name,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
