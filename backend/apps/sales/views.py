@@ -84,9 +84,9 @@ def sales_list_create_view(request):
 
         is_full = request.GET.get('full', 'false').lower() == 'true'
         if is_full:
-            serializer = PhoneSaleDetailSerializer(queryset, many=True)
+            serializer = PhoneSaleDetailSerializer(queryset, many=True, context={'request': request})
         else:
-            serializer = PhoneSaleListSerializer(queryset, many=True)
+            serializer = PhoneSaleListSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
     elif request.method == 'POST':
@@ -264,7 +264,7 @@ def sale_detail_view(request, pk):
             if clean_phone and clean_sale_phone and clean_phone != clean_sale_phone:
                 return Response({'detail': 'Phone number does not match this order'}, status=status.HTTP_403_FORBIDDEN)
 
-    serializer = PhoneSaleDetailSerializer(sale)
+    serializer = PhoneSaleDetailSerializer(sale, context={'request': request})
     return Response(serializer.data)
 
 @api_view(['POST'])

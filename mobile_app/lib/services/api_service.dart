@@ -483,8 +483,12 @@ class ApiService {
     }
   }
 
-  Future<SaleOrderModel> getSaleDetail(String saleCode) async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleCode/');
+  Future<SaleOrderModel> getSaleDetail(String saleCode, {String? phone}) async {
+    final cleanPhone = phone ?? _currentUser?.phone;
+    final query = (cleanPhone != null && cleanPhone.trim().isNotEmpty)
+        ? '?phone=${Uri.encodeComponent(cleanPhone.trim())}'
+        : '';
+    final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleCode/$query');
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
       return SaleOrderModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));

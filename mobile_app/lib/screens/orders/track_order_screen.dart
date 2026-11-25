@@ -585,6 +585,7 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                     _order = o;
                     _searchController.text = o.saleCode;
                   });
+                  _lookupOrder(o.saleCode);
                 },
                 child: GlassContainer(
                   padding: EdgeInsets.zero,
@@ -815,33 +816,38 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
             ),
 
           // UTR / Reference Row
-          if (utr.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.receipt_rounded, size: 18, color: AppTheme.primaryGreen),
-                  const SizedBox(width: 8),
-                  const Text('Bank UTR / Txn Ref:', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      utr,
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.textPrimary, fontFamily: 'monospace'),
-                      overflow: TextOverflow.ellipsis,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.receipt_rounded, size: 18, color: AppTheme.primaryGreen),
+                const SizedBox(width: 8),
+                const Text('Transaction ID / UTR:', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w700)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    utr.isNotEmpty ? utr : 'Processing via Banking Gateway',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: utr.isNotEmpty ? AppTheme.textPrimary : Colors.grey.shade600,
+                      fontFamily: utr.isNotEmpty ? 'monospace' : null,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
+                ),
+                if (utr.isNotEmpty)
                   InkWell(
                     onTap: () {
                       Clipboard.setData(ClipboardData(text: utr));
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('UTR copied to clipboard'), duration: Duration(seconds: 2), behavior: SnackBarBehavior.floating),
+                        const SnackBar(content: Text('Transaction ID copied to clipboard'), duration: Duration(seconds: 2), behavior: SnackBarBehavior.floating),
                       );
                     },
                     child: const Padding(
@@ -849,12 +855,12 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                       child: Icon(Icons.copy_rounded, size: 16, color: AppTheme.primaryGreen),
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
+          ),
 
           // Payout Proof Image Preview
-          if (bytes != null) ...[
+          if (bytes != null && bytes.length > 200) ...[
             const Text(
               'Official Bank Transfer Proof',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
@@ -914,6 +920,37 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                     ),
                   ],
                 ),
+              ),
+            ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.verified_user_outlined, color: AppTheme.primaryGreen, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Payment Disbursed to Beneficiary',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.darkGreen),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Doorstep collection verified. Funds sent directly to $upiId.',
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade700),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

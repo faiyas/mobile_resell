@@ -117,6 +117,30 @@ class PaymentSimpleSerializer(serializers.ModelSerializer):
             'utr_number', 'payment_proof_base64', 'admin_notes', 'paid_by_name', 'paid_at'
         ]
 
+def _serialize_verified_payment(obj, context):
+    """Ensure sensitive payout proof screenshot and UTR are strictly revealed to verified owner / admin only."""
+    if not hasattr(obj, 'payment') or not obj.payment:
+        return None
+    request = context.get('request') if context else None
+    if request and request.user and request.user.is_authenticated:
+        u = request.user
+        if getattr(u, 'is_admin_role', False) or getattr(u, 'is_agent_role', False):
+            return PaymentSimpleSerializer(obj.payment).data
+        if str(getattr(u, 'role', '')).upper() == 'CUSTOMER':
+            is_owner = (
+                obj.customer == u or
+                (u.phone and obj.customer_phone == u.phone) or
+                (u.email and obj.customer_email and obj.customer_email.strip().lower() == u.email.strip().lower())
+            )
+            if is_owner:
+                return PaymentSimpleSerializer(obj.payment).data
+    if request:
+        phone = (request.GET.get('phone') or '').strip()[-10:]
+        sale_phone = (obj.customer_phone or '').strip()[-10:]
+        if phone and sale_phone and phone == sale_phone:
+            return PaymentSimpleSerializer(obj.payment).data
+    return None
+
 class PhoneSaleDetailSerializer(serializers.ModelSerializer):
     variant_details = StorageVariantSerializer(source='variant', read_only=True)
     brand_name = serializers.SerializerMethodField()
@@ -125,7 +149,7 @@ class PhoneSaleDetailSerializer(serializers.ModelSerializer):
     model_image_base64 = serializers.SerializerMethodField()
     answers = PhoneSaleConditionAnswerSerializer(many=True, read_only=True)
     inspection = DeviceInspectionSerializer(read_only=True)
-    payment = PaymentSimpleSerializer(read_only=True)
+    payment = serializers.SerializerMethodField()
     assigned_agent_name = serializers.ReadOnlyField(source='assigned_agent.full_name')
     is_overdue = serializers.SerializerMethodField()
     schedule_status = serializers.SerializerMethodField()
@@ -148,6 +172,9 @@ class PhoneSaleDetailSerializer(serializers.ModelSerializer):
             'is_overdue', 'schedule_status', 'schedule_alert_message',
             'answers', 'inspection', 'payment'
         ]
+
+    def get_payment(self, obj):
+        return _serialize_verified_payment(obj, self.context)
 
     def get_brand_name(self, obj):
         if obj.is_custom_device or not obj.variant:
@@ -194,6 +221,7 @@ class PhoneSaleListSerializer(serializers.ModelSerializer):
     answers = PhoneSaleConditionAnswerSerializer(many=True, read_only=True)
     has_inspection = serializers.SerializerMethodField()
     has_payment = serializers.SerializerMethodField()
+    payment = serializers.SerializerMethodField()
     is_overdue = serializers.SerializerMethodField()
     schedule_status = serializers.SerializerMethodField()
     schedule_alert_message = serializers.SerializerMethodField()
@@ -212,9 +240,12 @@ class PhoneSaleListSerializer(serializers.ModelSerializer):
             'beneficiary_account_no', 'beneficiary_ifsc',
             'imei_number', 'customer_handover_signed', 'admin_notes',
             'answers',
-            'has_inspection', 'has_payment', 'created_at', 'created_at_ist', 'updated_at',
+            'has_inspection', 'has_payment', 'payment', 'created_at', 'created_at_ist', 'updated_at',
             'is_overdue', 'schedule_status', 'schedule_alert_message'
         ]
+
+    def get_payment(self, obj):
+        return _serialize_verified_payment(obj, self.context)
 
     def get_brand_name(self, obj):
         if obj.is_custom_device or not obj.variant:
