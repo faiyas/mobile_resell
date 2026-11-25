@@ -52,6 +52,11 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   // End-to-End Tracing Modal
   const [traceSale, setTraceSale] = useState(null);
   const [traceLoading, setTraceLoading] = useState(false);
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [overridePrice, setOverridePrice] = useState('');
+  const [overrideReason, setOverrideReason] = useState('');
+  const [savingPrice, setSavingPrice] = useState(false);
+  const [priceEditError, setPriceEditError] = useState('');
 
   // Edit condition option modal
   const [editingOption, setEditingOption] = useState(null);
@@ -404,6 +409,10 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
   const handleOpenTraceModal = async (s) => {
     setTraceSale(s);
+    setIsEditingPrice(false);
+    setOverridePrice('');
+    setOverrideReason('');
+    setPriceEditError('');
     setTraceLoading(true);
     try {
       const fullDetail = await api.getSaleDetail(s.id || s.sale_code);
@@ -412,6 +421,36 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       // retain basic data
     } finally {
       setTraceLoading(false);
+    }
+  };
+
+  const handleSaveAdminPrice = async (e) => {
+    e.preventDefault();
+    if (!traceSale) return;
+    const numericPrice = Number(overridePrice);
+    if (!numericPrice || numericPrice <= 0) {
+      setPriceEditError('Enter a valid price greater than 0.');
+      return;
+    }
+    setSavingPrice(true);
+    setPriceEditError('');
+    try {
+      const res = await api.adminApproveFinalOffer(traceSale.id, {
+        approved_price: numericPrice,
+        reason: overrideReason.trim(),
+      });
+      if (res?.sale) {
+        setTraceSale(res.sale);
+        setSales((prev) => prev.map((item) => (item.id === res.sale.id ? { ...item, ...res.sale } : item)));
+      }
+      setIsEditingPrice(false);
+      setOverrideReason('');
+      setSuccessToast(`Final price updated to ₹${numericPrice.toLocaleString('en-IN')} for ${traceSale.sale_code}. Customer & Agent views updated.`);
+      setTimeout(() => setSuccessToast(''), 4000);
+    } catch (err) {
+      setPriceEditError(err?.message || 'Failed to update final price.');
+    } finally {
+      setSavingPrice(false);
     }
   };
 
@@ -1615,8 +1654,74 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-slate-700">
                       <div><strong>Inspected By:</strong> {traceSale.inspection.inspector_name || 'Field Specialist'}</div>
                       <div><strong>Verified IMEI:</strong> <span className="font-mono font-bold text-indigo-700">{traceSale.inspection.verified_imei || traceSale.imei_number}</span></div>
-                      <div><strong>QC Final Price:</strong> <span className="font-bold text-emerald-700">₹{Number(traceSale.inspection.suggested_final_price || traceSale.final_price).toLocaleString('en-IN')}</span></div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <strong>QC Final Price:</strong>
+                        <span className="font-bold text-emerald-700">₹{Number(traceSale.final_price || traceSale.inspection.suggested_final_price || traceSale.estimated_price).toLocaleString('en-IN')}</span>
+                        {!['DEVICE_COLLECTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'CANCELLED'].includes(traceSale.status) && !isEditingPrice && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOverridePrice(String(Math.round(Number(traceSale.final_price || traceSale.inspection?.suggested_final_price || traceSale.estimated_price))));
+                              setOverrideReason('');
+                              setPriceEditError('');
+                              setIsEditingPrice(true);
+                            }}
+                            className="px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[10px] border border-indigo-200 transition"
+                          >
+                            Edit Price
+                          </button>
+                        )}
+                      </div>
                     </div>
+                    {isEditingPrice && (
+                      <form onSubmit={handleSaveAdminPrice} className="p-2.5 bg-indigo-50/70 border border-indigo-200 rounded-lg space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="relative flex-1 min-w-[130px]">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₹</span>
+                            <input
+                              type="number"
+                              min="1"
+                              step="1"
+                              value={overridePrice}
+                              onChange={(e) => setOverridePrice(e.target.value)}
+                              className="w-full pl-6 pr-2 py-1.5 rounded-md border border-indigo-300 bg-white text-slate-900 font-bold text-[11px] focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                              placeholder="New final price"
+                              required
+                            />
+                          </div>
+                          <input
+                            type="text"
+                            value={overrideReason}
+                            onChange={(e) => setOverrideReason(e.target.value)}
+                            className="flex-[2] min-w-[160px] px-2.5 py-1.5 rounded-md border border-indigo-200 bg-white text-slate-800 text-[11px] focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            placeholder="Reason (optional, e.g. Admin revised quote)"
+                          />
+                          <button
+                            type="submit"
+                            disabled={savingPrice}
+                            className="px-3 py-1.5 rounded-md bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-[11px] transition"
+                          >
+                            {savingPrice ? 'Saving...' : 'Save & Notify'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setIsEditingPrice(false); setPriceEditError(''); }}
+                            className="px-2.5 py-1.5 rounded-md bg-white hover:bg-slate-100 text-slate-600 font-bold text-[11px] border border-slate-200 transition"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        {priceEditError && <p className="text-[10px] font-bold text-rose-600">{priceEditError}</p>}
+                        <p className="text-[10px] text-indigo-700">
+                          Saving updates Customer &amp; Agent panels and sends the revised offer for customer confirmation.
+                        </p>
+                      </form>
+                    )}
+                    {traceSale.admin_notes && (
+                      <div className="p-2 bg-amber-50/70 rounded-lg border border-amber-200 text-[10px] text-amber-900 whitespace-pre-line">
+                        <strong>Admin Price Log:</strong>{'\n'}{traceSale.admin_notes}
+                      </div>
+                    )}
                     {traceSale.inspection.inspector_notes && (
                       <p className="p-2 bg-white rounded-lg border border-slate-200 text-slate-600 italic">
                         "{traceSale.inspection.inspector_notes}"

@@ -623,6 +623,28 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> adminApproveFinalOffer(
+    dynamic saleId,
+    double approvedPrice, {
+    String? reason,
+  }) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/approve-final-offer/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode({
+        'approved_price': approvedPrice,
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      }),
+    );
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to update final price');
+    }
+  }
+
   Future<Map<String, dynamic>> acceptFinalOffer(dynamic saleId) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/accept-offer/');
     final res = await http.post(url, headers: _headers);

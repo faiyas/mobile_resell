@@ -568,14 +568,23 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                 <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
                 <div>
                   <h4 className="font-extrabold text-amber-900 text-base">
-                    Physical Inspection Completed: Action Required
+                    {selectedSale.admin_notes?.includes('Admin updated final price')
+                      ? 'Admin Revised Final Offer: Action Required'
+                      : 'Physical Inspection Completed: Action Required'}
                   </h4>
                   <p className="text-xs text-amber-800 mt-1">
-                    Our field agent tested your device and offered{' '}
+                    {selectedSale.admin_notes?.includes('Admin updated final price')
+                      ? 'Our admin team updated your final buyback offer to '
+                      : 'Our field agent tested your device and offered '}
                     <strong className="text-sm font-black text-[#17251C]">
                       ₹{Number(selectedSale.final_price).toLocaleString('en-IN')}
                     </strong>. Accept to receive instant payment directly to your account.
                   </p>
+                  {selectedSale.admin_notes && (
+                    <p className="text-[11px] text-amber-900 bg-white/70 border border-amber-200 rounded-lg px-2.5 py-1.5 mt-2 font-medium whitespace-pre-line">
+                      {selectedSale.admin_notes}
+                    </p>
+                  )}
                 </div>
               </div>
 

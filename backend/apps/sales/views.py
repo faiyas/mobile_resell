@@ -441,7 +441,7 @@ def transfer_ownership_view(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def admin_approve_final_offer_view(request, pk):
-    """Admin reviews inspection and sets approved final price"""
+    """Admin reviews inspection or order and sets/overrides approved final price"""
     if not getattr(request.user, 'is_admin_role', False):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -449,19 +449,43 @@ def admin_approve_final_offer_view(request, pk):
     if not sale:
         return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
 
+    if sale.status in ('DEVICE_COLLECTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'CANCELLED'):
+        return Response(
+            {'detail': f'Cannot change price when order is {sale.status.replace("_", " ").lower()}'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     approved_price = request.data.get('approved_price')
-    if not approved_price:
+    if approved_price is None or str(approved_price).strip() == '':
         return Response({'detail': 'Approved price is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    sale.final_price = Decimal(str(approved_price))
-    
-    # If final price == estimated price, can move directly to accepted or final offer sent
-    if sale.final_price == sale.estimated_price:
-        sale.status = 'OWNERSHIP_TRANSFERRED'
-    else:
-        sale.status = 'FINAL_OFFER_SENT'
-    
+    try:
+        new_price = Decimal(str(approved_price))
+    except Exception:
+        return Response({'detail': 'Invalid approved price format'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if new_price <= 0:
+        return Response({'detail': 'Approved price must be greater than zero'}, status=status.HTTP_400_BAD_REQUEST)
+
+    old_price = sale.final_price if sale.final_price is not None else sale.estimated_price
+    reason = str(request.data.get('reason') or '').strip()
+
+    sale.final_price = new_price
+    sale.status = 'FINAL_OFFER_SENT'
+
+    ist_now = timezone.now().astimezone(datetime.timezone(datetime.timedelta(hours=5, minutes=30)))
+    note_line = f"[{ist_now.strftime('%d %b %Y %I:%M %p')}] Admin updated final price: ₹{old_price} -> ₹{new_price}"
+    if reason:
+        note_line += f" ({reason})"
+    sale.admin_notes = f"{sale.admin_notes}\n{note_line}".strip() if sale.admin_notes else note_line
     sale.save()
+
+    # Keep inspection suggested_final_price in sync so Admin & Agent views show the updated price
+    inspection = getattr(sale, 'inspection', None)
+    if inspection is not None:
+        inspection.suggested_final_price = new_price
+        inspection.save(update_fields=['suggested_final_price'])
+
     return Response({'message': 'Final offer updated', 'sale': PhoneSaleDetailSerializer(sale).data})
 
 @api_view(['POST'])

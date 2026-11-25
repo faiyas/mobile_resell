@@ -536,6 +536,102 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
     }
   }
 
+  void _showEditPriceDialog(SaleOrderModel order) {
+    final currentVal = (order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0);
+    final priceCtrl = TextEditingController(text: currentVal);
+    final reasonCtrl = TextEditingController();
+    bool saving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          title: Text('Update Price · ${order.saleCode}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${order.brandName} ${order.modelName} (${order.storage})',
+                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: priceCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: 'New Final Offer Price (₹)',
+                  prefixText: '₹ ',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: reasonCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Reason (optional)',
+                  hintText: 'e.g. Admin revised quote after QC review',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Updates Customer & Agent panels and asks Customer to confirm.',
+                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryGreen,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final parsed = double.tryParse(priceCtrl.text.trim());
+                      if (parsed == null || parsed <= 0) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Enter a valid price greater than 0'), backgroundColor: Colors.redAccent),
+                        );
+                        return;
+                      }
+                      setDlgState(() => saving = true);
+                      try {
+                        await _api.adminApproveFinalOffer(order.id, parsed, reason: reasonCtrl.text);
+                        if (!mounted) return;
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('✓ Price updated to ₹${parsed.toStringAsFixed(0)} for ${order.saleCode}'),
+                            backgroundColor: AppTheme.primaryGreen,
+                            behavior: SnackBarBehavior.floating,
+                          ),
+                        );
+                        _loadAdminData();
+                      } catch (e) {
+                        setDlgState(() => saving = false);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+                        );
+                      }
+                    },
+              child: Text(saving ? 'Saving...' : 'Save Price'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showRecordPayoutDialog(SaleOrderModel order) {
     final utrController = TextEditingController();
     final double amount = order.finalPrice ?? order.estimatedPrice;
@@ -1405,9 +1501,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(
-                                'Est: ₹${order.estimatedPrice.toStringAsFixed(0)}',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryGreen),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    order.finalPrice != null
+                                        ? 'Final: ₹${order.finalPrice!.toStringAsFixed(0)} (Est: ₹${order.estimatedPrice.toStringAsFixed(0)})'
+                                        : 'Est: ₹${order.estimatedPrice.toStringAsFixed(0)}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryGreen),
+                                  ),
+                                ],
                               ),
                               Text(
                                 order.assignedAgentName != null ? 'Agent: ${order.assignedAgentName}' : 'No Agent Assigned',
@@ -1434,6 +1537,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                   onPressed: () => _showAssignAgentDialog(order),
                                 ),
                               ),
+                              if (!['DEVICE_COLLECTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'CANCELLED'].contains(order.status)) ...[
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () => _showEditPriceDialog(order),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.indigo.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.indigo.shade400.withOpacity(0.5)),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit_rounded, size: 14, color: Colors.indigo.shade800),
+                                        const SizedBox(width: 4),
+                                        Text('Edit Price', style: TextStyle(color: Colors.indigo.shade800, fontWeight: FontWeight.bold, fontSize: 11)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                               const SizedBox(width: 8),
                               InkWell(
                                 onTap: () => _handleShiftToTomorrow(order),

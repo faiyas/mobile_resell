@@ -98,7 +98,7 @@ export default function AgentInspectionView({ currentUser }) {
         setCloudLocksRemoved(Boolean(insp.cloud_locks_removed));
         setCustomerIdVerified(Boolean(insp.customer_id_verified));
         if (insp.verified_imei) setVerifiedImei(insp.verified_imei);
-        if (insp.suggested_final_price) setSuggestedFinalPrice(insp.suggested_final_price);
+        setSuggestedFinalPrice(detail.final_price || insp.suggested_final_price || sale.estimated_price);
         if (insp.inspector_notes) setInspectorNotes(insp.inspector_notes);
         if (insp.photos && Array.isArray(insp.photos)) {
           setPhotos(insp.photos.map(p => ({ label: p.label, image_base64: p.image_base64 })));
@@ -762,20 +762,27 @@ export default function AgentInspectionView({ currentUser }) {
 
               {/* If already inspected and no fresh feedback, show verified status indicator */}
               {!feedback && !formError && (selectedSale.has_inspection || selectedSale.status === 'OWNERSHIP_TRANSFERRED' || selectedSale.status === 'FINAL_OFFER_SENT') && (
-                <div className="p-3 bg-[#E8F8ED] border border-[#0BAA4B]/30 text-[#087C38] rounded-2xl text-xs flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-[#0BAA4B] shrink-0" />
-                    <span className="font-bold">
-                      {selectedSale.status === 'OWNERSHIP_TRANSFERRED' 
-                        ? 'Handover Completed · Ownership Transferred to 1103 RECELL'
-                        : selectedSale.status === 'FINAL_OFFER_SENT'
-                        ? 'Revised Final Offer Sent to Customer'
-                        : 'Inspection Recorded'}
+                <div className="p-3 bg-[#E8F8ED] border border-[#0BAA4B]/30 text-[#087C38] rounded-2xl text-xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-[#0BAA4B] shrink-0" />
+                      <span className="font-bold">
+                        {selectedSale.status === 'OWNERSHIP_TRANSFERRED' 
+                          ? 'Handover Completed · Ownership Transferred to 1103 RECELL'
+                          : selectedSale.status === 'FINAL_OFFER_SENT'
+                          ? 'Revised Final Offer Sent to Customer'
+                          : 'Inspection Recorded'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[#087C38] font-black">
+                      Agreed: ₹{Number(saleDetails?.final_price || selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}
                     </span>
                   </div>
-                  <span className="text-[10px] text-[#087C38] font-black">
-                    Agreed: ₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}
-                  </span>
+                  {(saleDetails?.admin_notes || selectedSale.admin_notes) && (
+                    <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 font-semibold whitespace-pre-line">
+                      {saleDetails?.admin_notes || selectedSale.admin_notes}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
