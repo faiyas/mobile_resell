@@ -18,9 +18,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 DEFAULT_BASE_URL = "https://8010-agq5qlr2uletnjyzudtddvxrdq.instabox.tech/api/v1"
 
 ENDPOINTS = [
-    "/cms/sections/",
-    "/catalog/device-categories/",
+    "/health/",
+    "/catalog/categories/",
     "/catalog/brands/",
+    "/catalog/cms/sections/",
     "/catalog/stats/",
 ]
 
