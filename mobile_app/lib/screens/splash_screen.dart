@@ -56,28 +56,12 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _startSessionAndNavigate() async {
-    // 1. Exact 5-second splash screen duration for brand impression
-    final waitFuture = Future.delayed(const Duration(milliseconds: 5000));
+    // 1. Kick off parallel background pre-warm and delta-sync in the background
+    // (Decoupled completely so it NEVER blocks or delays the 5-second splash transition)
+    _runBackgroundSync();
 
-    // 2. Comprehensive parallel background pre-warm sync
-    final syncFuture = Future(() async {
-      try {
-        final api = ApiService();
-        // Step A: Init auth token and user state
-        await api.init();
-
-        // Step B: Pre-warm backend and delta-sync fresh CMS content in parallel
-        await Future.wait<dynamic>([
-          api.pingHealth().catchError((_) => false),
-          CustomerCacheService.syncCustomerDataSilently(api).catchError((_) => false),
-          DraftSellService.getDraft().catchError((_) => null),
-        ]);
-      } catch (e) {
-        debugPrint('Splash background pre-sync error (non-fatal): $e');
-      }
-    });
-
-    await Future.wait([waitFuture, syncFuture]);
+    // 2. Strict 5-second duration for brand impression
+    await Future.delayed(const Duration(milliseconds: 5000));
 
     if (!mounted) return;
 
@@ -98,6 +82,25 @@ class _SplashScreenState extends State<SplashScreen>
         transitionDuration: const Duration(milliseconds: 650),
       ),
     );
+  }
+
+  void _runBackgroundSync() {
+    Future(() async {
+      try {
+        final api = ApiService();
+        // Init auth token and user state
+        await api.init();
+
+        // Silent background pre-warm & delta sync
+        await Future.wait<dynamic>([
+          api.pingHealth().catchError((_) => false),
+          CustomerCacheService.syncCustomerDataSilently(api).catchError((_) => false),
+          DraftSellService.getDraft().catchError((_) => null),
+        ]);
+      } catch (e) {
+        debugPrint('Splash background pre-sync error (non-fatal): $e');
+      }
+    });
   }
 
   @override
