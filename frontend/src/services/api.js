@@ -62,6 +62,47 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
+// Lightweight SWR (Stale-While-Revalidate) Cache for read-only catalog endpoints
+const SWR_TTL_MS = 5 * 60 * 1000; // 5 minutes cache
+
+async function cachedRequest(endpoint, options = {}, ttlMs = SWR_TTL_MS) {
+  const cacheKey = `dolly_swr_${endpoint}`;
+  try {
+    const cachedItem = sessionStorage.getItem(cacheKey);
+    if (cachedItem) {
+      const { data, timestamp } = JSON.parse(cachedItem);
+      const isFresh = (Date.now() - timestamp) < ttlMs;
+      // If stale, revalidate in background without blocking caller
+      if (!isFresh) {
+        request(endpoint, options).then((freshData) => {
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify({ data: freshData, timestamp: Date.now() }));
+          } catch (e) {}
+        }).catch(() => {});
+      }
+      return data;
+    }
+  } catch (e) {
+    // sessionStorage disabled or unavailable
+  }
+
+  const freshData = await request(endpoint, options);
+  try {
+    sessionStorage.setItem(cacheKey, JSON.stringify({ data: freshData, timestamp: Date.now() }));
+  } catch (e) {}
+  return freshData;
+}
+
+export const clearCatalogCache = () => {
+  try {
+    Object.keys(sessionStorage).forEach(key => {
+      if (key.startsWith('dolly_swr_')) {
+        sessionStorage.removeItem(key);
+      }
+    });
+  } catch (e) {}
+};
+
 export const api = {
   // Auth
   login: (credentials) => request('/auth/login/', { method: 'POST', body: JSON.stringify(credentials) }),
@@ -81,32 +122,34 @@ export const api = {
   toggleCustomerActive: (id) => request(`/auth/customers/${id}/?action=toggle`, { method: 'DELETE' }),
   deleteCustomer: (id) => request(`/auth/customers/${id}/?action=delete`, { method: 'DELETE' }),
 
-  // Catalog & Categories
-  getCategories: (all = false) => request(`/catalog/categories/?all=${all}`),
-  createCategory: (data) => request('/catalog/categories/', { method: 'POST', body: JSON.stringify(data) }),
-  updateCategory: (id, data) => request(`/catalog/categories/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteCategory: (id) => request(`/catalog/categories/${id}/`, { method: 'DELETE' }),
+  // Catalog & Categories (Cached via SWR for instant 0ms front-page paints)
+  getCategories: (all = false) => (all ? request(`/catalog/categories/?all=true`) : cachedRequest('/catalog/categories/?all=false')),
+  createCategory: (data) => { clearCatalogCache(); return request('/catalog/categories/', { method: 'POST', body: JSON.stringify(data) }); },
+  updateCategory: (id, data) => { clearCatalogCache(); return request(`/catalog/categories/${id}/`, { method: 'PUT', body: JSON.stringify(data) }); },
+  deleteCategory: (id) => { clearCatalogCache(); return request(`/catalog/categories/${id}/`, { method: 'DELETE' }); },
 
-  getBrands: (includeModels = false, all = false, categoryId = null) => 
-    request(`/catalog/brands/?include_models=${includeModels}&all=${all}${categoryId ? `&category=${categoryId}` : ''}`),
-  createBrand: (data) => request('/catalog/brands/', { method: 'POST', body: JSON.stringify(data) }),
-  updateBrand: (id, data) => request(`/catalog/brands/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteBrand: (id) => request(`/catalog/brands/${id}/`, { method: 'DELETE' }),
+  getBrands: (includeModels = false, all = false, categoryId = null) => {
+    const url = `/catalog/brands/?include_models=${includeModels}&all=${all}${categoryId ? `&category=${categoryId}` : ''}`;
+    return all || includeModels ? request(url) : cachedRequest(url);
+  },
+  createBrand: (data) => { clearCatalogCache(); return request('/catalog/brands/', { method: 'POST', body: JSON.stringify(data) }); },
+  updateBrand: (id, data) => { clearCatalogCache(); return request(`/catalog/brands/${id}/`, { method: 'PUT', body: JSON.stringify(data) }); },
+  deleteBrand: (id) => { clearCatalogCache(); return request(`/catalog/brands/${id}/`, { method: 'DELETE' }); },
 
-  getSeries: (brandId) => request(`/catalog/series/?${brandId ? `brand=${brandId}` : ''}`),
-  createSeries: (data) => request('/catalog/series/', { method: 'POST', body: JSON.stringify(data) }),
-  updateSeries: (id, data) => request(`/catalog/series/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteSeries: (id) => request(`/catalog/series/${id}/`, { method: 'DELETE' }),
+  getSeries: (brandId) => cachedRequest(`/catalog/series/?${brandId ? `brand=${brandId}` : ''}`),
+  createSeries: (data) => { clearCatalogCache(); return request('/catalog/series/', { method: 'POST', body: JSON.stringify(data) }); },
+  updateSeries: (id, data) => { clearCatalogCache(); return request(`/catalog/series/${id}/`, { method: 'PUT', body: JSON.stringify(data) }); },
+  deleteSeries: (id) => { clearCatalogCache(); return request(`/catalog/series/${id}/`, { method: 'DELETE' }); },
 
   getModels: (brandId, all = false, seriesId = null) => 
     request(`/catalog/models/?${brandId ? `brand=${brandId}&` : ''}${seriesId ? `series=${seriesId}&` : ''}all=${all}`),
   getModelDetail: (id) => request(`/catalog/models/${id}/`),
-  createModel: (data) => request('/catalog/models/', { method: 'POST', body: JSON.stringify(data) }),
-  updateModel: (id, data) => request(`/catalog/models/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteModel: (id) => request(`/catalog/models/${id}/`, { method: 'DELETE' }),
+  createModel: (data) => { clearCatalogCache(); return request('/catalog/models/', { method: 'POST', body: JSON.stringify(data) }); },
+  updateModel: (id, data) => { clearCatalogCache(); return request(`/catalog/models/${id}/`, { method: 'PUT', body: JSON.stringify(data) }); },
+  deleteModel: (id) => { clearCatalogCache(); return request(`/catalog/models/${id}/`, { method: 'DELETE' }); },
 
-  getCMSSections: () => request('/catalog/cms/sections/'),
-  updateCMSSection: (data) => request('/catalog/cms/sections/', { method: 'POST', body: JSON.stringify(data) }),
+  getCMSSections: () => cachedRequest('/catalog/cms/sections/'),
+  updateCMSSection: (data) => { clearCatalogCache(); return request('/catalog/cms/sections/', { method: 'POST', body: JSON.stringify(data) }); },
   getSystemSettings: () => request('/catalog/settings/'),
   updateSystemSettings: (data) => request('/catalog/settings/', { method: 'POST', body: JSON.stringify(data) }),
 

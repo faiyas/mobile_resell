@@ -43,6 +43,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
   // Dynamic DB Lists
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
+  const [brandsLoading, setBrandsLoading] = useState(true);
   const [seriesList, setSeriesList] = useState([]);
   const [models, setModels] = useState([]);
   const [questionSteps, setQuestionSteps] = useState([]);
@@ -240,7 +241,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
     return list;
   };
 
-  // Initial Load: Categories & Dynamic Questionnaire from DB
+  // Initial Load: Categories, Brands & CMS in ONE Parallel Batch (0ms on repeat via SWR)
   useEffect(() => {
     loadInitialData();
   }, []);
@@ -260,13 +261,18 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
 
   const loadInitialData = async () => {
     try {
-      const [cats, qSteps, cmsData] = await Promise.all([
-        api.getCategories(),
-        api.getConditionCategories(),
+      setBrandsLoading(true);
+      // 1. Fetch Categories, Initial Brands, and Hero CMS simultaneously (0ms when cached)
+      const [cats, initialBrands, cmsData] = await Promise.all([
+        api.getCategories().catch(() => []),
+        api.getBrands(false, false).catch(() => []),
         api.getCMSSections().catch(() => []),
       ]);
       setCategories(cats);
-      setQuestionSteps(deduplicateSteps(qSteps));
+      if (Array.isArray(initialBrands) && initialBrands.length > 0) {
+        setBrands(initialBrands);
+      }
+      setBrandsLoading(false);
 
       const heroSec = (cmsData || []).find((s) => s.section_type === 'HERO_CAROUSEL');
       if (heroSec && Array.isArray(heroSec.data_json?.slides)) {
@@ -277,10 +283,16 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
       }
 
       if (cats.length > 0) {
-        handleSelectCategory(cats[0]);
+        setSelectedCategory(cats[0]);
       }
+
+      // 2. Pre-fetch condition categories questionnaire in background so it never blocks front page paint
+      api.getConditionCategories().then((qSteps) => {
+        setQuestionSteps(deduplicateSteps(qSteps));
+      }).catch(() => {});
     } catch (err) {
       console.error("Initial load failed:", err);
+      setBrandsLoading(false);
     }
   };
 
@@ -289,11 +301,14 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
     setSelectedBrand(null);
     setSelectedModel(null);
     setSelectedVariant(null);
+    setBrandsLoading(true);
     try {
       const brandsData = await api.getBrands(false, false, category.id);
       setBrands(brandsData);
     } catch (e) {
       console.error(e);
+    } finally {
+      setBrandsLoading(false);
     }
   };
 
@@ -605,22 +620,32 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 pt-2">
-            {filteredBrands.map((brand) => (
-              <div
-                key={brand.id}
-                onClick={() => handleSelectBrand(brand)}
-                className="group cursor-pointer glass-card glass-card-hover rounded-2xl p-4 text-center transition flex flex-col items-center justify-center min-h-[140px]"
-              >
-                <div className="w-16 h-12 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                  {brand.logo_base64 ? (
-                    <img src={brand.logo_base64} alt={brand.name} className="max-h-10 max-w-full object-contain" />
-                  ) : (
-                    <Smartphone className="w-8 h-8 text-[#0BAA4B]" />
-                  )}
+            {brandsLoading && brands.length === 0 ? (
+              // Fast Shimmer Skeleton Cards during initial cold fetch
+              Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="animate-pulse glass-card rounded-2xl p-4 flex flex-col items-center justify-center min-h-[140px] bg-white/50">
+                  <div className="w-14 h-10 bg-slate-200/80 rounded-xl mb-3"></div>
+                  <div className="w-20 h-3.5 bg-slate-200/80 rounded-full"></div>
                 </div>
-                <h4 className="font-black text-[#17251C] text-xs sm:text-sm group-hover:text-[#0BAA4B] transition">{brand.name}</h4>
-              </div>
-            ))}
+              ))
+            ) : (
+              filteredBrands.map((brand) => (
+                <div
+                  key={brand.id}
+                  onClick={() => handleSelectBrand(brand)}
+                  className="group cursor-pointer glass-card glass-card-hover rounded-2xl p-4 text-center transition flex flex-col items-center justify-center min-h-[140px]"
+                >
+                  <div className="w-16 h-12 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                    {brand.logo_base64 ? (
+                      <img src={brand.logo_base64} alt={brand.name} className="max-h-10 max-w-full object-contain" />
+                    ) : (
+                      <Smartphone className="w-8 h-8 text-[#0BAA4B]" />
+                    )}
+                  </div>
+                  <h4 className="font-black text-[#17251C] text-xs sm:text-sm group-hover:text-[#0BAA4B] transition">{brand.name}</h4>
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
