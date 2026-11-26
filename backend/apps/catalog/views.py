@@ -474,3 +474,18 @@ def catalog_sync_bundle_view(request):
         'conditions': conditions_data,
     })
 
+# ================= 8. FAST CATALOG STATS / COUNTS (Instant 1ms response) =================
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def catalog_stats_view(request):
+    """Fast endpoint returning entity counts for admin dashboard sidebar without serializing heavy models."""
+    from apps.valuation.models import ConditionOption
+    return Response({
+        'deviceCategories': DeviceCategory.objects.count(),
+        'brands': Brand.objects.count(),
+        'models': PhoneModel.objects.count(),
+        'variants': StorageVariant.objects.count(),
+        'cms': CMSHomeSection.objects.count(),
+        'options': ConditionOption.objects.count(),
+    })
+

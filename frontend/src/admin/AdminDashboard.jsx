@@ -405,32 +405,30 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [salesData, paymentsData, catsData, agentsData, customersData, dCats, brandsData, modelsData, cmsData, optsData] = await Promise.all([
-        api.getSales(),
+      // Fast parallel fetch: Only fetch operational data & instant 1ms counts summary
+      const [salesData, paymentsData, catsData, agentsData, customersData, statsData] = await Promise.all([
+        api.getSales().catch(() => []),
         api.getPaymentsList().catch(() => ({ total_count: 0, total_disbursed: 0, payments: [] })),
         api.getConditionCategories().catch(() => []),
         api.getAgents().catch(() => []),
         api.getCustomers().catch(() => []),
-        api.getCategories(true).catch(() => []),
-        api.getBrands(true, true).catch(() => []),
-        api.getModels(null, true).catch(() => []),
-        api.getCMSSections().catch(() => []),
-        api.getConditionOptions().catch(() => [])
+        api.getCatalogStats().catch(() => ({})),
       ]);
-      setSales(salesData);
-      setPaymentsList(paymentsData);
-      setConditionCategories(catsData);
-      setAgents(agentsData);
-      setCustomers(customersData);
-      setCatalogueModels(modelsData || []);
-      setCatalogueCounts({
-        deviceCategories: (dCats || []).length,
-        brands: (brandsData || []).length,
-        models: (modelsData || []).length,
-        variants: (modelsData || []).reduce((acc, m) => acc + (m.variants?.length || 0), 0) || (modelsData || []).length,
-        options: (optsData || []).length,
-        cms: (cmsData || []).length
-      });
+      setSales(salesData || []);
+      setPaymentsList(paymentsData || { total_count: 0, total_disbursed: 0, payments: [] });
+      setConditionCategories(catsData || []);
+      setAgents(agentsData || []);
+      setCustomers(customersData || []);
+      if (statsData) {
+        setCatalogueCounts({
+          deviceCategories: statsData.deviceCategories || 0,
+          brands: statsData.brands || 0,
+          models: statsData.models || 0,
+          variants: statsData.variants || 0,
+          options: statsData.options || 0,
+          cms: statsData.cms || 0
+        });
+      }
     } catch (e) {
       console.error(e);
     } finally {

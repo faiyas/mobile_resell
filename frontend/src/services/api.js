@@ -123,6 +123,7 @@ export const api = {
   deleteCustomer: (id) => request(`/auth/customers/${id}/?action=delete`, { method: 'DELETE' }),
 
   // Catalog & Categories (Cached via SWR for instant 0ms front-page paints)
+  getCatalogStats: () => request('/catalog/stats/'),
   getCategories: (all = false) => (all ? request(`/catalog/categories/?all=true`) : cachedRequest('/catalog/categories/?all=false')),
   createCategory: (data) => { clearCatalogCache(); return request('/catalog/categories/', { method: 'POST', body: JSON.stringify(data) }); },
   updateCategory: (id, data) => { clearCatalogCache(); return request(`/catalog/categories/${id}/`, { method: 'PUT', body: JSON.stringify(data) }); },
