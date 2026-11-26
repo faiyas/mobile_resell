@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Dolly Buyback - Universal Automated Database Backup Script
-# Supports both MariaDB / MySQL and SQLite3 with 7-day rolling rotation
+# Supports both MariaDB / MySQL and SQLite3 with strict 2-file storage retention (~20MB max)
+# Recommended Weekly Schedule: Run every Sunday at 2:30 AM
 # ==============================================================================
 
 set -o pipefail
@@ -102,10 +103,22 @@ else
     exit 1
 fi
 
-# 3. Clean up old backups (older than 7 days)
-echo "[*] Removing backups older than ${RETENTION_DAYS} days..."
-find "$BACKUP_DIR" -type f \( -name "*.sql.gz" -o -name "*.db.gz" \) -mtime +"$RETENTION_DAYS" -exec rm -vf {} \; 2>/dev/null || true
+# 3. Space-saving cleanup: Keep only the latest 2 backups (max ~20MB total storage)
+MAX_KEEP=2
+echo "[*] Space conservation: Keeping only the latest ${MAX_KEEP} backups, purging older ones..."
+cd "$BACKUP_DIR"
+FILES_TO_REMOVE=$(ls -1t *.gz 2>/dev/null | tail -n +$((MAX_KEEP + 1)) || true)
+if [ -n "$FILES_TO_REMOVE" ]; then
+    echo "$FILES_TO_REMOVE" | while read -r old_file; do
+        if [ -n "$old_file" ] && [ -f "$old_file" ]; then
+            echo "[-] Deleted old backup to conserve disk space: $old_file"
+            rm -f "$old_file"
+        fi
+    done
+else
+    echo "[*] Storage clean: Total backup count is within the ${MAX_KEEP}-file limit (~20MB max)."
+fi
 
 echo "================================================================="
-echo "✅ BACKUP PROCESS FINISHED SUCCESSFULLY"
+echo "✅ BACKUP PROCESS FINISHED (DISK SPACE CONSERVED)"
 echo "================================================================="
