@@ -301,6 +301,15 @@ class PhoneSaleCreateSerializer(serializers.Serializer):
     customer_name = serializers.CharField(max_length=150)
     customer_phone = serializers.CharField(max_length=20)
     customer_email = serializers.EmailField(required=False, allow_blank=True)
+
+    def validate_customer_phone(self, value):
+        raw = str(value or '').strip()
+        digits = ''.join(c for c in raw if c.isdigit())
+        if digits.startswith('91') and len(digits) == 12:
+            digits = digits[2:]
+        if len(digits) < 10:
+            raise serializers.ValidationError("Please provide a valid 10-digit mobile number.")
+        return digits[-10:]
     pickup_address = serializers.CharField()
     pickup_city = serializers.CharField(max_length=100, default='City')
     pickup_pincode = serializers.CharField(max_length=10)
