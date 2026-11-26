@@ -114,6 +114,21 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
   const [options, setConditionOptions] = useState([]);
   const [priceHistory, setPriceHistory] = useState([]);
 
+  // Initial Health Check (4 Yes/No Triage Questions)
+  const [triageQuestions, setTriageQuestions] = useState([]);
+  const [triageModalOpen, setTriageModalOpen] = useState(false);
+  const [editingTriage, setEditingTriage] = useState(null);
+  const [triageForm, setTriageForm] = useState({
+    code: '',
+    question_text: '',
+    subtitle: '',
+    is_power_on_gate: false,
+    deduction_type: 'PERCENTAGE',
+    deduction_value_on_no: 10,
+    display_order: 1,
+    is_active: true
+  });
+
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBrandId, setFilterBrandId] = useState('');
@@ -263,30 +278,86 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
     }
   };
 
+  const handleOpenTriageModal = (q = null) => {
+    if (q) {
+      setEditingTriage(q);
+      setTriageForm({
+        code: q.code || '',
+        question_text: q.question_text || '',
+        subtitle: q.subtitle || '',
+        is_power_on_gate: !!q.is_power_on_gate,
+        deduction_type: q.deduction_type || 'PERCENTAGE',
+        deduction_value_on_no: q.deduction_value_on_no !== undefined ? q.deduction_value_on_no : 10,
+        display_order: q.display_order || 1,
+        is_active: q.is_active !== undefined ? q.is_active : true
+      });
+    } else {
+      setEditingTriage(null);
+      setTriageForm({
+        code: `TRIAGE_${Date.now()}`,
+        question_text: '',
+        subtitle: '',
+        is_power_on_gate: false,
+        deduction_type: 'PERCENTAGE',
+        deduction_value_on_no: 10,
+        display_order: triageQuestions.length + 1,
+        is_active: true
+      });
+    }
+    setTriageModalOpen(true);
+  };
+
+  const handleSaveTriageQuestion = async (e) => {
+    e?.preventDefault();
+    try {
+      if (editingTriage) {
+        await api.updateTriageQuestion(editingTriage.id, triageForm);
+        showFeedback('success', 'Health check question updated successfully');
+      } else {
+        await api.createTriageQuestion(triageForm);
+        showFeedback('success', 'Health check question created successfully');
+      }
+      setTriageModalOpen(false);
+      const updated = await api.getTriageQuestions(true);
+      setTriageQuestions(updated);
+    } catch (err) {
+      showFeedback('error', err.message || 'Failed to save health check question');
+    }
+  };
+
+  const handleDeleteTriageQuestion = async (q) => {
+    if (!window.confirm(`Delete question: "${q.question_text}"?`)) return;
+    try {
+      await api.deleteTriageQuestion(q.id, true);
+      showFeedback('success', 'Question deleted successfully');
+      const updated = await api.getTriageQuestions(true);
+      setTriageQuestions(updated);
+    } catch (err) {
+      showFeedback('error', err.message || 'Failed to delete question');
+    }
+  };
+
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [bData, mData, vData, cData, oData, hData, dCats, sData, cmsData] = await Promise.all([
+      // PHASE 1: Lightning-fast core endpoints (< 250ms total)
+      const [bData, cData, oData, dCats, sData, cmsData, tqData] = await Promise.all([
         api.getBrands(false, true).catch(() => []),
-        api.getModels('', true).catch(() => []),
-        api.getVariants('', true).catch(() => []),
         api.getConditionCategories(true).catch(() => []),
         api.getConditionOptions('', true).catch(() => []),
-        api.getPriceHistory().catch(() => []),
         api.getCategories(true).catch(() => []),
         api.getSeries().catch(() => []),
         api.getCMSSections().catch(() => []),
+        api.getTriageQuestions(true).catch(() => []),
       ]);
 
       setBrands(bData);
-      setModels(mData);
-      setVariants(vData);
       setConditionCategories(cData);
       setConditionOptions(oData);
-      setPriceHistory(hData);
       setDeviceCategories(dCats);
       setSeriesList(sData);
       setCmsSections(cmsData);
+      setTriageQuestions(tqData);
 
       if (cmsData.length > 0) {
         const heroSec = cmsData.find(s => s.section_type === 'HERO_CAROUSEL') || cmsData[0];
@@ -335,10 +406,24 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
 
       // Default simulator selections
       if (bData.length > 0 && !simBrandId) setSimBrandId(bData[0].id.toString());
+
+      // Release loading immediately so Questionnaire & Banners are interactive without waiting!
+      setLoading(false);
+
+      // PHASE 2: Background fetch heavy tables (2,158 models & 3,514 variants) asynchronously
+      Promise.all([
+        api.getModels('', true).catch(() => []),
+        api.getVariants('', true).catch(() => []),
+        api.getPriceHistory().catch(() => [])
+      ]).then(([mData, vData, hData]) => {
+        if (mData && mData.length > 0) setModels(mData);
+        if (vData && vData.length > 0) setVariants(vData);
+        if (hData && hData.length > 0) setPriceHistory(hData);
+      }).catch(() => {});
+
     } catch (err) {
       console.error(err);
       showFeedback('error', 'Failed to load catalogue data');
-    } finally {
       setLoading(false);
     }
   };
@@ -1479,6 +1564,90 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
               >
                 <Plus className="w-4 h-4" /> Add Questionnaire Step
               </button>
+            </div>
+          </div>
+
+          {/* ================= 0. INITIAL HEALTH CHECK YES/NO TRIAGE GATE ================= */}
+          <div className="bg-gradient-to-r from-rose-50 via-white to-red-50/40 rounded-2xl p-5 border border-rose-200/80 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🩺</span>
+                  <h4 className="text-sm font-black text-slate-900 tracking-tight">
+                    Initial Health Check Gate ({triageQuestions.length} Questions)
+                  </h4>
+                  <span className="text-[10px] bg-rose-100 text-rose-700 px-2.5 py-0.5 rounded-full font-bold">
+                    Step 0 · Screen Before Defect Questions
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Customers answer these Yes/No screening questions first on the mobile app. If Question 1 is answered "No", the app immediately locks to Dead Phone valuation.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleOpenTriageModal()}
+                className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Triage Question
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              {triageQuestions.map((tq, idx) => (
+                <div
+                  key={tq.id || idx}
+                  className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs hover:border-rose-300 transition flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-xs font-black text-slate-900 leading-snug">
+                        {idx + 1}. {tq.question_text}
+                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenTriageModal(tq)}
+                          className="p-1 text-slate-500 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
+                          title="Edit Question"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteTriageQuestion(tq)}
+                          className="p-1 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
+                          title="Delete Question"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    {tq.subtitle && (
+                      <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+                        {tq.subtitle}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                    <div className="flex items-center gap-1.5">
+                      {tq.is_power_on_gate ? (
+                        <span className="bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          ⚡ Power-On Gate
+                        </span>
+                      ) : (
+                        <span className="bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
+                          Progressive Reveal
+                        </span>
+                      )}
+                    </div>
+                    <span className="font-extrabold text-rose-600">
+                      Deduct on "No": {tq.deduction_type === 'PERCENTAGE' ? `${tq.deduction_value_on_no}%` : `₹${tq.deduction_value_on_no}`}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -3701,6 +3870,124 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
               className="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-bold shadow-md"
             >
               Save Series
+            </button>
+          </div>
+        </form>
+      </ResponsiveModal>
+
+      {/* ================= TRIAGE QUESTION (YES/NO HEALTH CHECK) MODAL ================= */}
+      <ResponsiveModal
+        isOpen={triageModalOpen}
+        onClose={() => setTriageModalOpen(false)}
+        title={editingTriage ? `Edit Health Check Question` : 'Add Health Check Question'}
+      >
+        <form onSubmit={handleSaveTriageQuestion} className="space-y-4 text-xs">
+          <div>
+            <label className="block font-black text-slate-800 mb-1">Question Text *</label>
+            <input
+              type="text"
+              required
+              value={triageForm.question_text}
+              onChange={(e) => setTriageForm({ ...triageForm, question_text: e.target.value })}
+              placeholder="e.g. Is the phone in proper working condition?"
+              className="w-full p-2.5 border border-slate-300 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block font-bold text-slate-700 mb-1">Subtitle / Customer Instruction</label>
+            <textarea
+              rows={2}
+              value={triageForm.subtitle}
+              onChange={(e) => setTriageForm({ ...triageForm, subtitle: e.target.value })}
+              placeholder="e.g. Check if the phone powers on and confirm that it is in working condition"
+              className="w-full p-2.5 border border-slate-300 rounded-xl text-slate-700 focus:ring-2 focus:ring-rose-500 focus:outline-none"
+            />
+          </div>
+
+          {/* Power-On Gate Feature Toggle */}
+          <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl space-y-1.5">
+            <label className="flex items-center gap-2 cursor-pointer font-black text-rose-900">
+              <input
+                type="checkbox"
+                checked={triageForm.is_power_on_gate}
+                onChange={(e) => setTriageForm({ ...triageForm, is_power_on_gate: e.target.checked })}
+                className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500"
+              />
+              <span>⚡ Power-On Gate (Dead Phone Logic)</span>
+            </label>
+            <p className="text-[11px] text-rose-700/90 pl-6 leading-relaxed">
+              If customer clicks <strong>"No"</strong>, all following questions are hidden and the bottom button switches to <strong>"Finish"</strong>, taking the user straight to Dead Phone valuation.
+            </p>
+          </div>
+
+          {/* Deduction Type & Value */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Deduction Type</label>
+              <select
+                value={triageForm.deduction_type}
+                onChange={(e) => setTriageForm({ ...triageForm, deduction_type: e.target.value })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-bold bg-white focus:outline-none"
+              >
+                <option value="PERCENTAGE">Percentage (%)</option>
+                <option value="FIXED">Flat Rupee (₹)</option>
+              </select>
+            </div>
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">
+                Deduct on "No" {triageForm.deduction_type === 'PERCENTAGE' ? '(%)' : '(₹)'} *
+              </label>
+              <input
+                type="number"
+                step="any"
+                min="0"
+                required
+                value={triageForm.deduction_value_on_no}
+                onChange={(e) => setTriageForm({ ...triageForm, deduction_value_on_no: parseFloat(e.target.value) || 0 })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Display Order & Active status */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-bold text-slate-700 mb-1">Display Order</label>
+              <input
+                type="number"
+                min="1"
+                value={triageForm.display_order}
+                onChange={(e) => setTriageForm({ ...triageForm, display_order: parseInt(e.target.value) || 1 })}
+                className="w-full p-2.5 border border-slate-300 rounded-xl font-bold focus:outline-none"
+              />
+            </div>
+            <div className="flex items-center pt-5">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800">
+                <input
+                  type="checkbox"
+                  checked={triageForm.is_active}
+                  onChange={(e) => setTriageForm({ ...triageForm, is_active: e.target.checked })}
+                  className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500"
+                />
+                <span>Active in App</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-3 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setTriageModalOpen(false)}
+              className="w-1/2 border border-slate-300 py-2.5 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="w-1/2 bg-rose-600 hover:bg-rose-700 text-white py-2.5 rounded-xl font-bold shadow-md transition"
+            >
+              {editingTriage ? 'Update Question' : 'Create Question'}
             </button>
           </div>
         </form>

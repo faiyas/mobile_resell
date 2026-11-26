@@ -168,6 +168,12 @@ export const api = {
   bulkDeleteCatalog: (target, ids = [], all = false) => request('/catalog/bulk-delete/', { method: 'POST', body: JSON.stringify({ target, ids, all }) }),
 
   // Valuation & Dynamic Pricing
+  // Initial Health Check (4 Yes/No Triage Questions)
+  getTriageQuestions: (all = true) => request(`/valuation/triage-questions/?all=${all}`),
+  createTriageQuestion: (data) => request('/valuation/triage-questions/', { method: 'POST', body: JSON.stringify(data) }),
+  updateTriageQuestion: (id, data) => request(`/valuation/triage-questions/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTriageQuestion: (id, permanent = false) => request(`/valuation/triage-questions/${id}/?permanent=${permanent}`, { method: 'DELETE' }),
+
   getConditionCategories: (all = false, brandId = '') => request(`/valuation/conditions/?all=${all}${brandId ? `&brand=${brandId}` : ''}`),
   createConditionCategory: (data) => request('/valuation/conditions/', { method: 'POST', body: JSON.stringify(data) }),
   updateConditionCategory: (id, data) => request(`/valuation/conditions/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),

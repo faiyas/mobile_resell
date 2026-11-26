@@ -415,8 +415,9 @@ def calculate_estimate_view(request):
 def triage_questions_view(request):
     """List or create Initial Health Check Yes/No questions"""
     if request.method == 'GET':
-        questions = EvaluationTriageQuestion.objects.filter(is_active=True).order_by('display_order')
-        return Response(EvaluationTriageQuestionSerializer(questions, many=True).data)
+        include_all = request.GET.get('all', 'false').lower() == 'true'
+        questions = EvaluationTriageQuestion.objects.all() if include_all else EvaluationTriageQuestion.objects.filter(is_active=True)
+        return Response(EvaluationTriageQuestionSerializer(questions.order_by('display_order'), many=True).data)
 
     if not getattr(request.user, 'is_admin_role', False):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
@@ -449,8 +450,12 @@ def triage_question_detail_view(request, pk):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     elif request.method == 'DELETE':
-        q.is_active = False
-        q.save()
+        permanent = request.GET.get('permanent', 'false').lower() == 'true'
+        if permanent:
+            q.delete()
+        else:
+            q.is_active = not q.is_active  # Toggle active status or deactivate
+            q.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['GET'])
