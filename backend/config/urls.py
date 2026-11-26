@@ -3,6 +3,24 @@ from django.urls import path, include
 from django.http import JsonResponse
 from django.utils import timezone
 
+def custom_500_handler(request):
+    """Never leak tracebacks or database errors to client in production"""
+    return JsonResponse({
+        'status': 500,
+        'error': 'Internal Server Error',
+        'detail': 'An unexpected server error occurred. Please try again later or contact support.'
+    }, status=500)
+
+def custom_404_handler(request, exception=None):
+    return JsonResponse({
+        'status': 404,
+        'error': 'Not Found',
+        'detail': 'The requested API endpoint does not exist.'
+    }, status=404)
+
+handler500 = 'config.urls.custom_500_handler'
+handler404 = 'config.urls.custom_404_handler'
+
 def health_check(request):
     """Ultra-lightweight health endpoint for uptime monitors and keep-alive pingers"""
     return JsonResponse({

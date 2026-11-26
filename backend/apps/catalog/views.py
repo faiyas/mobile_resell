@@ -294,6 +294,24 @@ def variant_detail_view(request, pk):
                     changed_by=request.user,
                     reason=reason
                 )
+                try:
+                    from apps.sales.audit import log_security_audit
+                    log_security_audit(
+                        user=request.user,
+                        action='BASE_PRICE_CHANGED',
+                        target_type='StorageVariant',
+                        target_id=str(updated_variant.id),
+                        details={
+                            'model': str(updated_variant.model),
+                            'storage': updated_variant.storage,
+                            'old_price': str(old_price),
+                            'new_price': str(new_price),
+                            'reason': reason,
+                        },
+                        request=request
+                    )
+                except Exception:
+                    pass
 
             return Response(StorageVariantSerializer(updated_variant).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

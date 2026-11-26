@@ -100,6 +100,26 @@ def record_payout_view(request):
             sale.final_price = data['amount']
         sale.save()
 
+        # Audit log critical financial payout execution
+        try:
+            from apps.sales.audit import log_security_audit
+            log_security_audit(
+                user=request.user,
+                action='PAYOUT_RECORDED',
+                target_type='Payment',
+                target_id=str(payment.id),
+                details={
+                    'sale_code': sale.sale_code,
+                    'amount': str(data['amount']),
+                    'utr_number': data['utr_number'],
+                    'payment_method': data['payment_method'],
+                    'beneficiary_upi_id': sale.beneficiary_upi_id or '',
+                },
+                request=request
+            )
+        except Exception:
+            pass
+
     return Response({
         'message': f"Payment for {sale.sale_code} successfully recorded. Order marked as PAID!",
         'payment': PaymentDetailSerializer(payment).data,

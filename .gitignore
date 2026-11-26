@@ -17,6 +17,8 @@ backend/db.sqlite3
 *.sqlite3
 backend/.env
 .env.local
+backend/.secret_key
+.secret_key
 
 # Node / Frontend
 frontend/node_modules/

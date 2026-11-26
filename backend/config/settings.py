@@ -17,7 +17,28 @@ for possible_env in [BASE_DIR / '.env', BASE_DIR.parent / '.env']:
         except Exception:
             pass
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-mobile-buyback-platform-secret-key-2026')
+# Secure dynamic SECRET_KEY generation (prevents weak or hardcoded keys in production)
+def _get_or_generate_secret_key():
+    key = os.environ.get('SECRET_KEY')
+    if key and len(key) >= 30 and not key.startswith('django-insecure-'):
+        return key
+    secret_file = BASE_DIR / '.secret_key'
+    if secret_file.exists():
+        try:
+            stored = secret_file.read_text(encoding='utf-8').strip()
+            if stored and len(stored) >= 30:
+                return stored
+        except Exception:
+            pass
+    import secrets
+    new_key = secrets.token_urlsafe(64)
+    try:
+        secret_file.write_text(new_key, encoding='utf-8')
+    except Exception:
+        pass
+    return new_key
+
+SECRET_KEY = _get_or_generate_secret_key()
 
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
@@ -161,8 +182,50 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 
-# CORS settings for Vercel and cross-origin frontend
-CORS_ALLOW_ALL_ORIGINS = True
+# Production SSL & Cookie Hardening
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    SECURE_HSTS_SECONDS = int(os.environ.get('SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = os.environ.get('SECURE_SSL_REDIRECT', 'False').lower() == 'true'
+
+# CSRF Trusted Origins
+CSRF_TRUSTED_ORIGINS = [
+    'https://mobile-resell.vercel.app',
+    'https://*.vercel.app',
+    'https://*.instabox.tech',
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+]
+
+extra_origins = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+if extra_origins:
+    for o in extra_origins.split(','):
+        if o.strip():
+            CSRF_TRUSTED_ORIGINS.append(o.strip())
+
+# CORS Configuration
+if DEBUG:
+    CORS_ALLOW_ALL_ORIGINS = True
+else:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = [
+        'https://mobile-resell.vercel.app',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+    ]
+    if extra_origins:
+        for o in extra_origins.split(','):
+            if o.strip():
+                CORS_ALLOWED_ORIGINS.append(o.strip())
+    CORS_ALLOWED_ORIGIN_REGEXES = [
+        r'^https:\/\/.*\.vercel\.app$',
+        r'^https:\/\/.*\.instabox\.tech$',
+    ]
+
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -209,6 +272,13 @@ LOGGING = {
             'backupCount': 5,
             'formatter': 'verbose',
         },
+        'audit_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': LOGS_DIR / 'audit.log',
+            'maxBytes': 15 * 1024 * 1024,  # 15 MB
+            'backupCount': 10,
+            'formatter': 'simple',
+        },
     },
     'loggers': {
         'django': {
@@ -219,6 +289,11 @@ LOGGING = {
         'apps': {
             'handlers': ['console', 'file'],
             'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'apps.audit': {
+            'handlers': ['console', 'audit_file'],
+            'level': 'INFO',
             'propagate': False,
         },
     },
