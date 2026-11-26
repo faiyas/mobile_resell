@@ -1,17 +1,8 @@
 import os
-import io
 import json
-import time
-import base64
-import requests
 import django
-from PIL import Image
 
-try:
-    import fitz
-except ImportError:
-    fitz = None
-
+# Initialize Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
@@ -45,9 +36,17 @@ BRAND_URLS = {
     'nubia': 'https://upload.wikimedia.org/wikipedia/commons/7/77/Nubia_Technology_logo.svg',
 }
 
-headers = {'User-Agent': 'DollyBuybackCatalog/1.0 (contact@dollyresell.com)'}
-
 def fetch_and_convert_to_png_base64(url):
+    import io
+    import base64
+    import requests
+    from PIL import Image
+    try:
+        import fitz
+    except ImportError:
+        fitz = None
+
+    headers = {'User-Agent': 'DollyBuybackCatalog/1.0 (contact@dollyresell.com)'}
     r = requests.get(url, headers=headers, timeout=12)
     if r.status_code != 200:
         raise Exception(f"HTTP {r.status_code}")
@@ -81,13 +80,13 @@ def fetch_and_convert_to_png_base64(url):
 def run():
     print("=== SEEDING ALL 25 BRAND LOGOS ===")
     
-    # 1. Fast path: load pre-converted high quality PNG logos if JSON exists
+    # 1. Fast path: load pre-converted high quality PNG logos from JSON (zero external dependencies)
     json_path = os.path.join(os.path.dirname(__file__), 'brand_logos.json')
     if os.path.exists(json_path):
         try:
             with open(json_path, 'r', encoding='utf-8') as f:
                 cached_logos = json.load(f)
-            print(f"[*] Found pre-converted brand_logos.json with {len(cached_logos)} logos.")
+            print(f"[*] Found pre-converted brand_logos.json ({len(cached_logos)} logos).")
             updated = 0
             for brand_name, b64_str in cached_logos.items():
                 brand = Brand.objects.filter(name__iexact=brand_name).first()
@@ -96,12 +95,15 @@ def run():
                     brand.save(update_fields=['logo_base64'])
                     print(f"  [✓] Updated logo for '{brand.name}'")
                     updated += 1
+                else:
+                    print(f"  [-] Brand '{brand_name}' not in DB")
             print(f"\n[+] Successfully seeded {updated}/25 brand logos instantly!\n")
             return
         except Exception as e:
             print(f"[-] Could not load cached JSON: {e}. Falling back to web fetch...")
 
-    # 2. Web fallback path
+    # 2. Web fallback path (only if brand_logos.json is missing)
+    import time
     success_count = 0
     for brand_name, url in BRAND_URLS.items():
         try:
