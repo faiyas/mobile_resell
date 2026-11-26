@@ -242,176 +242,51 @@ export default function App() {
       <main className="flex-1 pb-24 md:pb-12">
         
         {/* ================= 1. SELL PHONE (Customer & All) ================= */}
-        {activeTab === 'sell' && (() => {
-          const heroSection = cmsSections.find(s => s.section_type === 'hero_carousel');
-          const heroTitle = heroSection?.title || 'Sell Your Old Device for Instant Cash';
-          const heroSubtitle = heroSection?.subtitle || 'Get a fair, rule-based price estimate in 60 seconds. Our verified agent inspects your device at home and transfers money directly before leaving.';
-          const heroBadge = heroSection?.data_json?.badge || '1103 RECELL · Certified Doorstep Buyback';
-          const heroHighlights = heroSection?.data_json?.highlights || ['Free Doorstep Pickup', 'Instant UPI Payout', '100% Certified Data Wipe'];
-
-          return (
-            <div>
-              {/* If NOT logged in (Guest): Render public marketing landing page */}
-              {!currentUser ? (
-                <>
-                  {/* Dynamic Hero Banner (Glassmorphism Styled) */}
-                  <div className="py-8 sm:py-14 text-center px-4 relative overflow-hidden">
-                    <div className="max-w-4xl mx-auto space-y-3 sm:space-y-4 relative z-10">
-                      <div className="inline-flex items-center gap-1.5 sm:gap-2 glass-pill px-4 py-1.5 rounded-full text-[11px] sm:text-xs font-black text-[#087C38] shadow-sm">
-                        <Sparkles className="w-3.5 h-3.5 text-[#0BAA4B] shrink-0" />
-                        <span>{heroBadge}</span>
+        {activeTab === 'sell' && (
+          <div>
+            {currentUser && (
+              /* Logged-in Customer/User Workspace Banner */
+              <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-4 pb-1">
+                <div className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-emerald-200/60 bg-emerald-50/40">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] text-white flex items-center justify-center font-black shadow-md shadow-[#0BAA4B]/20">
+                      {currentUser.full_name ? currentUser.full_name[0].toUpperCase() : 'U'}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base sm:text-lg font-black text-[#17251C]">
+                          {currentUser.full_name || currentUser.email}
+                        </h2>
+                        <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200 uppercase">
+                          Verified {currentUser.role}
+                        </span>
                       </div>
-
-                      <h1 className="text-2xl sm:text-5xl font-black text-[#17251C] tracking-tight leading-tight px-1">
-                        {heroTitle.includes('Instant') ? (
-                          <>
-                            {heroTitle.split('Instant')[0]}
-                            <span className="text-[#0BAA4B]">Instant Cash</span>
-                            {heroTitle.split('Instant')[1]?.replace(/Cash/, '')}
-                          </>
-                        ) : (
-                          <>{heroTitle}</>
-                        )}
-                      </h1>
-
-                      <p className="text-xs sm:text-base text-[#7B8980] max-w-2xl mx-auto leading-relaxed px-2 font-medium">
-                        {heroSubtitle}
+                      <p className="text-xs text-[#7B8980]">
+                        Dolly Smart Buyback Engine · Instant Valuation & Doorstep Payout
                       </p>
-
-                      {/* Highlights from DB CMS */}
-                      <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 pt-2 text-[11px] sm:text-xs font-bold text-[#17251C]">
-                        {heroHighlights.map((hl, idx) => (
-                          <span key={idx} className="flex items-center gap-1.5 glass-card px-3.5 py-1.5 rounded-xl border border-white/80 shadow-sm">
-                            {idx === 0 ? <Truck className="w-3.5 h-3.5 text-[#0BAA4B] shrink-0" /> : idx === 1 ? <Banknote className="w-3.5 h-3.5 text-[#0BAA4B] shrink-0" /> : <Lock className="w-3.5 h-3.5 text-[#0BAA4B] shrink-0" />}
-                            <span>{hl}</span>
-                          </span>
-                        ))}
-                      </div>
                     </div>
                   </div>
-
-                  {/* 3 Giant Visual Glassmorphic Action Tiles */}
-                  <div className="max-w-5xl mx-auto px-3 sm:px-6 pt-2 sm:pt-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-5">
-                      
-                      {/* 1. SELL MY PHONE */}
-                      <div 
-                        onClick={() => {
-                          const el = document.getElementById('sell-wizard-anchor');
-                          if (el) el.scrollIntoView({ behavior: 'smooth' });
-                        }}
-                        className="cursor-pointer bg-gradient-to-br from-[#0BAA4B] to-[#06612A] text-white rounded-3xl p-5 sm:p-6 shadow-xl shadow-[#0BAA4B]/25 hover:scale-[1.02] transition flex flex-col justify-between group min-h-[140px] border border-white/30"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
-                            <Smartphone className="w-6 h-6 text-white" />
-                          </div>
-                          <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 backdrop-blur px-2.5 py-1 rounded-full border border-white/20">
-                            Instant Value
-                          </span>
-                        </div>
-                        <div>
-                          <h3 className="text-lg sm:text-xl font-black mt-3">Check Resale Value</h3>
-                          <p className="text-xs text-emerald-100 mt-0.5">Instant price estimate & free home pickup</p>
-                          <span className="inline-flex items-center gap-1 font-black text-xs mt-2 text-white">
-                            Get Instant Quote <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* 2. TRACK MY PHONE */}
-                      <div 
-                        onClick={() => setActiveTab('track')}
-                        className="cursor-pointer glass-card glass-card-hover rounded-3xl p-5 sm:p-6 transition flex flex-col justify-between group min-h-[140px]"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="w-12 h-12 rounded-2xl bg-[#E8F8ED] text-[#087C38] flex items-center justify-center border border-[#0BAA4B]/20">
-                            <Truck className="w-6 h-6" />
-                          </div>
-                          <span className="text-[10px] font-black uppercase tracking-wider bg-[#E8F8ED] text-[#087C38] px-2.5 py-1 rounded-full border border-[#0BAA4B]/20">
-                            Orders
-                          </span>
-                        </div>
-                        <div>
-                          <h3 className="text-lg sm:text-xl font-black text-[#17251C] mt-3">Track My Device</h3>
-                          <p className="text-xs text-[#7B8980] mt-0.5">Where is my assigned agent & inspection?</p>
-                          <span className="inline-flex items-center gap-1 font-black text-xs mt-2 text-[#0BAA4B]">
-                            Check Status <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* 3. MY PAYMENT */}
-                      <div 
-                        onClick={() => setActiveTab('track')}
-                        className="cursor-pointer glass-card glass-card-hover rounded-3xl p-5 sm:p-6 transition flex flex-col justify-between group min-h-[140px]"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="w-12 h-12 rounded-2xl bg-[#E8F8ED] text-[#087C38] flex items-center justify-center border border-[#0BAA4B]/20">
-                            <Banknote className="w-6 h-6" />
-                          </div>
-                          <span className="text-[10px] font-black uppercase tracking-wider bg-[#E8F8ED] text-[#087C38] px-2.5 py-1 rounded-full border border-[#0BAA4B]/20">
-                            Payouts
-                          </span>
-                        </div>
-                        <div>
-                          <h3 className="text-lg sm:text-xl font-black text-[#17251C] mt-3">My Payout Receipt</h3>
-                          <p className="text-xs text-[#7B8980] mt-0.5">UPI transfer receipt & UTR reference</p>
-                          <span className="inline-flex items-center gap-1 font-black text-xs mt-2 text-[#0BAA4B]">
-                            View Receipts <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                          </span>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-                </>
-              ) : (
-                /* Logged-in Customer/User Workspace Banner */
-                <div className="max-w-5xl mx-auto px-4 pt-6 pb-2">
-                  <div className="glass-card rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-emerald-200/60 bg-emerald-50/40">
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0BAA4B] to-[#087C38] text-white flex items-center justify-center font-black shadow-md shadow-[#0BAA4B]/20">
-                        {currentUser.full_name ? currentUser.full_name[0].toUpperCase() : 'U'}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-base sm:text-lg font-black text-[#17251C]">
-                            {currentUser.full_name || currentUser.email}
-                          </h2>
-                          <span className="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full border border-emerald-200 uppercase">
-                            Verified {currentUser.role}
-                          </span>
-                        </div>
-                        <p className="text-xs text-[#7B8980]">
-                          Dolly Smart Buyback Engine · Instant Valuation & Doorstep Payout · 1103 TechStudios
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setActiveTab('track')}
-                        className="text-xs font-bold text-[#087C38] bg-white hover:bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-200 shadow-sm transition flex items-center gap-1.5"
-                      >
-                        <Truck className="w-3.5 h-3.5" />
-                        My Orders & Pickups
-                      </button>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setActiveTab('track')}
+                      className="text-xs font-bold text-[#087C38] bg-white hover:bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-200 shadow-sm transition flex items-center gap-1.5"
+                    >
+                      <Truck className="w-3.5 h-3.5" />
+                      My Orders & Pickups
+                    </button>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              <div id="sell-wizard-anchor" className="pt-2" />
-
-              {/* Step-by-Step Selling Wizard */}
-              <SellWizard 
-                onOrderCreated={handleOrderCreated}
-                currentUser={currentUser}
-                onOpenAuth={() => setAuthModalOpen(true)}
-              />
-            </div>
-          );
-        })()}
+            {/* Main Selling Portal with Top Visual Hero Carousel */}
+            <SellWizard 
+              onOrderCreated={handleOrderCreated}
+              currentUser={currentUser}
+              onOpenAuth={() => setAuthModalOpen(true)}
+            />
+          </div>
+        )}
 
         {/* ================= 2. TRACK ORDER (Customer & All) ================= */}
         {activeTab === 'track' && (
