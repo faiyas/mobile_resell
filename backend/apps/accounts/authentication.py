@@ -27,15 +27,16 @@ class JWTAuthentication(authentication.BaseAuthentication):
         token = parts[1]
         try:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
-        except jwt.ExpiredSignatureError:
-            raise exceptions.AuthenticationFailed('Token has expired')
-        except jwt.InvalidTokenError:
-            raise exceptions.AuthenticationFailed('Invalid token')
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+            # Do not raise AuthenticationFailed here to avoid bricking public endpoints
+            # when a client has a stale or invalid token in localStorage.
+            # Protected endpoints with IsAuthenticated will still reject AnonymousUser cleanly.
+            return None
 
         try:
             user = User.objects.get(id=payload['user_id'])
         except User.DoesNotExist:
-            raise exceptions.AuthenticationFailed('User does not exist')
+            return None
 
         if not user.is_active:
             raise exceptions.AuthenticationFailed('User is deactivated')

@@ -27,7 +27,8 @@ export const setCurrentUser = (user) => localStorage.setItem('recell_user', JSON
 export const removeCurrentUser = () => localStorage.removeItem('recell_user');
 
 async function request(endpoint, options = {}) {
-  const token = getAuthToken();
+  const isAuthEndpoint = endpoint.includes('/auth/login') || endpoint.includes('/auth/register');
+  const token = !isAuthEndpoint ? getAuthToken() : null;
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
@@ -41,7 +42,13 @@ async function request(endpoint, options = {}) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    if (response.status === 401 && token) {
+    const isAuthError = response.status === 401 || (response.status === 403 && (
+      data.detail === 'Invalid token' ||
+      data.detail === 'Token has expired' ||
+      data.detail?.includes('authentication')
+    ));
+
+    if (isAuthError && getAuthToken()) {
       // Stale or invalid token - auto-purge to avoid stuck authentication
       removeAuthToken();
       removeCurrentUser();
