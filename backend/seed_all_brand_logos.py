@@ -1,5 +1,6 @@
 import os
 import io
+import json
 import time
 import base64
 import requests
@@ -78,7 +79,29 @@ def fetch_and_convert_to_png_base64(url):
     return f"data:image/png;base64,{b64_str}"
 
 def run():
-    print("=== SEEDING BRAND LOGOS ===")
+    print("=== SEEDING ALL 25 BRAND LOGOS ===")
+    
+    # 1. Fast path: load pre-converted high quality PNG logos if JSON exists
+    json_path = os.path.join(os.path.dirname(__file__), 'brand_logos.json')
+    if os.path.exists(json_path):
+        try:
+            with open(json_path, 'r', encoding='utf-8') as f:
+                cached_logos = json.load(f)
+            print(f"[*] Found pre-converted brand_logos.json with {len(cached_logos)} logos.")
+            updated = 0
+            for brand_name, b64_str in cached_logos.items():
+                brand = Brand.objects.filter(name__iexact=brand_name).first()
+                if brand:
+                    brand.logo_base64 = b64_str
+                    brand.save(update_fields=['logo_base64'])
+                    print(f"  [✓] Updated logo for '{brand.name}'")
+                    updated += 1
+            print(f"\n[+] Successfully seeded {updated}/25 brand logos instantly!\n")
+            return
+        except Exception as e:
+            print(f"[-] Could not load cached JSON: {e}. Falling back to web fetch...")
+
+    # 2. Web fallback path
     success_count = 0
     for brand_name, url in BRAND_URLS.items():
         try:
@@ -88,29 +111,16 @@ def run():
                 continue
 
             print(f"[*] Fetching logo for '{brand_name}' from {url}...")
-            b64_logo = fetch_and_convert_to_png_base64(url)
-            brand.logo_base64 = b64_logo
-            brand.save()
-            print(f"[+] Successfully seeded logo for '{brand_name}' ({len(b64_logo)} chars base64)")
+            b64_str = fetch_and_convert_to_png_base64(url)
+            brand.logo_base64 = b64_str
+            brand.save(update_fields=['logo_base64'])
+            print(f"  [+] Saved logo for '{brand_name}' ({len(b64_str)} chars)")
             success_count += 1
-            time.sleep(0.5)
+            time.sleep(0.2)
         except Exception as e:
-            print(f"[!] Error seeding '{brand_name}': {e}")
-            # Try a fallback if Lava simple-icon fails
-            if brand_name == 'Lava':
-                try:
-                    fallback_url = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Lava_company_head_office.jpg/330px-Lava_company_head_office.jpg'
-                    b64_logo = fetch_and_convert_to_png_base64(fallback_url)
-                    brand = Brand.objects.filter(name__iexact='Lava').first()
-                    if brand:
-                        brand.logo_base64 = b64_logo
-                        brand.save()
-                        print(f"[+] Fallback seeded logo for 'Lava'")
-                        success_count += 1
-                except Exception as ex2:
-                    print(f"[!] Lava fallback also failed: {ex2}")
+            print(f"  [!] Failed for '{brand_name}': {e}")
 
-    print(f"\nCompleted: {success_count}/{len(BRAND_URLS)} brand logos seeded successfully!")
+    print(f"\nFinished seeding: {success_count}/{len(BRAND_URLS)} logos updated successfully.")
 
 if __name__ == '__main__':
     run()
