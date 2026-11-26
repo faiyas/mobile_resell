@@ -1,7 +1,15 @@
 from decimal import Decimal
 from rest_framework import serializers
-from .models import ConditionCategory, ConditionOption, ModelPricingOverride, PriceHistory
+from .models import ConditionCategory, ConditionOption, ModelPricingOverride, PriceHistory, EvaluationTriageQuestion
 from apps.catalog.models import StorageVariant
+
+class EvaluationTriageQuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EvaluationTriageQuestion
+        fields = [
+            'id', 'code', 'question_text', 'subtitle', 'is_power_on_gate',
+            'deduction_type', 'deduction_value_on_no', 'display_order', 'is_active'
+        ]
 
 class ConditionOptionSerializer(serializers.ModelSerializer):
     category_name = serializers.ReadOnlyField(source='category.name')
@@ -43,6 +51,11 @@ class EstimateCalculationSerializer(serializers.Serializer):
         child=serializers.CharField(),
         required=False,
         default=list
+    )
+    triage_answers = serializers.DictField(
+        child=serializers.CharField(),
+        required=False,
+        default=dict
     )
 
 class PriceHistorySerializer(serializers.ModelSerializer):

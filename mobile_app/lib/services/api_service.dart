@@ -486,7 +486,11 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> calculateEstimate(int variantId, List<String> selectedOptionCodes) async {
+  Future<Map<String, dynamic>> calculateEstimate(
+    int variantId,
+    List<String> selectedOptionCodes, {
+    Map<String, String>? triageAnswers,
+  }) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/valuation/calculate-estimate/');
     final res = await http.post(
       url,
@@ -494,6 +498,7 @@ class ApiService {
       body: jsonEncode({
         'variant_id': variantId,
         'selected_option_codes': selectedOptionCodes,
+        'triage_answers': triageAnswers ?? {},
       }),
     );
 
@@ -503,6 +508,22 @@ class ApiService {
       final err = jsonDecode(res.body);
       throw Exception(err['detail'] ?? 'Failed to calculate estimate');
     }
+  }
+
+  Future<List<EvaluationTriageQuestionModel>> getTriageQuestions() async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/triage-questions/');
+    try {
+      final res = await http.get(url, headers: _headers);
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        if (decoded is List) {
+          return decoded.map((j) => EvaluationTriageQuestionModel.fromJson(Map<String, dynamic>.from(j))).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching triage questions: $e');
+    }
+    return [];
   }
 
   // ================= 5. SALES ORDERS & BOOKINGS =================

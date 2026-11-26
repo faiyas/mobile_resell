@@ -22,6 +22,7 @@ class QuoteAndBookingScreen extends StatefulWidget {
   final double? customExpectedPrice;
   final String? otherDefectsNotes;
   final Map<String, String>? customStepNotes;
+  final Map<String, String>? triageAnswers;
 
   const QuoteAndBookingScreen({
     super.key,
@@ -36,6 +37,7 @@ class QuoteAndBookingScreen extends StatefulWidget {
     this.customExpectedPrice,
     this.otherDefectsNotes,
     this.customStepNotes,
+    this.triageAnswers,
   });
 
   @override
@@ -151,6 +153,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
       final res = await _api.calculateEstimate(
         widget.variant.id,
         widget.selectedOptionCodes,
+        triageAnswers: widget.triageAnswers,
       );
 
       final isRejected = res['is_rejected'] == true || res['rejected'] == true;
@@ -274,6 +277,7 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
         'beneficiary_name': _nameController.text.trim(),
         'beneficiary_upi_id': _upiController.text.trim(),
         'selected_option_codes': widget.selectedOptionCodes,
+        'triage_answers': widget.triageAnswers ?? {},
         'is_custom_device': widget.isCustomDevice,
         'custom_device_name': widget.customDeviceName ?? (widget.isCustomDevice ? widget.model.name : ''),
         'custom_device_category': widget.customDeviceCategory ?? (widget.isCustomDevice ? widget.brand.name : 'Others'),

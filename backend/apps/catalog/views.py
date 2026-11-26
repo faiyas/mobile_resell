@@ -486,10 +486,16 @@ def catalog_sync_bundle_view(request):
     conditions_qs = ConditionCategory.objects.filter(is_active=True).prefetch_related('options').order_by('step_number', 'display_order')
     conditions_data = ConditionCategorySerializer(conditions_qs, many=True).data
 
+    from apps.valuation.models import EvaluationTriageQuestion
+    from apps.valuation.serializers import EvaluationTriageQuestionSerializer
+    triage_qs = EvaluationTriageQuestion.objects.filter(is_active=True).order_by('display_order')
+    triage_data = EvaluationTriageQuestionSerializer(triage_qs, many=True).data
+
     return Response({
         'series': series_data,
         'models': models_data,
         'conditions': conditions_data,
+        'triage_questions': triage_data,
     })
 
 # ================= 8. FAST CATALOG STATS / COUNTS (Instant 1ms response) =================

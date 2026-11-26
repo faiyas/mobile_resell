@@ -3,10 +3,15 @@ from .views import (
     condition_categories_view, condition_category_detail_view,
     condition_options_view, condition_option_detail_view,
     calculate_estimate_view, price_history_list_view,
-    copy_questions_from_brand_view, valuation_bulk_delete_view
+    copy_questions_from_brand_view, valuation_bulk_delete_view,
+    triage_questions_view, triage_question_detail_view
 )
 
 urlpatterns = [
+    # Pre-Qualification Initial Health Check Yes/No Questions
+    path('triage-questions/', triage_questions_view, name='valuation-triage-questions'),
+    path('triage-questions/<int:pk>/', triage_question_detail_view, name='valuation-triage-question-detail'),
+
     # Categories
     path('conditions/', condition_categories_view, name='valuation-conditions'),
     path('conditions/<int:pk>/', condition_category_detail_view, name='valuation-category-detail'),

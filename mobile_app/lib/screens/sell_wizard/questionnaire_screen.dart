@@ -22,6 +22,7 @@ class QuestionnaireScreen extends StatefulWidget {
   final int initialStepIndex;
   final List<String>? initialSelectedOptionCodes;
   final Map<String, String>? initialCustomStepNotes;
+  final Map<String, String>? triageAnswers;
 
   const QuestionnaireScreen({
     super.key,
@@ -37,6 +38,7 @@ class QuestionnaireScreen extends StatefulWidget {
     this.initialStepIndex = 0,
     this.initialSelectedOptionCodes,
     this.initialCustomStepNotes,
+    this.triageAnswers,
   });
 
   @override
@@ -350,6 +352,7 @@ class _QuestionnaireScreenState extends State<QuestionnaireScreen> {
             model: widget.model,
             variant: widget.variant,
             selectedOptionCodes: _selectedOptionCodes.toList(),
+            triageAnswers: widget.triageAnswers,
             isCustomDevice: widget.isCustomDevice,
             customDeviceName: widget.customDeviceName,
             customDeviceCategory: widget.customDeviceCategory,

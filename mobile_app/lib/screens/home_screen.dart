@@ -11,6 +11,7 @@ import '../services/draft_sell_service.dart';
 import '../services/customer_cache_service.dart';
 import '../widgets/glass_container.dart';
 import 'sell_wizard/category_selection_screen.dart';
+import 'sell_wizard/device_health_check_screen.dart';
 import 'sell_wizard/questionnaire_screen.dart';
 import 'sell_wizard/quote_and_booking_screen.dart';
 import 'orders/track_order_screen.dart';
@@ -500,7 +501,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => QuestionnaireScreen(
+                            builder: (_) => DeviceHealthCheckScreen(
                               brand: virtualBrand,
                               model: virtualModel,
                               variant: virtualVariant,

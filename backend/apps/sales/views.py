@@ -128,18 +128,48 @@ def sales_list_create_view(request):
         total_deduction = Decimal('0.00')
         answers_to_create = []
 
-        for opt in options:
-            if not opt.is_defect:
-                continue
-            if opt.id in overrides:
-                amt = overrides[opt.id]
-            else:
-                if opt.deduction_type == 'PERCENTAGE':
-                    amt = (base_price * opt.default_deduction_value) / Decimal('100.00')
+        # 1. Triage Health Check Deductions
+        triage_answers = data.get('triage_answers', {})
+        from apps.valuation.models import EvaluationTriageQuestion
+        triage_questions = list(EvaluationTriageQuestion.objects.filter(is_active=True).order_by('display_order'))
+        is_dead_device = False
+
+        for tq in triage_questions:
+            ans = str(triage_answers.get(tq.code, '')).strip().upper()
+            if ans == 'NO':
+                if tq.is_power_on_gate:
+                    is_dead_device = True
+                    floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
+                    amt = max(base_price - floor, Decimal('0.00'))
+                    total_deduction += amt
+                    answers_to_create.append((None, amt, f"{tq.question_text}: NO (Dead Device)"))
+                    break
                 else:
-                    amt = opt.default_deduction_value
-            total_deduction += amt
-            answers_to_create.append((opt, amt, ''))
+                    if tq.deduction_type == 'PERCENTAGE':
+                        amt = (base_price * tq.deduction_value_on_no) / Decimal('100.00')
+                    else:
+                        amt = tq.deduction_value_on_no
+                    total_deduction += amt
+                    answers_to_create.append((None, amt, f"{tq.question_text}: NO"))
+
+        # 2. Condition Options Deductions (if phone turns on)
+        if not is_dead_device:
+            for opt in options:
+                if not opt.is_defect:
+                    continue
+                if opt.id in overrides:
+                    override_val = overrides[opt.id]
+                    if opt.deduction_type == 'PERCENTAGE':
+                        amt = (base_price * override_val) / Decimal('100.00')
+                    else:
+                        amt = override_val
+                else:
+                    if opt.deduction_type == 'PERCENTAGE':
+                        amt = (base_price * opt.default_deduction_value) / Decimal('100.00')
+                    else:
+                        amt = opt.default_deduction_value
+                total_deduction += amt
+                answers_to_create.append((opt, amt, ''))
 
         min_floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
         estimated_price = max(base_price - total_deduction, min_floor)

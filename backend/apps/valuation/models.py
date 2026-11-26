@@ -88,3 +88,36 @@ class PriceHistory(models.Model):
 
     def __str__(self):
         return f"{self.variant} changed: ₹{self.old_base_price} -> ₹{self.new_base_price}"
+
+class EvaluationTriageQuestion(models.Model):
+    """
+    Initial Pre-Qualification Yes/No Health Check Questions.
+    Shown one-by-one before detailed cosmetic questionnaire.
+    """
+    DEDUCTION_TYPE_CHOICES = (
+        ('FLAT', 'Flat Amount (₹)'),
+        ('PERCENTAGE', 'Percentage of Base (%)'),
+    )
+
+    code = models.CharField(max_length=50, unique=True, help_text="e.g. WORKING_CONDITION, TOUCH_WORKING, DISPLAY_ORIGINAL, VALID_WARRANTY")
+    question_text = models.CharField(max_length=255, help_text="Main question asked to user")
+    subtitle = models.CharField(max_length=255, blank=True, default='', help_text="Explanatory hint below question")
+    is_power_on_gate = models.BooleanField(
+        default=False,
+        help_text="If True, answering 'No' hides all remaining questions and switches button to Finish"
+    )
+    deduction_type = models.CharField(max_length=20, choices=DEDUCTION_TYPE_CHOICES, default='PERCENTAGE')
+    deduction_value_on_no = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00,
+        help_text="Deduction amount (flat ₹ or %) applied if user answers 'No'"
+    )
+    display_order = models.PositiveIntegerField(default=1)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['display_order']
+
+    def __str__(self):
+        sign = '%' if self.deduction_type == 'PERCENTAGE' else '₹'
+        return f"Q{self.display_order}: {self.question_text} (No = -{self.deduction_value_on_no}{sign})"

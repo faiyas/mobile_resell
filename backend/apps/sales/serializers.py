@@ -298,6 +298,7 @@ class PhoneSaleCreateSerializer(serializers.Serializer):
     other_defects_notes = serializers.CharField(required=False, allow_blank=True, default='')
     custom_step_notes = serializers.DictField(required=False, default=dict)
     selected_option_codes = serializers.ListField(child=serializers.CharField(), required=False, default=list)
+    triage_answers = serializers.DictField(child=serializers.CharField(), required=False, default=dict)
     customer_name = serializers.CharField(max_length=150)
     customer_phone = serializers.CharField(max_length=20)
     customer_email = serializers.EmailField(required=False, allow_blank=True)

@@ -3476,16 +3476,28 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
 
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                {optionForm.deduction_type === 'PERCENTAGE' ? 'Percentage Value (%) *' : 'Deduction Amount (₹) *'}
+                {optionForm.deduction_type === 'PERCENTAGE' ? 'Percentage Value (% of Base Price) *' : 'Deduction Amount (₹) *'}
               </label>
-              <input
-                type="number"
-                step="10"
-                required
-                value={optionForm.default_deduction_value}
-                onChange={(e) => setOptionForm({ ...optionForm, default_deduction_value: e.target.value })}
-                className="w-full p-2.5 border border-slate-300 rounded-xl font-black text-rose-600 text-sm"
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  step={optionForm.deduction_type === 'PERCENTAGE' ? '1' : '50'}
+                  min="0"
+                  max={optionForm.deduction_type === 'PERCENTAGE' ? '100' : '100000'}
+                  required
+                  value={optionForm.default_deduction_value}
+                  onChange={(e) => setOptionForm({ ...optionForm, default_deduction_value: e.target.value })}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl font-black text-rose-600 text-sm pr-8"
+                />
+                <span className="absolute right-3 top-2.5 text-slate-400 font-bold text-sm">
+                  {optionForm.deduction_type === 'PERCENTAGE' ? '%' : '₹'}
+                </span>
+              </div>
+              {optionForm.deduction_type === 'PERCENTAGE' && (
+                <p className="text-[11px] text-indigo-600 font-semibold mt-1">
+                  ℹ️ Example: On a ₹40,000 phone, {optionForm.default_deduction_value || 0}% will deduct ₹{Math.round(40000 * ((Number(optionForm.default_deduction_value) || 0) / 100)).toLocaleString('en-IN')}.
+                </p>
+              )}
             </div>
           </div>
 

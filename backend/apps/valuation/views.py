@@ -5,10 +5,11 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from .models import ConditionCategory, ConditionOption, ModelPricingOverride, PriceHistory
+from .models import ConditionCategory, ConditionOption, ModelPricingOverride, PriceHistory, EvaluationTriageQuestion
 from .serializers import (
     ConditionCategorySerializer, ConditionOptionSerializer, 
-    EstimateCalculationSerializer, PriceHistorySerializer
+    EstimateCalculationSerializer, PriceHistorySerializer,
+    EvaluationTriageQuestionSerializer
 )
 from apps.catalog.models import StorageVariant, Brand
 
@@ -288,59 +289,108 @@ def calculate_estimate_view(request):
     deductions_breakdown = []
     total_deduction = Decimal('0.00')
 
-    # 1. Process Standalone deductions
-    for opt in standalone_options:
-        if opt.id in overrides:
-            amt = overrides[opt.id]
-            rule_type = "Model Override (Flat)"
-        else:
-            if opt.deduction_type == 'PERCENTAGE':
-                amt = (base_price * opt.default_deduction_value) / Decimal('100.00')
-                rule_type = f"{opt.default_deduction_value}% of Base"
+    # 1. Process Initial Health Check Triage Answers
+    triage_answers = serializer.validated_data.get('triage_answers', {})
+    triage_questions = list(EvaluationTriageQuestion.objects.filter(is_active=True).order_by('display_order'))
+    is_dead_device = False
+
+    for tq in triage_questions:
+        ans = str(triage_answers.get(tq.code, '')).strip().upper()
+        if ans == 'NO':
+            if tq.is_power_on_gate:
+                is_dead_device = True
+                floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
+                amt = max(base_price - floor, Decimal('0.00'))
+                total_deduction += amt
+                deductions_breakdown.append({
+                    'code': tq.code,
+                    'title': f"{tq.question_text} (Non-Working / Dead Device)",
+                    'category': "Initial Health Check",
+                    'deduction_amount': float(amt),
+                    'rule_type': "Dead Device Floor Applied"
+                })
+                break
             else:
-                amt = opt.default_deduction_value
-                rule_type = "Standard Flat"
+                if tq.deduction_type == 'PERCENTAGE':
+                    amt = (base_price * tq.deduction_value_on_no) / Decimal('100.00')
+                    rtype = f"{tq.deduction_value_on_no}% of Base"
+                else:
+                    amt = tq.deduction_value_on_no
+                    rtype = f"Flat ₹{tq.deduction_value_on_no}"
+                total_deduction += amt
+                deductions_breakdown.append({
+                    'code': tq.code,
+                    'title': f"{tq.question_text} (Answered No)",
+                    'category': "Initial Health Check",
+                    'deduction_amount': float(amt),
+                    'rule_type': rtype
+                })
 
-        total_deduction += amt
-        deductions_breakdown.append({
-            'code': opt.code,
-            'title': opt.title,
-            'category': opt.category.name,
-            'deduction_amount': float(amt),
-            'rule_type': rule_type
-        })
-
-    # 2. Process Exclusive Groups (take only the maximum deduction in the group to avoid double-charging)
-    for grp_name, grp_opts in exclusive_groups.items():
-        highest_amt = Decimal('0.00')
-        chosen_opt = None
-        chosen_rule_type = ""
-
-        for opt in grp_opts:
+    # 2. Process Standalone deductions (if device turns on)
+    if not is_dead_device:
+        for opt in standalone_options:
             if opt.id in overrides:
-                amt = overrides[opt.id]
-                rtype = "Model Override (Flat)"
+                override_val = overrides[opt.id]
+                if opt.deduction_type == 'PERCENTAGE':
+                    amt = (base_price * override_val) / Decimal('100.00')
+                    rule_type = f"Model Override ({override_val}% of Base)"
+                else:
+                    amt = override_val
+                    rule_type = f"Model Override (Flat ₹{override_val})"
             else:
                 if opt.deduction_type == 'PERCENTAGE':
                     amt = (base_price * opt.default_deduction_value) / Decimal('100.00')
-                    rtype = f"{opt.default_deduction_value}% of Base"
+                    rule_type = f"{opt.default_deduction_value}% of Base"
                 else:
                     amt = opt.default_deduction_value
-                    rtype = "Standard Flat"
+                    rule_type = f"Standard Flat ₹{opt.default_deduction_value}"
 
-            if amt > highest_amt or chosen_opt is None:
-                highest_amt = amt
-                chosen_opt = opt
-                chosen_rule_type = rtype
+            total_deduction += amt
+            deductions_breakdown.append({
+                'code': opt.code,
+                'title': opt.title,
+                'category': opt.category.name,
+                'deduction_amount': float(amt),
+                'rule_type': rule_type
+            })
 
-        total_deduction += highest_amt
-        deductions_breakdown.append({
-            'code': chosen_opt.code,
-            'title': f"{chosen_opt.title} (Exclusive Group: {grp_name})",
-            'category': chosen_opt.category.name,
-            'deduction_amount': float(highest_amt),
-            'rule_type': f"{chosen_rule_type} [Max group rule applied]"
-        })
+    # 3. Process Exclusive Groups (if device turns on)
+    if not is_dead_device:
+        for grp_name, grp_opts in exclusive_groups.items():
+            highest_amt = Decimal('0.00')
+            chosen_opt = None
+            chosen_rule_type = ""
+
+            for opt in grp_opts:
+                if opt.id in overrides:
+                    override_val = overrides[opt.id]
+                    if opt.deduction_type == 'PERCENTAGE':
+                        amt = (base_price * override_val) / Decimal('100.00')
+                        rtype = f"Model Override ({override_val}% of Base)"
+                    else:
+                        amt = override_val
+                        rtype = f"Model Override (Flat ₹{override_val})"
+                else:
+                    if opt.deduction_type == 'PERCENTAGE':
+                        amt = (base_price * opt.default_deduction_value) / Decimal('100.00')
+                        rtype = f"{opt.default_deduction_value}% of Base"
+                    else:
+                        amt = opt.default_deduction_value
+                        rtype = f"Standard Flat ₹{opt.default_deduction_value}"
+
+                if amt > highest_amt or chosen_opt is None:
+                    highest_amt = amt
+                    chosen_opt = opt
+                    chosen_rule_type = rtype
+
+            total_deduction += highest_amt
+            deductions_breakdown.append({
+                'code': chosen_opt.code,
+                'title': f"{chosen_opt.title} (Exclusive Group: {grp_name})",
+                'category': chosen_opt.category.name,
+                'deduction_amount': float(highest_amt),
+                'rule_type': f"{chosen_rule_type} [Max group rule applied]"
+            })
 
     min_floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
     estimated_price = max(base_price - total_deduction, min_floor)
@@ -354,9 +404,54 @@ def calculate_estimate_view(request):
         'total_deduction': float(total_deduction),
         'estimated_price': float(estimated_price),
         'is_rejected': False,
+        'is_dead_device': is_dead_device,
         'currency': 'INR',
         'deductions': deductions_breakdown,
     })
+
+# ================= 6. INITIAL HEALTH CHECK TRIAGE QUESTIONS =================
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def triage_questions_view(request):
+    """List or create Initial Health Check Yes/No questions"""
+    if request.method == 'GET':
+        questions = EvaluationTriageQuestion.objects.filter(is_active=True).order_by('display_order')
+        return Response(EvaluationTriageQuestionSerializer(questions, many=True).data)
+
+    if not getattr(request.user, 'is_admin_role', False):
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = EvaluationTriageQuestionSerializer(data=request.data)
+    if serializer.is_valid():
+        q = serializer.save()
+        return Response(EvaluationTriageQuestionSerializer(q).data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
+@permission_classes([AllowAny])
+def triage_question_detail_view(request, pk):
+    try:
+        q = EvaluationTriageQuestion.objects.get(pk=pk)
+    except EvaluationTriageQuestion.DoesNotExist:
+        return Response({'detail': 'Question not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(EvaluationTriageQuestionSerializer(q).data)
+
+    if not getattr(request.user, 'is_admin_role', False):
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    if request.method in ['PUT', 'PATCH']:
+        serializer = EvaluationTriageQuestionSerializer(q, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        q.is_active = False
+        q.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

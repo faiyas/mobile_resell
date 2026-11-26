@@ -63,6 +63,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   // Edit condition option modal
   const [editingOption, setEditingOption] = useState(null);
   const [newDeductionValue, setNewDeductionValue] = useState('');
+  const [newDeductionType, setNewDeductionType] = useState('FLAT');
 
   // Agent assignment state
   const [assigningLoading, setAssigningLoading] = useState(false);
@@ -555,6 +556,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
     if (!editingOption) return;
     try {
       await api.updateConditionOption(editingOption.id, {
+        deduction_type: newDeductionType,
         default_deduction_value: newDeductionValue
       });
       setEditingOption(null);
@@ -1584,15 +1586,57 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
             <form onSubmit={handleUpdateDeduction} className="space-y-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Deduction Amount (INR ₹)</label>
-                <input
-                  type="number"
-                  step="50"
-                  required
-                  value={newDeductionValue}
-                  onChange={(e) => setNewDeductionValue(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-xl text-base font-bold text-rose-600 focus:ring-2 focus:ring-[#0BAA4B] outline-none"
-                />
+                <label className="block font-bold text-slate-700 mb-1">Calculation Method</label>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewDeductionType('FLAT')}
+                    className={`py-2 rounded-xl font-bold text-xs border transition ${
+                      newDeductionType === 'FLAT'
+                        ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-sm'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    Flat Rupee (₹)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewDeductionType('PERCENTAGE')}
+                    className={`py-2 rounded-xl font-bold text-xs border transition ${
+                      newDeductionType === 'PERCENTAGE'
+                        ? 'bg-indigo-50 border-indigo-500 text-indigo-700 shadow-sm'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    Percentage (%)
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {newDeductionType === 'PERCENTAGE' ? 'Percentage Value (% of Base Price)' : 'Deduction Amount (INR ₹)'}
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step={newDeductionType === 'PERCENTAGE' ? '1' : '50'}
+                    min="0"
+                    max={newDeductionType === 'PERCENTAGE' ? '100' : '100000'}
+                    required
+                    value={newDeductionValue}
+                    onChange={(e) => setNewDeductionValue(e.target.value)}
+                    className="w-full p-2.5 border border-slate-300 rounded-xl text-base font-bold text-rose-600 focus:ring-2 focus:ring-[#0BAA4B] outline-none pr-8"
+                  />
+                  <span className="absolute right-3 top-3 text-slate-400 font-bold text-sm">
+                    {newDeductionType === 'PERCENTAGE' ? '%' : '₹'}
+                  </span>
+                </div>
+                {newDeductionType === 'PERCENTAGE' && (
+                  <p className="text-[11px] text-indigo-600 font-medium mt-1">
+                    ℹ️ For a ₹40,000 device, {newDeductionValue || 0}% will deduct ₹{Math.round(40000 * ((Number(newDeductionValue) || 0) / 100)).toLocaleString('en-IN')}.
+                  </p>
+                )}
               </div>
 
               <div className="flex gap-2 pt-2">

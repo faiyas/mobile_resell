@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/brand_logo.dart';
 import '../../utils/image_helper.dart';
+import 'device_health_check_screen.dart';
 import 'questionnaire_screen.dart';
 
 class CategorySelectionScreen extends StatefulWidget {
@@ -344,7 +345,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => QuestionnaireScreen(
+                            builder: (_) => DeviceHealthCheckScreen(
                               brand: virtualBrand,
                               model: virtualModel,
                               variant: virtualVariant,
@@ -374,7 +375,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => QuestionnaireScreen(
+        builder: (_) => DeviceHealthCheckScreen(
           category: _category,
           brand: _brand!,
           model: _model!,

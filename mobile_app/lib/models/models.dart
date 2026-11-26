@@ -238,6 +238,56 @@ class StorageVariantModel {
   }
 }
 
+class EvaluationTriageQuestionModel {
+  final int id;
+  final String code;
+  final String questionText;
+  final String subtitle;
+  final bool isPowerOnGate;
+  final String deductionType;
+  final double deductionValueOnNo;
+  final int displayOrder;
+  final bool isActive;
+
+  EvaluationTriageQuestionModel({
+    required this.id,
+    required this.code,
+    required this.questionText,
+    required this.subtitle,
+    this.isPowerOnGate = false,
+    this.deductionType = 'PERCENTAGE',
+    this.deductionValueOnNo = 0.0,
+    this.displayOrder = 1,
+    this.isActive = true,
+  });
+
+  factory EvaluationTriageQuestionModel.fromJson(Map<String, dynamic> json) {
+    return EvaluationTriageQuestionModel(
+      id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
+      code: json['code']?.toString() ?? '',
+      questionText: json['question_text']?.toString() ?? '',
+      subtitle: json['subtitle']?.toString() ?? '',
+      isPowerOnGate: json['is_power_on_gate'] == true,
+      deductionType: json['deduction_type']?.toString() ?? 'PERCENTAGE',
+      deductionValueOnNo: double.tryParse(json['deduction_value_on_no']?.toString() ?? '') ?? 0.0,
+      displayOrder: int.tryParse(json['display_order']?.toString() ?? '') ?? 1,
+      isActive: json['is_active'] != false,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'code': code,
+    'question_text': questionText,
+    'subtitle': subtitle,
+    'is_power_on_gate': isPowerOnGate,
+    'deduction_type': deductionType,
+    'deduction_value_on_no': deductionValueOnNo,
+    'display_order': displayOrder,
+    'is_active': isActive,
+  };
+}
+
 class ConditionOptionModel {
   final int id;
   final int categoryId;
