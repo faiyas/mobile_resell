@@ -7,8 +7,10 @@ User=user
 Group=user
 WorkingDirectory=/data/home/mobile_resell/backend
 ExecStart=/data/home/pondytourstravels/backend/venv/bin/gunicorn \
-    --workers 3 \
-    --max-requests 1000 \
+    --workers 4 \
+    --threads 8 \
+    --worker-class gthread \
+    --max-requests 2000 \
     --max-requests-jitter 100 \
     --timeout 60 \
     --bind 127.0.0.1:8010 \
