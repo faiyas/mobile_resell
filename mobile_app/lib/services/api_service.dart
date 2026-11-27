@@ -134,8 +134,20 @@ class ApiService {
       await saveAuth(data['token'], user);
       return {'success': true, 'user': user};
     } else {
-      final err = jsonDecode(res.body);
-      throw Exception(err['detail'] ?? 'Invalid credentials');
+      String msg = 'Invalid credentials';
+      try {
+        final err = jsonDecode(res.body);
+        if (err is Map) {
+          msg = err['detail'] ?? err['message'] ?? (err.values.isNotEmpty ? err.values.first.toString() : 'Invalid credentials');
+        }
+      } catch (_) {
+        if (res.statusCode >= 500) {
+          msg = 'Server error (${res.statusCode}). Please try again shortly.';
+        } else {
+          msg = 'Request failed (${res.statusCode})';
+        }
+      }
+      throw Exception(msg);
     }
   }
 

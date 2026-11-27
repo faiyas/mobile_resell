@@ -377,8 +377,6 @@ def variant_detail_view(request, pk):
 # ================= 6. DYNAMIC CMS HOMEPAGE BUILDER =================
 @api_view(['GET', 'POST', 'PUT'])
 @permission_classes([AllowAny])
-@api_view(['GET', 'POST', 'PUT'])
-@permission_classes([AllowAny])
 def cms_sections_view(request):
     if request.method == 'GET':
         show_all = request.GET.get('all', 'false').lower() == 'true'
