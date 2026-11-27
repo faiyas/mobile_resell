@@ -7,8 +7,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
 from django.shortcuts import get_object_or_404
-from .models import PhoneSale, PhoneSaleConditionAnswer
-from .serializers import PhoneSaleDetailSerializer, PhoneSaleListSerializer, PhoneSaleCreateSerializer
+from .models import PhoneSale, PhoneSaleConditionAnswer, UserNotification
+from .serializers import PhoneSaleDetailSerializer, PhoneSaleListSerializer, PhoneSaleCreateSerializer, UserNotificationSerializer
 from .pincode_helper import resolve_pincode
 from apps.catalog.models import StorageVariant
 from apps.valuation.models import ConditionOption, ModelPricingOverride
@@ -279,6 +279,19 @@ def sales_list_create_view(request):
                             deduction_applied=Decimal('0.00')
                         )
 
+            # Trigger Milestone Notification: Order Submitted
+            dev_name = sale.custom_device_name if sale.is_custom_device else (sale.variant.model.name if sale.variant else "Device")
+            create_system_notification(
+                title=f"Pickup Booked: {dev_name}",
+                message=f"Your buyback request for {dev_name} (#{sale.sale_code}) has been confirmed! Scheduled for {sale.pickup_date.strftime('%d %b %Y')}.",
+                category='ORDERS',
+                recipient=customer_user,
+                target_audience='ORDER',
+                related_order=sale,
+                redirect_route=f"/track?code={sale.sale_code}",
+                action_type='VIEW_ORDER'
+            )
+
         return Response(PhoneSaleDetailSerializer(sale).data, status=status.HTTP_201_CREATED)
 
 def _get_sale_instance(pk):
@@ -409,6 +422,18 @@ def mark_device_collected_view(request, pk):
             audit = f"[{now_ist.strftime('%d %b, %I:%M %p')}] Physical device collected & cash paid ₹{final_amt} at doorstep by agent {agent_name} (OTP Verified: {submitted_otp}). Bypassed Super Admin payout desk."
             sale.admin_notes = (sale.admin_notes + '\n' + audit).strip() if sale.admin_notes else audit
             sale.save()
+
+            # Trigger Cash Payout Milestone Notification
+            create_system_notification(
+                title=f"Cash Handover Verified: ₹{final_amt} Paid",
+                message=f"Cash payment of ₹{final_amt} verified & paid by field agent {agent_name} for order #{sale.sale_code}.",
+                category='PAYOUTS',
+                recipient=sale.customer,
+                target_audience='ORDER',
+                related_order=sale,
+                redirect_route=f"/track?code={sale.sale_code}",
+                action_type='VIEW_ORDER'
+            )
 
         return Response({
             'message': 'Cash handover verified! Order marked as PAID and COMPLETED.',
@@ -647,4 +672,118 @@ def pincode_lookup_view(request):
     pincode = request.GET.get('pincode', '')
     res = resolve_pincode(pincode)
     return Response(res, status=status.HTTP_200_OK if res.get('valid') else status.HTTP_400_BAD_REQUEST)
+
+# ================= NOTIFICATIONS ENGINE =================
+def create_system_notification(title, message, category='ORDERS', recipient=None, target_audience='ORDER', related_order=None, redirect_route='', action_type=''):
+    try:
+        return UserNotification.objects.create(
+            title=title,
+            message=message,
+            category=category,
+            recipient=recipient,
+            target_audience=target_audience,
+            related_order=related_order,
+            redirect_route=redirect_route,
+            action_type=action_type,
+        )
+    except Exception as e:
+        print(f"Failed to create notification: {e}")
+        return None
+
+@api_view(['GET', 'POST'])
+@permission_classes([AllowAny])
+def notifications_list_view(request):
+    """Get active notifications for current user/audience or send a new notification (Admin)"""
+    if request.method == 'GET':
+        user = request.user if request.user.is_authenticated else None
+        phone = request.GET.get('phone', '').strip()
+        role = getattr(user, 'role', '') if user else ''
+
+        from django.db.models import Q
+        q_filter = Q(target_audience='ALL')
+
+        if user:
+            q_filter |= Q(recipient=user)
+            if role in ['ADMIN', 'SUPER_ADMIN']:
+                q_filter |= Q(target_audience__in=['CUSTOMERS', 'AGENTS'])
+            elif role == 'COLLECTION_AGENT':
+                q_filter |= Q(target_audience='AGENTS')
+            else:
+                q_filter |= Q(target_audience='CUSTOMERS')
+
+        if phone:
+            q_filter |= Q(related_order__customer_phone=phone)
+
+        notifs = UserNotification.objects.filter(q_filter, is_dismissed=False).order_by('-created_at')[:50]
+        unread_count = notifs.filter(is_read=False).count()
+
+        return Response({
+            'unread_count': unread_count,
+            'results': UserNotificationSerializer(notifs, many=True).data
+        })
+
+    elif request.method == 'POST':
+        # Admin broadcast or manual alert creation
+        if not (request.user.is_authenticated and getattr(request.user, 'is_admin_role', False)):
+            return Response({'detail': 'Admin access required to broadcast notifications'}, status=status.HTTP_403_FORBIDDEN)
+
+        title = request.data.get('title')
+        message = request.data.get('message')
+        if not title or not message:
+            return Response({'detail': 'title and message are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        target_audience = request.data.get('target_audience', 'ALL')
+        category = request.data.get('category', 'SYSTEM')
+        redirect_route = request.data.get('redirect_route', '')
+
+        notif = create_system_notification(
+            title=title,
+            message=message,
+            category=category,
+            target_audience=target_audience,
+            redirect_route=redirect_route
+        )
+        return Response(UserNotificationSerializer(notif).data, status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def notification_mark_read_view(request, pk):
+    try:
+        notif = UserNotification.objects.get(pk=pk)
+        notif.is_read = True
+        notif.save(update_fields=['is_read'])
+        return Response({'success': True, 'id': notif.id})
+    except UserNotification.DoesNotExist:
+        return Response({'detail': 'Notification not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def notification_dismiss_view(request, pk):
+    try:
+        notif = UserNotification.objects.get(pk=pk)
+        notif.is_dismissed = True
+        notif.save(update_fields=['is_dismissed'])
+        return Response({'success': True, 'id': notif.id})
+    except UserNotification.DoesNotExist:
+        return Response({'detail': 'Notification not found'}, status=status.HTTP_404_NOT_FOUND)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def notification_mark_all_read_view(request):
+    user = request.user if request.user.is_authenticated else None
+    if user:
+        UserNotification.objects.filter(recipient=user, is_read=False).update(is_read=True)
+    else:
+        UserNotification.objects.filter(is_read=False).update(is_read=True)
+    return Response({'success': True, 'message': 'All notifications marked as read'})
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def notification_clear_all_view(request):
+    user = request.user if request.user.is_authenticated else None
+    if user:
+        UserNotification.objects.filter(recipient=user).update(is_dismissed=True)
+    else:
+        UserNotification.objects.all().update(is_dismissed=True)
+    return Response({'success': True, 'message': 'Notifications cleared'})
 

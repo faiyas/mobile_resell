@@ -53,8 +53,9 @@ export default function AdminSidebar({
       ]
     },
     {
-      title: 'WEBSITE CMS',
+      title: 'COMMUNICATIONS',
       items: [
+        { id: 'notifications', label: 'Push Notifications', icon: Megaphone },
         { id: 'cms', label: 'Hero Banners (CMS)', icon: Image, count: counts.cms }
       ]
     },

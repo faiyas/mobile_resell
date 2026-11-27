@@ -122,7 +122,7 @@ class PrivacyPolicyModal extends StatelessWidget {
                       'For any queries regarding this policy or your personal data:\n'
                       '• Grievance Officer: Mohamed Faiyas M\n'
                       '• Email: privacy@dollyresell.com / support@dollyresell.com\n'
-                      '• Support Helpline: +91 99885 52211 (Mon-Sat, 9AM-8PM)',
+                      '• Customer Helpline: Available in Profile Help & Contact Desk (Mon-Sat, 9AM-8PM)',
                 ),
 
                 const SizedBox(height: 24),

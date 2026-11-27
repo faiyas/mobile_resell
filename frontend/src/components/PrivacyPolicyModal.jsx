@@ -1,8 +1,22 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Shield, X, CheckCircle2, Lock } from 'lucide-react';
+import { api } from '../services/api';
 
 export default function PrivacyPolicyModal({ isOpen, onClose }) {
+  const [settings, setSettings] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.getBusinessSettings()
+        .then(data => setSettings(data))
+        .catch(() => {});
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const email = settings?.support_email || 'support@dollyresell.com';
+  const company = settings?.company_name || '1103 TechStudios · Dolly Platform';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
@@ -64,13 +78,13 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
               4. Account & Data Deletion
             </h3>
             <p>
-              Under global privacy frameworks and Apple/Google store guidelines, you maintain the right to delete your customer profile and personal records at any time directly through the mobile app profile page or by contacting support at support@dollyresell.com.
+              Under global privacy frameworks and Apple/Google store guidelines, you maintain the right to delete your customer profile and personal records at any time directly through the mobile app profile page or by contacting support at {email}.
             </p>
           </section>
 
           <section className="pt-2 border-t border-slate-100 text-xs text-slate-500">
             <p>
-              Dolly is an authorized gadget buyback technology platform operated by 1103 TechStudios. For legal inquiries: legal@1103techstudios.com.
+              Dolly is an authorized gadget buyback technology platform operated by {company}. For legal inquiries: {email}.
             </p>
           </section>
         </div>

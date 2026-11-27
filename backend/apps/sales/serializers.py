@@ -2,7 +2,7 @@ import datetime
 from decimal import Decimal
 from django.utils import timezone
 from rest_framework import serializers
-from .models import PhoneSale, PhoneSaleConditionAnswer
+from .models import PhoneSale, PhoneSaleConditionAnswer, UserNotification
 from apps.catalog.serializers import StorageVariantSerializer
 from apps.valuation.models import ConditionOption
 from apps.inspections.models import DeviceInspection, InspectionPhoto
@@ -321,3 +321,14 @@ class PhoneSaleCreateSerializer(serializers.Serializer):
     beneficiary_upi_id = serializers.CharField(max_length=100, required=False, allow_blank=True)
     beneficiary_account_no = serializers.CharField(max_length=50, required=False, allow_blank=True)
     beneficiary_ifsc = serializers.CharField(max_length=20, required=False, allow_blank=True)
+
+class UserNotificationSerializer(serializers.ModelSerializer):
+    sale_code = serializers.ReadOnlyField(source='related_order.sale_code')
+
+    class Meta:
+        model = UserNotification
+        fields = [
+            'id', 'recipient', 'target_audience', 'title', 'message',
+            'category', 'related_order', 'sale_code', 'redirect_route',
+            'action_type', 'is_read', 'is_dismissed', 'created_at'
+        ]

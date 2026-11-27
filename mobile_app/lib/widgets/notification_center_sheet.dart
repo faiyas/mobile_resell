@@ -150,7 +150,76 @@ class _NotificationCenterSheetState extends State<NotificationCenterSheet> {
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (ctx, idx) {
                       final item = filtered[idx];
-                      return _buildNotificationCard(item);
+                      return Dismissible(
+                        key: Key('notif_${item.id}'),
+                        direction: DismissDirection.horizontal,
+                        background: Container(
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.open_in_new_rounded, color: AppTheme.primaryGreen, size: 20),
+                              SizedBox(width: 8),
+                              Text('Open', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                        secondaryBackground: Container(
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text('Dismiss', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                              SizedBox(width: 8),
+                              Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                            ],
+                          ),
+                        ),
+                        confirmDismiss: (direction) async {
+                          if (direction == DismissDirection.startToEnd) {
+                            // Swipe Right -> Open/Navigate
+                            _service.markAsRead(item.id);
+                            if (item.actionType == 'APP_UPDATE' && item.actionUrl != null) {
+                              final uri = Uri.parse(item.actionUrl!);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              }
+                            }
+                            return false; // Don't remove on open
+                          } else {
+                            // Swipe Left -> Dismiss with Undo option
+                            final originalIndex = _service.notifications.indexOf(item);
+                            await _service.removeNotification(item.id);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Dismissed: "${item.title}"'),
+                                  duration: const Duration(seconds: 5),
+                                  action: SnackBarAction(
+                                    label: 'Undo',
+                                    textColor: AppTheme.primaryGreen,
+                                    onPressed: () {
+                                      _service.restoreNotification(item, originalIndex);
+                                    },
+                                  ),
+                                ),
+                              );
+                            }
+                            return true;
+                          }
+                        },
+                        child: _buildNotificationCard(item),
+                      );
                     },
                   ),
           ),

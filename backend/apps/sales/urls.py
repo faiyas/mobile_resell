@@ -11,9 +11,19 @@ from .views import (
     pincode_lookup_view,
     mark_device_collected_view,
     cancel_order_view,
+    notifications_list_view,
+    notification_mark_read_view,
+    notification_dismiss_view,
+    notification_mark_all_read_view,
+    notification_clear_all_view,
 )
 
 urlpatterns = [
+    path('notifications/', notifications_list_view, name='sales-notifications-list'),
+    path('notifications/mark-all-read/', notification_mark_all_read_view, name='sales-notifications-mark-all-read'),
+    path('notifications/clear-all/', notification_clear_all_view, name='sales-notifications-clear-all'),
+    path('notifications/<int:pk>/read/', notification_mark_read_view, name='sales-notification-mark-read'),
+    path('notifications/<int:pk>/dismiss/', notification_dismiss_view, name='sales-notification-dismiss'),
     path('', sales_list_create_view, name='sales-list-create'),
     path('pincode-lookup/', pincode_lookup_view, name='sales-pincode-lookup'),
     path('<str:pk>/', sale_detail_view, name='sales-detail'),

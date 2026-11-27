@@ -1,10 +1,28 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Smartphone, Search, User, LogOut, ShieldCheck,
-  ArrowRight, UserCheck, MapPin, ChevronDown, CheckCircle2
+  ArrowRight, UserCheck, MapPin, ChevronDown, CheckCircle2, Bell
 } from 'lucide-react';
+import NotificationCenterModal from './NotificationCenterModal';
+import { api } from '../services/api';
 
-export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAuth, onLogout, selectedCity = '', onSelectCity }) {
+export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAuth, onLogout, selectedCity = '', onSelectCity, onSelectOrder }) {
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const res = await api.getNotifications(currentUser?.phone || '');
+        if (res && res.unread_count !== undefined) {
+          setUnreadNotifCount(res.unread_count);
+        }
+      } catch (_) {}
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, [currentUser]);
   const categories = [
     { label: 'Sell Old Mobile', slug: 'mobile' },
     { label: 'Tablet', slug: 'tablet' },
@@ -129,6 +147,21 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
 
           {/* Right Action / Auth */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Notification Bell */}
+            <button
+              type="button"
+              onClick={() => setNotifOpen(true)}
+              className="p-2 rounded-xl border border-white/80 bg-white/70 backdrop-blur text-[#7B8980] hover:text-[#0BAA4B] hover:border-emerald-200 transition relative"
+              title="Notifications"
+            >
+              <Bell className="w-4 h-4" />
+              {unreadNotifCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-rose-500 text-white font-black text-[9px] rounded-full flex items-center justify-center ring-2 ring-white">
+                  {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
+                </span>
+              )}
+            </button>
+
             {currentUser ? (
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="text-right">
@@ -170,6 +203,16 @@ export default function Navbar({ activeTab, setActiveTab, currentUser, onOpenAut
 
         </div>
       </div>
+
+      {/* Notification Slide-Over Modal */}
+      <NotificationCenterModal
+        isOpen={notifOpen}
+        onClose={() => setNotifOpen(false)}
+        currentUser={currentUser}
+        onSelectOrder={(saleCode) => {
+          if (onSelectOrder) onSelectOrder(saleCode);
+        }}
+      />
     </header>
   );
 }

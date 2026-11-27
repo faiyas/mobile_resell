@@ -3,11 +3,11 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from .models import DeviceCategory, Brand, DeviceSeries, PhoneModel, StorageVariant, CMSHomeSection
+from .models import DeviceCategory, Brand, DeviceSeries, PhoneModel, StorageVariant, CMSHomeSection, BusinessSetting
 from .serializers import (
     DeviceCategorySerializer, BrandSerializer, BrandBasicSerializer, 
     DeviceSeriesSerializer, PhoneModelSerializer, StorageVariantSerializer,
-    CMSHomeSectionSerializer
+    CMSHomeSectionSerializer, BusinessSettingSerializer
 )
 
 def is_admin_user(user):
@@ -479,6 +479,27 @@ def system_settings_view(request):
         }
     )
     return Response(section.data_json)
+
+# ================= 7.1 BUSINESS SETTINGS (ZERO HARDCODING) =================
+@api_view(['GET', 'POST', 'PUT'])
+@permission_classes([AllowAny])
+def business_settings_view(request):
+    """Centralized database-driven business settings (contacts, working hours, links, policies)"""
+    setting = BusinessSetting.objects.first()
+    if not setting:
+        setting = BusinessSetting.objects.create()
+
+    if request.method == 'GET':
+        return Response(BusinessSettingSerializer(setting).data)
+
+    if not is_admin_user(request.user):
+        return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
+
+    serializer = BusinessSettingSerializer(setting, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response(serializer.data)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ================= 8. BULK DELETE & OFFLINE SYNC BUNDLE =================

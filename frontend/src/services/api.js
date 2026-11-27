@@ -168,6 +168,8 @@ export const api = {
   updateCMSSection: (data) => { clearCatalogCache(); return request('/catalog/cms/sections/', { method: 'POST', body: JSON.stringify(data) }); },
   getSystemSettings: () => request('/catalog/settings/'),
   updateSystemSettings: (data) => request('/catalog/settings/', { method: 'POST', body: JSON.stringify(data) }),
+  getBusinessSettings: () => request('/catalog/business-settings/'),
+  updateBusinessSettings: (data) => request('/catalog/business-settings/', { method: 'POST', body: JSON.stringify(data) }),
 
   getVariants: (modelId, all = false, brandId = null, seriesId = null) => 
     request(`/catalog/variants/?${modelId ? `model=${modelId}&` : ''}${brandId ? `brand=${brandId}&` : ''}${seriesId ? `series=${seriesId}&` : ''}all=${all}`).then(res => (res && Array.isArray(res.results)) ? res.results : res),
@@ -248,6 +250,14 @@ export const api = {
     return request(`/payments/${query ? `?${query}` : ''}`);
   },
   getPaymentReceipt: (saleCode) => request(`/payments/receipt/${saleCode}/`),
+
+  // Notifications Engine
+  getNotifications: (phone = '') => request(`/sales/notifications/${phone ? `?phone=${encodeURIComponent(phone)}` : ''}`),
+  broadcastNotification: (data) => request('/sales/notifications/', { method: 'POST', body: JSON.stringify(data) }),
+  markNotificationRead: (id) => request(`/sales/notifications/${id}/read/`, { method: 'POST' }),
+  dismissNotification: (id) => request(`/sales/notifications/${id}/dismiss/`, { method: 'POST' }),
+  markAllNotificationsRead: () => request('/sales/notifications/mark-all-read/', { method: 'POST' }),
+  clearAllNotifications: () => request('/sales/notifications/clear-all/', { method: 'POST' }),
   
   // Health & Keep-Alive Ping
   pingHealth: () => request('/health/').catch(() => null),

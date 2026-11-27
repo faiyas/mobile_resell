@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import DeviceCategory, Brand, DeviceSeries, PhoneModel, StorageVariant, CMSHomeSection
+from .models import DeviceCategory, Brand, DeviceSeries, PhoneModel, StorageVariant, CMSHomeSection, BusinessSetting
 
 def _normalize_base64_data_uri(val, mime='image/jpeg'):
     """
@@ -128,3 +128,13 @@ class CMSHomeSectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = CMSHomeSection
         fields = ['id', 'section_type', 'title', 'subtitle', 'data_json', 'display_order', 'is_active', 'updated_at']
+
+class BusinessSettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessSetting
+        fields = [
+            'id', 'company_name', 'business_logo', 'customer_helpline', 'agent_helpline',
+            'whatsapp_number', 'support_email', 'office_address', 'google_maps_url',
+            'working_hours', 'instagram_url', 'facebook_url', 'youtube_url',
+            'terms_and_conditions', 'privacy_policy_text', 'updated_at'
+        ]

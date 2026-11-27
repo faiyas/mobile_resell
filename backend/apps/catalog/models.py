@@ -117,3 +117,27 @@ class CMSHomeSection(models.Model):
 
     def __str__(self):
         return f"[{self.section_type}] {self.title}"
+
+class BusinessSetting(models.Model):
+    company_name = models.CharField(max_length=150, default='Dolly Buyback Services Pvt Ltd')
+    business_logo = models.TextField(blank=True, default='', help_text="Base64 encoded logo")
+    customer_helpline = models.CharField(max_length=30, default='+91 99885 52211')
+    agent_helpline = models.CharField(max_length=30, default='+91 99885 52211')
+    whatsapp_number = models.CharField(max_length=30, default='+91 99885 52211')
+    support_email = models.EmailField(default='support@dollyresell.com')
+    office_address = models.TextField(default='1103 TechStudios, MG Road, Whitefield, Bangalore, Karnataka 560066')
+    google_maps_url = models.URLField(blank=True, default='')
+    working_hours = models.CharField(max_length=100, default='Mon-Sat: 9:00 AM - 8:00 PM IST')
+    instagram_url = models.URLField(blank=True, default='')
+    facebook_url = models.URLField(blank=True, default='')
+    youtube_url = models.URLField(blank=True, default='')
+    terms_and_conditions = models.TextField(blank=True, default='')
+    privacy_policy_text = models.TextField(blank=True, default='')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Business Setting"
+        verbose_name_plural = "Business Settings"
+
+    def __str__(self):
+        return f"{self.company_name} Settings"

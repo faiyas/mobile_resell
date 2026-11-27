@@ -5,7 +5,7 @@ from .views import (
     series_list_view, series_detail_view,
     models_list_view, model_detail_view, 
     variants_list_create_view, variant_detail_view,
-    cms_sections_view, system_settings_view,
+    cms_sections_view, system_settings_view, business_settings_view,
     catalog_bulk_delete_view, catalog_sync_bundle_view,
     catalog_stats_view
 )
@@ -36,6 +36,7 @@ urlpatterns = [
 
     # System Operational Settings
     path('settings/', system_settings_view, name='catalog-system-settings'),
+    path('business-settings/', business_settings_view, name='catalog-business-settings'),
 
     # Fast Admin Sidebar Counts & Stats
     path('stats/', catalog_stats_view, name='catalog-stats'),

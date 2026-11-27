@@ -127,3 +127,50 @@ class PhoneSaleConditionAnswer(models.Model):
     def __str__(self):
         title = self.option.title if self.option else (self.step_name or "Custom Note")
         return f"{self.sale.sale_code} - {title} (-₹{self.deduction_applied})"
+
+class UserNotification(models.Model):
+    AUDIENCE_CHOICES = (
+        ('ALL', 'All Users'),
+        ('CUSTOMERS', 'Customers Only'),
+        ('AGENTS', 'Field Agents Only'),
+        ('ORDER', 'Specific Order/User'),
+    )
+    CATEGORY_CHOICES = (
+        ('ORDERS', 'Order Milestones'),
+        ('PAYOUTS', 'Payouts & Cash Handover'),
+        ('SYSTEM', 'System & Announcements'),
+    )
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='notifications'
+    )
+    target_audience = models.CharField(max_length=20, choices=AUDIENCE_CHOICES, default='ORDER')
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='ORDERS')
+    related_order = models.ForeignKey(
+        PhoneSale,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='notifications'
+    )
+    redirect_route = models.CharField(max_length=255, blank=True, default='')
+    action_type = models.CharField(max_length=50, blank=True, default='')
+    is_read = models.BooleanField(default=False)
+    is_dismissed = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['recipient', 'is_read', '-created_at']),
+            models.Index(fields=['target_audience', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"[{self.category}] {self.title} -> {self.recipient or self.target_audience}"

@@ -226,6 +226,22 @@ class AppNotificationService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> removeNotification(String id) async {
+    _notifications.removeWhere((n) => n.id == id);
+    await _save();
+    notifyListeners();
+  }
+
+  Future<void> restoreNotification(AppNotificationItem item, int index) async {
+    if (index >= 0 && index <= _notifications.length) {
+      _notifications.insert(index, item);
+    } else {
+      _notifications.add(item);
+    }
+    await _save();
+    notifyListeners();
+  }
+
   Future<void> clearAll() async {
     _notifications.clear();
     await _save();

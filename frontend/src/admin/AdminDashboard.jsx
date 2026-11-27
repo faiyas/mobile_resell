@@ -14,6 +14,7 @@ import AdminSidebar from './AdminSidebar';
 import AdminHeader from './AdminHeader';
 import OperationsDashboardView from './OperationsDashboardView';
 import SystemSettingsView from './SystemSettingsView';
+import NotificationManagerView from './NotificationManagerView';
 import ImageZoomModal from '../components/ImageZoomModal';
 import { formatImageSrc } from '../utils/imageCompressor';
 
@@ -1345,6 +1346,11 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       {/* ================= TAB 7: SYSTEM SETTINGS & ROLES ================= */}
       {['settings', 'roles'].includes(activeTab) && (
         <SystemSettingsView mode={activeTab} />
+      )}
+
+      {/* ================= TAB 8: PUSH NOTIFICATIONS DESK ================= */}
+      {activeTab === 'notifications' && (
+        <NotificationManagerView />
       )}
 
         </div>
