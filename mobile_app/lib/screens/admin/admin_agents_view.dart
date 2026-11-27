@@ -174,16 +174,62 @@ class _AdminAgentsViewState extends State<AdminAgentsView> {
                           ],
                         ),
                       ),
-                      // Action - Reset Password
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(80, 34),
-                          side: BorderSide(color: AppTheme.primaryGreen.withValues(alpha: 0.4)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                        icon: const Icon(Icons.key_rounded, size: 14, color: AppTheme.primaryGreen),
-                        label: const Text('Reset Pass', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
-                        onPressed: () => _showResetPasswordModal(context, agent),
+                      // Actions - Reset Pass & Options Menu
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(70, 32),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              side: BorderSide(color: AppTheme.primaryGreen.withOpacity(0.4)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.key_rounded, size: 13, color: AppTheme.primaryGreen),
+                            label: const Text('Pass', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+                            onPressed: () => _showResetPasswordModal(context, agent),
+                          ),
+                          PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert_rounded, size: 20, color: AppTheme.textSecondary),
+                            onSelected: (val) {
+                              if (val == 'edit') _showEditAgentModal(context, agent);
+                              if (val == 'pwd') _showResetPasswordModal(context, agent);
+                              if (val == 'delete') _confirmDeleteAgent(context, agent);
+                            },
+                            itemBuilder: (ctx) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_rounded, size: 16, color: AppTheme.primaryGreen),
+                                    SizedBox(width: 8),
+                                    Text('Edit Agent Details', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'pwd',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.key_rounded, size: 16, color: Colors.blue),
+                                    SizedBox(width: 8),
+                                    Text('Reset Password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_outline_rounded, size: 16, color: Colors.red),
+                                    SizedBox(width: 8),
+                                    Text('Delete Specialist', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.red)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -393,6 +439,166 @@ class _AdminAgentsViewState extends State<AdminAgentsView> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showEditAgentModal(BuildContext context, AgentUserModel agent) {
+    final nameCtrl = TextEditingController(text: agent.fullName);
+    final phoneCtrl = TextEditingController(text: agent.phone);
+    final emailCtrl = TextEditingController(text: agent.email);
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.all(22),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Edit Field Specialist · #${agent.id}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                    IconButton(icon: const Icon(Icons.close_rounded), onPressed: () => Navigator.pop(ctx)),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Full Name *',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: '10-Digit Mobile Number *',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email Address *',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    isDense: true,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryGreen,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            final name = nameCtrl.text.trim();
+                            final phone = phoneCtrl.text.trim();
+                            final email = emailCtrl.text.trim();
+
+                            if (name.isEmpty || phone.isEmpty || email.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Please enter valid agent details')),
+                              );
+                              return;
+                            }
+
+                            setSheetState(() => isSaving = true);
+                            try {
+                              await _api.updateAgent(agent.id, {
+                                'full_name': name,
+                                'phone': phone,
+                                'email': email,
+                              });
+                              if (!mounted) return;
+                              Navigator.pop(ctx);
+                              widget.onRefresh();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('✓ Specialist $name updated!'), backgroundColor: AppTheme.darkGreen),
+                              );
+                            } catch (e) {
+                              setSheetState(() => isSaving = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                              );
+                            }
+                          },
+                    child: isSaving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Save Details', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteAgent(BuildContext context, AgentUserModel agent) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Delete ${agent.fullName}?', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Text(
+          'Are you sure you want to remove ${agent.fullName} (#${agent.id})?\n\nAny active pickup assignments currently allocated to this specialist will automatically return to the open pool.',
+          style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _api.deleteAgent(agent.id);
+                widget.onRefresh();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('✓ Agent ${agent.fullName} removed successfully!'), backgroundColor: Colors.red),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error deleting agent: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: const Text('Delete Specialist', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
