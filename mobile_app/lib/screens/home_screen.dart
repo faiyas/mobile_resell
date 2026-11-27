@@ -23,6 +23,7 @@ import '../widgets/privacy_policy_modal.dart';
 import '../services/app_update_service.dart';
 import '../services/app_notification_service.dart';
 import '../services/background_notification_runner.dart';
+import '../widgets/notification_center_sheet.dart';
 import '../utils/contact_launcher.dart';
 import '../widgets/brand_logo.dart';
 import '../utils/image_helper.dart';
@@ -729,6 +730,41 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         const Spacer(),
+                        // Notification Center Bell Icon with Live Badge
+                        ListenableBuilder(
+                          listenable: AppNotificationService(),
+                          builder: (context, _) {
+                            final unread = AppNotificationService().unreadCount;
+                            return IconButton(
+                              icon: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  const Icon(Icons.notifications_outlined, color: AppTheme.textPrimary, size: 22),
+                                  if (unread > 0)
+                                    Positioned(
+                                      right: -2,
+                                      top: -2,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(3),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.redAccent,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                                        child: Text(
+                                          unread > 9 ? '9+' : '$unread',
+                                          style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              tooltip: 'Notifications',
+                              onPressed: () => NotificationCenterSheet.show(context),
+                            );
+                          },
+                        ),
                         IconButton(
                           icon: const Icon(Icons.headset_mic_rounded, color: AppTheme.primaryGreen, size: 20),
                           tooltip: 'Support & Help Desk',

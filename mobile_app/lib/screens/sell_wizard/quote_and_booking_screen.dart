@@ -524,11 +524,82 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _upiController,
-                              decoration: const InputDecoration(labelText: 'UPI ID (Optional)', isDense: true),
+                            // Payout Preference Selection
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Payout Preference',
+                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppTheme.textPrimary),
                             ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildPayoutChoice(
+                                    label: 'Instant UPI',
+                                    sub: 'GPay/PhonePe',
+                                    value: 'UPI',
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildPayoutChoice(
+                                    label: 'Bank Transfer',
+                                    sub: 'IMPS/NEFT',
+                                    value: 'BANK',
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildPayoutChoice(
+                                    label: 'Cash on Pickup',
+                                    sub: 'In-app OTP',
+                                    value: 'CASH',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+
+                            if (_payoutType == 'UPI') ...[
+                              TextFormField(
+                                controller: _upiController,
+                                decoration: const InputDecoration(
+                                  labelText: 'UPI ID (e.g. name@okaxis)',
+                                  hintText: 'e.g. 9876543210@paytm',
+                                  isDense: true,
+                                ),
+                              ),
+                            ] else if (_payoutType == 'BANK') ...[
+                              TextFormField(
+                                controller: _upiController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Bank Account & IFSC',
+                                  hintText: 'e.g. Account Number / IFSC',
+                                  isDense: true,
+                                ),
+                              ),
+                            ] else if (_payoutType == 'CASH') ...[
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.amber.shade200),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.payments_rounded, color: Colors.amber.shade800, size: 20),
+                                    const SizedBox(width: 8),
+                                    const Expanded(
+                                      child: Text(
+                                        'Cash on Pickup selected: Agent will count & hand over cash at doorstep. You verify via in-app 4-digit code.',
+                                        style: TextStyle(fontSize: 10.5, color: Colors.brown, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ],
                       ),
@@ -890,6 +961,49 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPayoutChoice({required String label, required String sub, required String value}) {
+    final isSel = _payoutType == value;
+    return InkWell(
+      onTap: () => setState(() => _payoutType = value),
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        decoration: BoxDecoration(
+          color: isSel ? AppTheme.lightGreen : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSel ? AppTheme.primaryGreen : Colors.grey.shade300,
+            width: isSel ? 1.6 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: isSel ? FontWeight.w900 : FontWeight.bold,
+                color: isSel ? AppTheme.darkGreen : AppTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              sub,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 8.5,
+                fontWeight: FontWeight.w600,
+                color: isSel ? AppTheme.primaryGreen : Colors.grey.shade500,
+              ),
+            ),
+          ],
         ),
       ),
     );
