@@ -22,6 +22,7 @@ import 'auth/auth_modal_sheet.dart';
 import '../widgets/privacy_policy_modal.dart';
 import '../services/app_update_service.dart';
 import '../services/app_notification_service.dart';
+import '../services/background_notification_runner.dart';
 import '../utils/contact_launcher.dart';
 import '../widgets/brand_logo.dart';
 import '../utils/image_helper.dart';
@@ -56,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadInitialData();
+    BackgroundNotificationRunner().start();
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkAppUpdates());
   }
 

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
 
 enum NotificationCategory {
@@ -60,8 +62,11 @@ class AppNotificationService extends ChangeNotifier {
   AppNotificationService._internal();
 
   static const String _storageKey = 'dolly_in_app_notifications_v1';
+  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+
   List<AppNotificationItem> _notifications = [];
   bool _initialized = false;
+  bool _localNotificationsReady = false;
 
   List<AppNotificationItem> get notifications => List.unmodifiable(_notifications);
 
@@ -80,8 +85,43 @@ class AppNotificationService extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error loading notifications: $e');
     }
+
+    await _initLocalNotifications();
     _initialized = true;
     notifyListeners();
+  }
+
+  Future<void> _initLocalNotifications() async {
+    if (_localNotificationsReady) return;
+    try {
+      const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const initSettings = InitializationSettings(android: androidSettings);
+
+      await _localNotifications.initialize(
+        settings: initSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) async {
+          final payload = response.payload;
+          if (payload != null && payload.isNotEmpty) {
+            try {
+              final uri = Uri.parse(payload);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            } catch (_) {}
+          }
+        },
+      );
+
+      // Request Android 13+ runtime notification permission
+      final androidPlatform = _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlatform != null) {
+        await androidPlatform.requestNotificationsPermission();
+      }
+
+      _localNotificationsReady = true;
+    } catch (e) {
+      debugPrint('Local notifications init error: $e');
+    }
   }
 
   Future<void> _save() async {
@@ -95,7 +135,7 @@ class AppNotificationService extends ChangeNotifier {
   }
 
   /// Adds a notification with automatic deduplication (idempotent).
-  /// Returns true if newly added, false if already existed.
+  /// Also fires a native Android system notification into the status bar.
   Future<bool> addNotification({
     required String id,
     required String title,
@@ -103,6 +143,7 @@ class AppNotificationService extends ChangeNotifier {
     String category = 'SYSTEM',
     String? actionUrl,
     String? actionType,
+    bool showSystemNotification = true,
   }) async {
     await init();
 
@@ -129,7 +170,41 @@ class AppNotificationService extends ChangeNotifier {
 
     await _save();
     notifyListeners();
+
+    // Trigger native Android system notification popup
+    if (showSystemNotification) {
+      _showNativePopup(item);
+    }
+
     return true;
+  }
+
+  Future<void> _showNativePopup(AppNotificationItem item) async {
+    try {
+      const androidDetails = AndroidNotificationDetails(
+        'dolly_alerts_channel',
+        'Dolly Alerts & Updates',
+        channelDescription: 'Order status changes, payouts, and system updates',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: true,
+        enableVibration: true,
+        playSound: true,
+      );
+
+      const notificationDetails = NotificationDetails(android: androidDetails);
+
+      final notifId = item.id.hashCode & 0x7FFFFFFF;
+      await _localNotifications.show(
+        id: notifId,
+        title: item.title,
+        body: item.body,
+        notificationDetails: notificationDetails,
+        payload: item.actionUrl,
+      );
+    } catch (e) {
+      debugPrint('Error showing native notification popup: $e');
+    }
   }
 
   Future<void> markAsRead(String id) async {
@@ -157,72 +232,66 @@ class AppNotificationService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Automatically generates lifecycle milestone notifications for orders
-  /// with 100% deduplication guarantees.
+  /// Syncs order status changes into notifications for Customer or Field Agent
   Future<void> syncOrderNotifications(List<SaleOrderModel> orders, {bool isAgent = false}) async {
-    await init();
-    for (var order in orders) {
-      final orderCode = order.saleCode.isNotEmpty ? order.saleCode : '#${order.id}';
-      final devName = '${order.brandName} ${order.modelName}'.trim();
+    for (final order in orders) {
+      final code = order.saleCode;
+      final status = order.status;
+      final model = '${order.brandName} ${order.modelName}'.trim();
 
-      // Milestone 1: Order Submitted
-      if (order.status == 'SUBMITTED') {
-        await addNotification(
-          id: 'order_${order.id}_SUBMITTED',
-          title: 'Order $orderCode Submitted',
-          body: 'Your device $devName sell request has been received. Pickup will be assigned shortly.',
-          category: 'ORDERS',
-          actionType: 'VIEW_ORDER',
-        );
+      String notifId = 'order_${code}_$status';
+      String title = '';
+      String body = '';
+      String category = 'ORDERS';
+
+      switch (status) {
+        case 'SUBMITTED':
+          if (!isAgent) {
+            title = 'Order Request Placed';
+            body = 'Your buyback order #$code for $model has been created and is waiting for pickup scheduling.';
+          }
+          break;
+        case 'PICKUP_SCHEDULED':
+          if (isAgent) {
+            title = 'New Pickup Assigned';
+            body = 'Order #$code for $model has been assigned to your doorstep inspection queue.';
+          } else {
+            title = 'Pickup Scheduled';
+            body = 'A Dolly executive has scheduled doorstep verification for $model (#$code).';
+          }
+          break;
+        case 'DEVICE_COLLECTED':
+          title = isAgent ? 'Device Handed Over' : 'Device Verified & Collected';
+          body = 'Physical QC passed for $model (#$code). Device is in custody.';
+          break;
+        case 'OWNERSHIP_TRANSFERRED':
+          title = 'Transfer Receipt Generated';
+          body = 'Ownership transfer complete for $model (#$code). Payout is queued.';
+          break;
+        case 'PAYMENT_COMPLETED':
+          category = 'PAYOUTS';
+          final amt = (order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0);
+          title = 'Payout Disbursed (₹$amt)';
+          body = 'Payment for $model (#$code) has been disbursed successfully to the registered UPI.';
+          break;
+        case 'CANCELLED':
+          title = 'Order Cancelled';
+          body = 'Order #$code for $model has been cancelled.';
+          break;
+        case 'CUSTOMER_REJECTED':
+          title = 'Order Inspection Cancelled';
+          body = 'Doorstep quotation for $model (#$code) was rejected.';
+          break;
+        default:
+          break;
       }
 
-      // Milestone 2: Pickup Scheduled / Agent Assigned
-      if (order.status == 'PICKUP_SCHEDULED') {
-        final agentName = order.assignedAgentName ?? 'a field specialist';
+      if (title.isNotEmpty && body.isNotEmpty) {
         await addNotification(
-          id: 'order_${order.id}_PICKUP_SCHEDULED',
-          title: 'Specialist Assigned ($orderCode)',
-          body: isAgent
-              ? 'New pickup in ${order.pickupCity} on ${order.pickupDate ?? "today"} (${order.pickupSlot ?? "Standard"}).'
-              : '$agentName has been assigned to inspect and collect your $devName.',
-          category: 'ORDERS',
-          actionType: 'VIEW_ORDER',
-        );
-      }
-
-      // Milestone 3: Inspection Completed / Offer Sent
-      if (order.status == 'FINAL_OFFER_SENT') {
-        final offerAmt = order.finalPrice ?? order.estimatedPrice;
-        await addNotification(
-          id: 'order_${order.id}_FINAL_OFFER_SENT',
-          title: 'Final Offer Ready ($orderCode)',
-          body: 'Doorstep inspection completed. Revised valuation of ₹${offerAmt.toStringAsFixed(0)} awaits your confirmation.',
-          category: 'ORDERS',
-          actionType: 'VIEW_ORDER',
-        );
-      }
-
-      // Milestone 4: Customer Accepted Offer
-      if (order.status == 'CUSTOMER_ACCEPTED' || order.status == 'OWNERSHIP_TRANSFERRED') {
-        await addNotification(
-          id: 'order_${order.id}_ACCEPTED',
-          title: 'Offer Accepted ($orderCode)',
-          body: isAgent
-              ? 'Customer confirmed the valuation. Proceed with device collection and handover.'
-              : 'Valuation accepted! Device handover recorded and payout queued for disbursement.',
-          category: 'ORDERS',
-          actionType: 'VIEW_ORDER',
-        );
-      }
-
-      // Milestone 5: Payment Completed
-      if (order.status == 'PAYMENT_COMPLETED') {
-        final amt = order.finalPrice ?? order.estimatedPrice;
-        await addNotification(
-          id: 'order_${order.id}_PAYMENT_COMPLETED',
-          title: 'Payout Disbursed (₹${amt.toStringAsFixed(0)})',
-          body: 'Funds credited for $orderCode to your account/UPI. Thank you for using Dolly!',
-          category: 'PAYOUTS',
+          id: notifId,
+          title: title,
+          body: body,
+          category: category,
           actionType: 'VIEW_ORDER',
         );
       }
