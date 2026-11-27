@@ -273,6 +273,39 @@ class ApiService {
     }
   }
 
+  Future<void> deleteAgent(int agentId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/agents/$agentId/');
+    final res = await http.delete(url, headers: _headers);
+    if (res.statusCode != 200 && res.statusCode != 204) {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to delete agent');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateCustomer(int customerId, Map<String, dynamic> data) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/customers/$customerId/');
+    final res = await http.patch(
+      url,
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    final json = jsonDecode(res.body);
+    if (res.statusCode == 200) {
+      return json;
+    } else {
+      throw Exception(json['detail'] ?? json['message'] ?? 'Failed to update customer');
+    }
+  }
+
+  Future<void> deleteCustomer(int customerId, {bool toggleOnly = false}) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/customers/$customerId/${toggleOnly ? '?action=toggle' : ''}');
+    final res = await http.delete(url, headers: _headers);
+    if (res.statusCode != 200 && res.statusCode != 204) {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to delete customer');
+    }
+  }
+
   Future<UserModel> getProfile() async {
     final url = Uri.parse('${ApiConfig.baseUrl}/auth/me/');
     final res = await http.get(url, headers: _headers);
@@ -345,6 +378,19 @@ class ApiService {
       }
     } catch (_) {}
     return _cachedCMSSections ?? [];
+  }
+
+  Future<Map<String, dynamic>> getSystemSettings() async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/settings/');
+    try {
+      final res = await http.get(url, headers: _headers);
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map<String, dynamic>) return decoded;
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {}
+    return {};
   }
 
   // ================= 3. CATALOG & DEVICES =================
@@ -594,9 +640,16 @@ class ApiService {
     }
   }
 
-  Future<List<SaleOrderModel>> getSales() async {
-    final url = Uri.parse('${ApiConfig.baseUrl}/sales/');
-    final res = await http.get(url, headers: _headers);
+  Future<List<SaleOrderModel>> getSales({String? status, bool? pool, String? search}) async {
+    final queryParams = <String, String>{};
+    if (status != null && status.isNotEmpty) queryParams['status'] = status;
+    if (pool == true) queryParams['pool'] = 'true';
+    if (search != null && search.isNotEmpty) queryParams['search'] = search;
+
+    final uri = Uri.parse('${ApiConfig.baseUrl}/sales/').replace(
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+    final res = await http.get(uri, headers: _headers);
     if (res.statusCode == 200) {
       final dynamic raw = jsonDecode(res.body);
       if (raw is List) {
@@ -1129,6 +1182,59 @@ class ApiService {
       throw Exception('Failed to delete condition option');
     }
     _cachedConditions = null;
+  }
+
+  Future<EvaluationTriageQuestionModel> createTriageQuestion(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/triage-questions/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode == 201) {
+      return EvaluationTriageQuestionModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to create triage question');
+    }
+  }
+
+  Future<EvaluationTriageQuestionModel> updateTriageQuestion(dynamic id, Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/triage-questions/$id/');
+    final res = await http.patch(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode == 200) {
+      return EvaluationTriageQuestionModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to update triage question');
+    }
+  }
+
+  Future<void> deleteTriageQuestion(dynamic id, {bool permanent = true}) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/valuation/triage-questions/$id/?permanent=${permanent ? "true" : "false"}');
+    final res = await http.delete(url, headers: _headers);
+    if (res.statusCode != 200 && res.statusCode != 204) {
+      throw Exception('Failed to delete triage question');
+    }
+  }
+
+  Future<Map<String, dynamic>> saveCMSSection(Map<String, dynamic> payload) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/cms/sections/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return jsonDecode(res.body);
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? 'Failed to save CMS banner');
+    }
   }
 
   /// Lightweight keep-alive health check ping

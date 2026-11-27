@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
+import '../../services/app_notification_service.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/brand_logo.dart';
 import '../../utils/contact_launcher.dart';
@@ -25,6 +26,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
 
   bool _loading = false;
   List<SaleOrderModel> _sales = [];
+  List<SaleOrderModel> _poolSales = [];
   String _searchQuery = '';
   String _historyPeriodFilter = 'ALL';
   DateTimeRange? _historyDateRange;
@@ -32,7 +34,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadAgentData();
   }
 
@@ -46,12 +48,20 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
     setState(() => _loading = true);
     try {
       final list = await _api.getSales();
+      List<SaleOrderModel> pool = [];
+      try {
+        pool = await _api.getSales(pool: true);
+      } catch (_) {}
+
       if (mounted) {
         setState(() {
           _sales = list;
+          _poolSales = pool;
           _loading = false;
         });
       }
+      // Proactively sync milestone notifications for this agent
+      AppNotificationService().syncOrderNotifications(list, isAgent: true);
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
@@ -104,11 +114,11 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
     return list;
   }
 
-  // Completed Handover History: Orders where QC was finished and device was collected / paid
+  // Completed Handover History: Orders where QC was finished and device was collected / paid / cancelled
   List<SaleOrderModel> get _historyOrders {
     final now = DateTime.now();
     return _sales.where((s) {
-      final isCompleted = ['OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED', 'CUSTOMER_REJECTED'].contains(s.status);
+      final isCompleted = ['DEVICE_COLLECTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_COMPLETED', 'CUSTOMER_REJECTED', 'CANCELLED'].contains(s.status);
       if (!isCompleted) return false;
       if (_searchQuery.isNotEmpty) {
         final matches = s.saleCode.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -139,6 +149,44 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
 
       return true;
     }).toList();
+  }
+
+  // Unassigned Open Leads Pool
+  List<SaleOrderModel> get _poolOrders {
+    final list = _poolSales.where((s) {
+      if (_searchQuery.isEmpty) return true;
+      return s.saleCode.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          s.customerName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          s.customerPhone.contains(_searchQuery) ||
+          s.modelName.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          s.pickupCity.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          s.pickupPincode.contains(_searchQuery);
+    }).toList();
+    return list;
+  }
+
+  Future<void> _claimOrder(SaleOrderModel order) async {
+    try {
+      await _api.assignPickup(order.id, {});
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order #${order.saleCode} claimed! Assigned to your pickup queue.'),
+          backgroundColor: AppTheme.primaryGreen,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _loadAgentData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to claim order: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   double get _totalInspectedValue {
@@ -427,8 +475,9 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
                                   labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
                                   unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
                                   tabs: [
-                                    Tab(text: 'Pickup Queue (${_queueOrders.length})'),
-                                    Tab(text: 'Handover History (${_historyOrders.length})'),
+                                    Tab(text: 'Queue (${_queueOrders.length})'),
+                                    Tab(text: 'History (${_historyOrders.length})'),
+                                    Tab(text: 'Pool (${_poolOrders.length})'),
                                   ],
                                 ),
                               ),
@@ -442,6 +491,7 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
                       children: [
                         _buildQueueList(),
                         _buildHistoryList(),
+                        _buildPoolList(),
                       ],
                     ),
                   ),
@@ -977,6 +1027,129 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _buildPoolList() {
+    final list = _poolOrders;
+    if (list.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.inbox_outlined, size: 54, color: AppTheme.textSecondary),
+              const SizedBox(height: 12),
+              const Text('No Open Leads in Pool', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary)),
+              const SizedBox(height: 6),
+              const Text('All current customer orders are already assigned to field agents.', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.refresh, size: 16, color: AppTheme.primaryGreen),
+                label: const Text('Refresh Pool', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+                onPressed: _loadAgentData,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+      itemCount: list.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final order = list[index];
+        return GlassContainer(
+          padding: const EdgeInsets.all(16),
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                    ),
+                    child: const Text(
+                      'UNASSIGNED LEAD',
+                      style: TextStyle(color: Colors.blue, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 0.5),
+                    ),
+                  ),
+                  Text(
+                    '#${order.saleCode}',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '${order.brandName} ${order.modelName}',
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.textPrimary),
+              ),
+              if (order.storage.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(
+                  order.storage,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on_rounded, size: 16, color: AppTheme.textSecondary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${order.pickupCity.isNotEmpty ? order.pickupCity : 'Local'} · PIN ${order.pickupPincode.isNotEmpty ? order.pickupPincode : '---'}\n${order.pickupAddress}',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11, color: AppTheme.textPrimary),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text('Quoted Payout', style: TextStyle(fontSize: 9, color: AppTheme.textSecondary)),
+                        Text('₹${(order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.primaryGreen)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGreen,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  icon: const Icon(Icons.pan_tool_alt_rounded, size: 18),
+                  label: const Text('Claim This Doorstep Pickup', style: TextStyle(fontWeight: FontWeight.bold)),
+                  onPressed: () => _claimOrder(order),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

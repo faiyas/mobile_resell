@@ -19,6 +19,9 @@ import 'agent/agent_dashboard_screen.dart';
 import 'agent/agent_inspection_screen.dart';
 import 'admin/admin_portal_screen.dart';
 import 'auth/auth_modal_sheet.dart';
+import '../widgets/privacy_policy_modal.dart';
+import '../services/app_update_service.dart';
+import '../services/app_notification_service.dart';
 import '../utils/contact_launcher.dart';
 import '../widgets/brand_logo.dart';
 import '../utils/image_helper.dart';
@@ -53,6 +56,16 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadInitialData();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkAppUpdates());
+  }
+
+  Future<void> _checkAppUpdates() async {
+    try {
+      final info = await AppUpdateService().checkForUpdate();
+      if (mounted && info.isUpdateAvailable) {
+        AppUpdateService.showUpdateDialog(context, info);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -1800,12 +1813,7 @@ class _HomeScreenState extends State<HomeScreen> {
               title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary)),
               subtitle: const Text('Read how Dolly handles and protects your data', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
               trailing: const Icon(Icons.open_in_new_rounded, size: 16, color: AppTheme.primaryGreen),
-              onTap: () async {
-                final url = Uri.parse('https://mobile-resell.vercel.app/privacy-policy');
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url, mode: LaunchMode.externalApplication);
-                }
-              },
+              onTap: () => PrivacyPolicyModal.show(context),
             ),
           ),
           const SizedBox(height: 12),

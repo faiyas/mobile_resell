@@ -37,6 +37,212 @@ class _AdminCustomersViewState extends State<AdminCustomersView> {
     } catch (_) {}
   }
 
+  void _showEditCustomerModal(_CustomerSummary customer) {
+    if (customer.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This customer has not registered an account yet (guest order).')),
+      );
+      return;
+    }
+
+    final nameCtrl = TextEditingController(text: customer.name);
+    final phoneCtrl = TextEditingController(text: customer.phone);
+    final emailCtrl = TextEditingController(text: customer.email ?? '');
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setM) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+              const SizedBox(height: 14),
+              Text('Edit Customer: ${customer.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+              const Text('Update customer contact information', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              const SizedBox(height: 16),
+              const Text('Full Name', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Phone Number', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Email Address', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: emailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final name = nameCtrl.text.trim();
+                          if (name.isEmpty) return;
+                          setM(() => isSaving = true);
+                          try {
+                            await _api.updateCustomer(customer.id!, {
+                              'full_name': name,
+                              'phone': phoneCtrl.text.trim(),
+                              'email': emailCtrl.text.trim(),
+                            });
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            await _fetchRegisteredCustomers();
+                            widget.onRefresh();
+                          } catch (e) {
+                            setM(() => isSaving = false);
+                            if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
+                          }
+                        },
+                  child: isSaving
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Save Customer Details', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showResetPasswordModal(_CustomerSummary customer) {
+    if (customer.id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This customer has not registered an account yet (guest order).')),
+      );
+      return;
+    }
+
+    final pwdCtrl = TextEditingController();
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setM) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+              const SizedBox(height: 14),
+              Text('Reset Password: ${customer.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+              const Text('Admin credential override for customer account', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+              const SizedBox(height: 16),
+              const Text('New Password', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: pwdCtrl,
+                obscureText: true,
+                decoration: InputDecoration(
+                  hintText: 'Enter new password (min 6 chars)',
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          final pwd = pwdCtrl.text.trim();
+                          if (pwd.length < 6) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Password must be at least 6 characters')));
+                            return;
+                          }
+                          setM(() => isSaving = true);
+                          try {
+                            await _api.adminResetCustomerPassword(customerId: customer.id!, newPassword: pwd);
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Password reset successfully!')));
+                          } catch (e) {
+                            setM(() => isSaving = false);
+                            if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
+                          }
+                        },
+                  child: isSaving
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('Reset Password Now', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteCustomer(_CustomerSummary customer) {
+    if (customer.id == null) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete Customer: ${customer.name}?'),
+        content: const Text('This will delete the customer profile permanently or unbind their registered access. Proceed?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _api.deleteCustomer(customer.id!);
+                await _fetchRegisteredCustomers();
+                widget.onRefresh();
+              } catch (e) {
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Group sales by unique customer (phone or customer name)
@@ -48,11 +254,15 @@ class _AdminCustomersViewState extends State<AdminCustomersView> {
       final name = (u['full_name'] ?? u['email'] ?? 'User').toString();
       final email = u['email']?.toString();
       final key = phone.isNotEmpty ? phone : (email ?? 'user_${u['id']}');
+      final id = int.tryParse(u['id']?.toString() ?? '');
+      final isActive = u['is_active'] != false;
       customersMap[key] = _CustomerSummary(
+        id: id,
         name: name,
         phone: phone,
         email: email,
         city: null,
+        isActive: isActive,
         orders: [],
       );
     }
@@ -62,10 +272,12 @@ class _AdminCustomersViewState extends State<AdminCustomersView> {
       final key = o.customerPhone.isNotEmpty ? o.customerPhone : (o.customerName.isNotEmpty ? o.customerName : 'Unknown_${o.id}');
       if (!customersMap.containsKey(key)) {
         customersMap[key] = _CustomerSummary(
+          id: null,
           name: o.customerName.isNotEmpty ? o.customerName : 'Customer (${o.customerPhone})',
           phone: o.customerPhone,
           email: o.customerEmail,
           city: o.pickupCity,
+          isActive: true,
           orders: [o],
         );
       } else {
@@ -119,7 +331,10 @@ class _AdminCustomersViewState extends State<AdminCustomersView> {
               ),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryGreen),
-                onPressed: widget.onRefresh,
+                onPressed: () {
+                  _fetchRegisteredCustomers();
+                  widget.onRefresh();
+                },
               ),
             ],
           ),
@@ -175,7 +390,7 @@ class _AdminCustomersViewState extends State<AdminCustomersView> {
                       // Avatar Initials
                       CircleAvatar(
                         radius: 22,
-                        backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                        backgroundColor: AppTheme.primaryGreen.withOpacity(0.15),
                         child: Text(
                           customer.name.isNotEmpty ? customer.name[0].toUpperCase() : 'C',
                           style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.primaryGreen),
@@ -187,9 +402,36 @@ class _AdminCustomersViewState extends State<AdminCustomersView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              customer.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    customer.name,
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary),
+                                  ),
+                                ),
+                                if (customer.id != null)
+                                  PopupMenuButton<String>(
+                                    icon: const Icon(Icons.more_vert, size: 18, color: AppTheme.textSecondary),
+                                    onSelected: (val) {
+                                      if (val == 'edit') _showEditCustomerModal(customer);
+                                      if (val == 'pwd') _showResetPasswordModal(customer);
+                                      if (val == 'toggle') {
+                                        _api.deleteCustomer(customer.id!, toggleOnly: true).then((_) {
+                                          _fetchRegisteredCustomers();
+                                          widget.onRefresh();
+                                        });
+                                      }
+                                      if (val == 'delete') _confirmDeleteCustomer(customer);
+                                    },
+                                    itemBuilder: (ctx) => [
+                                      const PopupMenuItem(value: 'edit', child: Text('Edit Details')),
+                                      const PopupMenuItem(value: 'pwd', child: Text('Reset Password')),
+                                      PopupMenuItem(value: 'toggle', child: Text(customer.isActive ? 'Deactivate' : 'Activate')),
+                                      const PopupMenuItem(value: 'delete', child: Text('Delete Profile', style: TextStyle(color: Colors.red))),
+                                    ],
+                                  ),
+                              ],
                             ),
                             const SizedBox(height: 3),
                             if (customer.phone.isNotEmpty)
@@ -227,7 +469,7 @@ class _AdminCustomersViewState extends State<AdminCustomersView> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: Colors.blue.withValues(alpha: 0.1),
+                                    color: Colors.blue.withOpacity(0.1),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -240,7 +482,7 @@ class _AdminCustomersViewState extends State<AdminCustomersView> {
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
-                                      color: Colors.green.withValues(alpha: 0.12),
+                                      color: Colors.green.withOpacity(0.12),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
@@ -259,7 +501,7 @@ class _AdminCustomersViewState extends State<AdminCustomersView> {
                           icon: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                              color: AppTheme.primaryGreen.withOpacity(0.1),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(Icons.call_rounded, size: 18, color: AppTheme.primaryGreen),
@@ -283,17 +525,21 @@ class _AdminCustomersViewState extends State<AdminCustomersView> {
 }
 
 class _CustomerSummary {
+  final int? id;
   final String name;
   final String phone;
   final String? email;
   final String? city;
+  final bool isActive;
   final List<SaleOrderModel> orders;
 
   _CustomerSummary({
+    this.id,
     required this.name,
     required this.phone,
     this.email,
     this.city,
+    this.isActive = true,
     required this.orders,
   });
 }

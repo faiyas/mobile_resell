@@ -15,6 +15,8 @@ import 'admin_triage_valuation_view.dart';
 import 'admin_valuation_simulator_view.dart';
 import 'admin_cms_view.dart';
 import 'admin_settings_view.dart';
+import '../../widgets/notification_center_sheet.dart';
+import '../../services/app_notification_service.dart';
 
 class AdminPortalScreen extends StatefulWidget {
   final AdminNavSection initialSection;
@@ -68,6 +70,7 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
           _brands = brands;
           _isLoading = false;
         });
+        AppNotificationService().syncOrderNotifications(orders);
       }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
@@ -263,6 +266,11 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
           tooltip: 'Open navigation',
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, color: AppTheme.primaryGreen),
+            onPressed: () => NotificationCenterSheet.show(context),
+            tooltip: 'Notifications',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryGreen),
             onPressed: _loadAllAdminData,
