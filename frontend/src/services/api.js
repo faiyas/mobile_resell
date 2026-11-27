@@ -149,8 +149,16 @@ export const api = {
   updateSeries: (id, data) => { clearCatalogCache(); return request(`/catalog/series/${id}/`, { method: 'PUT', body: JSON.stringify(data) }); },
   deleteSeries: (id) => { clearCatalogCache(); return request(`/catalog/series/${id}/`, { method: 'DELETE' }); },
 
-  getModels: (brandId, all = false, seriesId = null) => 
-    request(`/catalog/models/?${brandId ? `brand=${brandId}&` : ''}${seriesId ? `series=${seriesId}&` : ''}all=${all}`).then(res => (res && Array.isArray(res.results)) ? res.results : res),
+  getModels: (brandId, all = false, seriesId = null, page = null, pageSize = 24, search = '') => {
+    const params = new URLSearchParams();
+    if (brandId) params.append('brand', brandId);
+    if (seriesId) params.append('series', seriesId);
+    if (all) params.append('all', 'true');
+    if (page) params.append('page', page);
+    if (pageSize) params.append('page_size', pageSize);
+    if (search) params.append('search', search);
+    return request(`/catalog/models/?${params.toString()}`);
+  },
   getModelDetail: (id) => request(`/catalog/models/${id}/`),
   createModel: (data) => { clearCatalogCache(); return request('/catalog/models/', { method: 'POST', body: JSON.stringify(data) }); },
   updateModel: (id, data) => { clearCatalogCache(); return request(`/catalog/models/${id}/`, { method: 'PUT', body: JSON.stringify(data) }); },

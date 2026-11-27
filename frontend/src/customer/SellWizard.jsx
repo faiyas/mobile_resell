@@ -97,6 +97,12 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
   // Filters
   const [brandSearch, setBrandSearch] = useState('');
   const [modelSearch, setModelSearch] = useState('');
+  const [visibleModelCount, setVisibleModelCount] = useState(12);
+  const [brandModelsLoading, setBrandModelsLoading] = useState(false);
+
+  useEffect(() => {
+    setVisibleModelCount(12);
+  }, [modelSearch, selectedSeriesId]);
 
   // Valuation Quote
   const [valuationResult, setValuationResult] = useState(null);
@@ -338,20 +344,27 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
     setSelectedBrand(brand);
     setSelectedModel(null);
     setSelectedVariant(null);
+    setSelectedSeriesId('ALL');
+    setModelSearch('');
+    setVisibleModelCount(12);
+    setBrandModelsLoading(true);
     try {
       const [modelsData, seriesData, brandSteps] = await Promise.all([
         api.getModels(brand.id),
         api.getSeries(brand.id),
         api.getConditionCategories(false, brand.id).catch(() => []),
       ]);
-      setModels(modelsData);
-      setSeriesList(seriesData);
+      const safeModels = Array.isArray(modelsData) ? modelsData : (modelsData?.results || []);
+      setModels(safeModels);
+      setSeriesList(Array.isArray(seriesData) ? seriesData : []);
       if (brandSteps && brandSteps.length > 0) {
         setQuestionSteps(deduplicateSteps(brandSteps));
       }
       setCurrentScreen(3);
     } catch (e) {
       console.error(e);
+    } finally {
+      setBrandModelsLoading(false);
     }
   };
 
@@ -659,7 +672,9 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                   className="group cursor-pointer glass-card glass-card-hover rounded-2xl p-4 text-center transition flex flex-col items-center justify-center min-h-[140px]"
                 >
                   <div className="w-16 h-12 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                    {brand.logo_base64 ? (
+                    {brandModelsLoading && selectedBrand?.id === brand.id ? (
+                      <div className="w-7 h-7 border-2 border-[#0BAA4B] border-t-transparent rounded-full animate-spin" />
+                    ) : brand.logo_base64 ? (
                       <img src={formatImageSrc(brand.logo_base64)} alt={brand.name} className="max-h-10 max-w-full object-contain" />
                     ) : (
                       <Smartphone className="w-8 h-8 text-[#0BAA4B]" />
@@ -737,7 +752,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
             {/* Models Column */}
             <div className="md:col-span-2 space-y-3">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-1">
-                {filteredModels.map((m) => {
+                {filteredModels.slice(0, visibleModelCount).map((m) => {
                   const isSelected = selectedModel?.id === m.id;
                   return (
                     <div
@@ -765,6 +780,21 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                   );
                 })}
               </div>
+
+              {filteredModels.length > visibleModelCount && (
+                <div className="pt-1 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setVisibleModelCount(prev => prev + 12)}
+                    className="w-full py-2.5 px-4 bg-white/90 hover:bg-white text-[#0BAA4B] font-extrabold text-xs rounded-2xl border border-emerald-200 shadow-sm hover:shadow transition flex items-center justify-center gap-2 group"
+                  >
+                    <span>Load More Models ({Math.min(visibleModelCount, filteredModels.length)} of {filteredModels.length})</span>
+                    <span className="text-[10px] bg-emerald-100 text-[#0BAA4B] px-2 py-0.5 rounded-full font-bold group-hover:scale-105 transition-transform">
+                      +{Math.min(12, filteredModels.length - visibleModelCount)}
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Storage Variants Column */}

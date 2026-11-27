@@ -131,6 +131,10 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
 
   const [loading, setLoading] = useState(false);
   const [modelsLoading, setModelsLoading] = useState(true);
+  const [modelsPage, setModelsPage] = useState(1);
+  const [modelsPageSize, setModelsPageSize] = useState(24);
+  const [modelsTotalCount, setModelsTotalCount] = useState(0);
+  const [modelsTotalPages, setModelsTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBrandId, setFilterBrandId] = useState('');
   const [filterSeriesId, setFilterSeriesId] = useState('');
@@ -142,11 +146,13 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
     setFilterBrandId(bId);
     setFilterSeriesId('');
     setFilterModelId('');
+    setModelsPage(1);
   };
 
   const handleSeriesFilterChange = (sId) => {
     setFilterSeriesId(sId);
     setFilterModelId('');
+    setModelsPage(1);
   };
 
   // Modals state
@@ -427,13 +433,21 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
       // Release loading immediately so Questionnaire & Banners are interactive without waiting!
       setLoading(false);
 
-      // PHASE 2: Background fetch heavy tables (2,158 models & 3,514 variants) asynchronously
+      // PHASE 2: Background fetch initial paginated models & variant tables
       Promise.all([
-        api.getModels('', true).catch(() => []),
+        api.getModels('', false, '', 1, modelsPageSize).catch(() => ({ results: [], count: 0, total_pages: 1 })),
         api.getVariants('', true).catch(() => []),
         api.getPriceHistory().catch(() => [])
-      ]).then(([mData, vData, hData]) => {
-        if (mData && mData.length > 0) setModels(mData);
+      ]).then(([mRes, vData, hData]) => {
+        if (mRes && mRes.results) {
+          setModels(mRes.results);
+          setModelsTotalCount(mRes.count || 0);
+          setModelsTotalPages(mRes.total_pages || 1);
+        } else if (Array.isArray(mRes)) {
+          setModels(mRes);
+          setModelsTotalCount(mRes.length);
+          setModelsTotalPages(1);
+        }
         if (vData && vData.length > 0) setVariants(vData);
         if (hData && hData.length > 0) setPriceHistory(hData);
       }).catch(() => {}).finally(() => {
@@ -447,6 +461,36 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
       setModelsLoading(false);
     }
   };
+
+  const fetchPaginatedModels = async (page = modelsPage, size = modelsPageSize, bId = filterBrandId, sId = filterSeriesId, q = searchQuery) => {
+    setModelsLoading(true);
+    try {
+      const res = await api.getModels(bId, false, sId, page, size, q);
+      if (res && res.results) {
+        setModels(res.results);
+        setModelsTotalCount(res.count || 0);
+        setModelsTotalPages(res.total_pages || 1);
+        setModelsPage(res.current_page || page);
+      } else if (Array.isArray(res)) {
+        setModels(res);
+        setModelsTotalCount(res.length);
+        setModelsTotalPages(1);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setModelsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (subTab === 'models') {
+      const timer = setTimeout(() => {
+        fetchPaginatedModels(modelsPage, modelsPageSize, filterBrandId, filterSeriesId, searchQuery);
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [subTab, modelsPage, modelsPageSize, filterBrandId, filterSeriesId, searchQuery]);
 
   // Sync simulator model when brand changes
   useEffect(() => {
@@ -2371,20 +2415,15 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
           })()}
 
           {(() => {
-            const filteredModels = models.filter(m => {
-              if (filterBrandId && (m.brand !== parseInt(filterBrandId) && m.brand?.id !== parseInt(filterBrandId))) return false;
-              if (filterSeriesId && (m.series !== parseInt(filterSeriesId) && m.series?.id !== parseInt(filterSeriesId))) return false;
-              return true;
-            });
             return (
               <BulkActionBar
-                totalCount={filteredModels.length}
+                totalCount={modelsTotalCount || models.length}
                 selectedIds={selectedIds}
                 itemName="Models"
                 loading={bulkDeleting}
-                onToggleSelectAll={() => setSelectedIds(selectedIds.length === filteredModels.length ? [] : filteredModels.map(m => m.id))}
+                onToggleSelectAll={() => setSelectedIds(selectedIds.length === models.length ? [] : models.map(m => m.id))}
                 onDeleteSelected={() => handleBulkDelete('catalog', 'models', false, selectedIds, 'Deleting models will also delete all their Storage Variants.')}
-                onDeleteAll={() => handleBulkDelete('catalog', 'models', !filterBrandId && !filterSeriesId, (filterBrandId || filterSeriesId) ? filteredModels.map(m => m.id) : [], 'This will delete ALL displayed Models and their Storage Variants!')}
+                onDeleteAll={() => handleBulkDelete('catalog', 'models', !filterBrandId && !filterSeriesId, (filterBrandId || filterSeriesId) ? models.map(m => m.id) : [], 'This will delete ALL displayed Models and their Storage Variants!')}
               />
             );
           })()}
@@ -2410,13 +2449,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
               );
             }
 
-            const filteredModels = models.filter(m => {
-              if (filterBrandId && (m.brand !== parseInt(filterBrandId) && m.brand?.id !== parseInt(filterBrandId))) return false;
-              if (filterSeriesId && (m.series !== parseInt(filterSeriesId) && m.series?.id !== parseInt(filterSeriesId))) return false;
-              return true;
-            });
-
-            if (filteredModels.length === 0) {
+            if (models.length === 0) {
               const activeBrand = brands.find(b => String(b.id) === String(filterBrandId));
               const activeSeries = seriesList.find(s => String(s.id) === String(filterSeriesId));
               return (
@@ -2453,80 +2486,159 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             }
 
             return (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredModels.map((m) => {
-                  const modelVariants = variants.filter(v => v.model === m.id || v.model_id === m.id);
-                  return (
-                    <div key={m.id} className={`bg-white rounded-2xl border p-4 shadow-sm flex flex-col justify-between ${
-                      selectedIds.includes(m.id) ? 'border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20' : 'border-slate-200'
-                    }`}>
-                      <div>
-                        <div className="flex justify-between items-start">
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="checkbox"
-                              checked={selectedIds.includes(m.id)}
-                              onChange={() => toggleSelectId(m.id)}
-                              className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
-                            />
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                              {m.brand_name || 'Brand'}
-                            </span>
+              <div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {models.map((m) => {
+                    const modelVariants = variants.filter(v => v.model === m.id || v.model_id === m.id);
+                    return (
+                      <div key={m.id} className={`bg-white rounded-2xl border p-4 shadow-sm flex flex-col justify-between ${
+                        selectedIds.includes(m.id) ? 'border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20' : 'border-slate-200'
+                      }`}>
+                        <div>
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.includes(m.id)}
+                                onChange={() => toggleSelectId(m.id)}
+                                className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
+                              />
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                                {m.brand_name || 'Brand'}
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => handleToggleModelActive(m)}
+                              className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                                m.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                              }`}
+                            >
+                              {m.is_active ? 'Active' : 'Disabled'}
+                            </button>
                           </div>
+
+                          <div className="h-24 flex items-center justify-center p-2 my-2 bg-slate-50 rounded-xl">
+                            {m.image_base64 ? (
+                              <img src={formatImageSrc(m.image_base64)} alt={m.name} className="max-h-20 max-w-full object-contain" />
+                            ) : (
+                              <Smartphone className="w-10 h-10 text-slate-400" />
+                            )}
+                          </div>
+
+                          <h4 className="font-extrabold text-slate-900 text-sm">{m.name}</h4>
+                          <p className="text-xs text-slate-500 mt-0.5">Year: {m.release_year || 'N/A'}</p>
+                          
+                          <div className="mt-2 text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg space-y-1">
+                            <span className="font-bold block text-slate-700">Storage Variants ({modelVariants.length}):</span>
+                            {modelVariants.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {modelVariants.map(v => (
+                                  <span key={v.id} className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                                    {v.storage}: ₹{Number(v.base_price).toLocaleString('en-IN')}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 italic">No variants configured</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-3 border-t border-slate-100 mt-3">
                           <button
-                            onClick={() => handleToggleModelActive(m)}
-                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                              m.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                            }`}
+                            onClick={() => handleOpenModelModal(m)}
+                            className="flex-1 border border-slate-200 hover:bg-slate-50 font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1"
                           >
-                            {m.is_active ? 'Active' : 'Disabled'}
+                            <Edit2 className="w-3 h-3" /> Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteModel(m)}
+                            className="p-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-xs"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
-
-                        <div className="h-24 flex items-center justify-center p-2 my-2 bg-slate-50 rounded-xl">
-                          {m.image_base64 ? (
-                            <img src={formatImageSrc(m.image_base64)} alt={m.name} className="max-h-20 max-w-full object-contain" />
-                          ) : (
-                            <Smartphone className="w-10 h-10 text-slate-400" />
-                          )}
-                        </div>
-
-                        <h4 className="font-extrabold text-slate-900 text-sm">{m.name}</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">Year: {m.release_year || 'N/A'}</p>
-                        
-                        <div className="mt-2 text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg space-y-1">
-                          <span className="font-bold block text-slate-700">Storage Variants ({modelVariants.length}):</span>
-                          {modelVariants.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
-                              {modelVariants.map(v => (
-                                <span key={v.id} className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[10px] font-mono">
-                                  {v.storage}: ₹{Number(v.base_price).toLocaleString('en-IN')}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 italic">No variants configured</span>
-                          )}
-                        </div>
                       </div>
+                    );
+                  })}
+                </div>
 
-                      <div className="flex gap-2 pt-3 border-t border-slate-100 mt-3">
-                        <button
-                          onClick={() => handleOpenModelModal(m)}
-                          className="flex-1 border border-slate-200 hover:bg-slate-50 font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1"
+                {/* ================= PAGINATION CONTROLS ================= */}
+                {modelsTotalCount > 0 && (
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                      <span>
+                        Showing <strong className="text-slate-800">{(modelsPage - 1) * modelsPageSize + 1}</strong> to <strong className="text-slate-800">{Math.min(modelsPage * modelsPageSize, modelsTotalCount)}</strong> of <strong className="text-slate-800">{modelsTotalCount.toLocaleString()}</strong> Models
+                      </span>
+                      <div className="flex items-center gap-1.5 ml-2 border-l border-slate-200 pl-3">
+                        <span className="text-[11px] font-bold text-slate-400">Per page:</span>
+                        <select
+                          value={modelsPageSize}
+                          onChange={(e) => {
+                            setModelsPageSize(Number(e.target.value));
+                            setModelsPage(1);
+                          }}
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer"
                         >
-                          <Edit2 className="w-3 h-3" /> Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteModel(m)}
-                          className="p-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-xs"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          <option value={12}>12</option>
+                          <option value={24}>24</option>
+                          <option value={48}>48</option>
+                          <option value={96}>96</option>
+                        </select>
                       </div>
                     </div>
-                  );
-                })}
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={modelsPage <= 1 || modelsLoading}
+                        onClick={() => setModelsPage(prev => Math.max(1, prev - 1))}
+                        className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        &larr; Previous
+                      </button>
+
+                      <div className="flex items-center gap-1 px-1">
+                        {Array.from({ length: Math.min(5, modelsTotalPages) }, (_, i) => {
+                          let pageNum;
+                          if (modelsTotalPages <= 5) {
+                            pageNum = i + 1;
+                          } else if (modelsPage <= 3) {
+                            pageNum = i + 1;
+                          } else if (modelsPage >= modelsTotalPages - 2) {
+                            pageNum = modelsTotalPages - 4 + i;
+                          } else {
+                            pageNum = modelsPage - 2 + i;
+                          }
+                          return (
+                            <button
+                              key={pageNum}
+                              type="button"
+                              disabled={modelsLoading}
+                              onClick={() => setModelsPage(pageNum)}
+                              className={`w-8 h-8 rounded-xl text-xs font-bold transition ${
+                                modelsPage === pageNum
+                                  ? 'bg-[#0BAA4B] text-white shadow-sm'
+                                  : 'text-slate-600 hover:bg-slate-100 border border-transparent'
+                              }`}
+                            >
+                              {pageNum}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={modelsPage >= modelsTotalPages || modelsLoading}
+                        onClick={() => setModelsPage(prev => Math.min(modelsTotalPages, prev + 1))}
+                        className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                      >
+                        Next &rarr;
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })()}

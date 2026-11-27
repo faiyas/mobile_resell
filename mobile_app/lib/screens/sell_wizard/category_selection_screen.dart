@@ -44,6 +44,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
 
   bool _loading = false;
   String _searchQuery = '';
+  int _visibleModelLimit = 16;
 
   @override
   void initState() {
@@ -135,6 +136,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
         _model = null;
         _variant = null;
         _variants = [];
+        _visibleModelLimit = 16;
         _loading = false;
       });
     } catch (_) {
@@ -157,6 +159,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
         _model = null;
         _variant = null;
         _variants = [];
+        _visibleModelLimit = 16;
         _loading = false;
       });
     } catch (_) {
@@ -1091,55 +1094,115 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
         Expanded(
           child: _models.isEmpty
               ? const Center(child: Text('No models available for this selection'))
-              : GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 130),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 0.95,
-                  ),
-                  itemCount: _models.length,
-                  itemBuilder: (context, idx) {
-                    final item = _models[idx];
-                    final isSelected = _model?.id == item.id;
+              : Builder(
+                  builder: (context) {
+                    final visibleModels = _models.take(_visibleModelLimit).toList();
+                    final hasMore = _models.length > _visibleModelLimit;
 
-                    return GlassContainer(
-                      borderRadius: 20,
-                      padding: EdgeInsets.zero,
-                      border: Border.all(
-                        color: isSelected ? AppTheme.primaryGreen : Colors.white.withValues(alpha: 0.85),
-                        width: isSelected ? 2.5 : 1.5,
+                    return GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 130),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                        childAspectRatio: 0.95,
                       ),
-                      onTap: () => _selectModel(item),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: _buildModelImageArea(item, isSelected),
+                      itemCount: visibleModels.length + (hasMore ? 1 : 0),
+                      itemBuilder: (context, idx) {
+                        if (idx == visibleModels.length) {
+                          return GlassContainer(
+                            borderRadius: 20,
+                            padding: const EdgeInsets.all(12),
+                            border: Border.all(
+                              color: AppTheme.primaryGreen.withValues(alpha: 0.4),
+                              width: 1.5,
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                              color: Colors.white.withValues(alpha: 0.92),
-                              child: Text(
-                                item.name,
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 13,
-                                  color: AppTheme.textPrimary,
+                            onTap: () {
+                              setState(() {
+                                _visibleModelLimit += 16;
+                              });
+                            },
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.lightGreen,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(
+                                    Icons.arrow_downward_rounded,
+                                    color: AppTheme.primaryGreen,
+                                    size: 24,
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Load More',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 13,
+                                    color: AppTheme.darkGreen,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  '${visibleModels.length} of ${_models.length}',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
+                          );
+                        }
+
+                        final item = visibleModels[idx];
+                        final isSelected = _model?.id == item.id;
+
+                        return GlassContainer(
+                          borderRadius: 20,
+                          padding: EdgeInsets.zero,
+                          border: Border.all(
+                            color: isSelected ? AppTheme.primaryGreen : Colors.white.withValues(alpha: 0.85),
+                            width: isSelected ? 2.5 : 1.5,
+                          ),
+                          onTap: () => _selectModel(item),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(18),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  child: _buildModelImageArea(item, isSelected),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                  color: Colors.white.withValues(alpha: 0.92),
+                                  child: Text(
+                                    item.name,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 13,
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
                     );
                   },
+                ),
                 ),
         ),
       ],

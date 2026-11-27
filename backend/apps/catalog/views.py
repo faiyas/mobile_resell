@@ -200,15 +200,19 @@ def models_list_view(request):
         if search_query:
             queryset = queryset.filter(name__icontains=search_query)
 
-        # Pagination support (10 per page)
+        # Pagination support (default 24 per page)
         from django.core.paginator import Paginator, EmptyPage
         page = request.GET.get('page')
-        page_size = int(request.GET.get('page_size', 10))
+        try:
+            page_size = min(max(int(request.GET.get('page_size', 24)), 1), 100)
+        except (ValueError, TypeError):
+            page_size = 24
+
         show_all = request.GET.get('all', 'false').lower() == 'true'
 
         if not show_all and (page or not brand_id or is_admin_user(request.user)):
             page_num = int(page) if page and str(page).isdigit() else 1
-            paginator = Paginator(queryset.order_by('name'), page_size)
+            paginator = Paginator(queryset.order_by('-release_year', 'name'), page_size)
             try:
                 page_obj = paginator.page(page_num)
             except EmptyPage:
@@ -224,7 +228,7 @@ def models_list_view(request):
                 'results': serializer.data
             })
 
-        serializer = PhoneModelSerializer(queryset, many=True)
+        serializer = PhoneModelSerializer(queryset.order_by('-release_year', 'name'), many=True)
         return Response(serializer.data)
 
     elif request.method == 'POST':
