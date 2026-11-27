@@ -524,89 +524,13 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                                 ),
                               ],
                             ),
-                            // Payout Preference Selection
-                            const SizedBox(height: 12),
-                            const Text(
-                              'Payout Preference',
-                              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppTheme.textPrimary),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: _buildPayoutChoice(
-                                    label: 'Instant UPI',
-                                    sub: 'GPay/PhonePe',
-                                    value: 'UPI',
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _buildPayoutChoice(
-                                    label: 'Bank Transfer',
-                                    sub: 'IMPS/NEFT',
-                                    value: 'BANK',
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _buildPayoutChoice(
-                                    label: 'Cash on Pickup',
-                                    sub: 'In-app OTP',
-                                    value: 'CASH',
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-
-                            if (_payoutType == 'UPI') ...[
-                              TextFormField(
-                                controller: _upiController,
-                                decoration: const InputDecoration(
-                                  labelText: 'UPI ID (e.g. name@okaxis)',
-                                  hintText: 'e.g. 9876543210@paytm',
-                                  isDense: true,
-                                ),
-                              ),
-                            ] else if (_payoutType == 'BANK') ...[
-                              TextFormField(
-                                controller: _upiController,
-                                decoration: const InputDecoration(
-                                  labelText: 'Bank Account & IFSC',
-                                  hintText: 'e.g. Account Number / IFSC',
-                                  isDense: true,
-                                ),
-                              ),
-                            ] else if (_payoutType == 'CASH') ...[
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: Colors.amber.shade200),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.payments_rounded, color: Colors.amber.shade800, size: 20),
-                                    const SizedBox(width: 8),
-                                    const Expanded(
-                                      child: Text(
-                                        'Cash on Pickup selected: Agent will count & hand over cash at doorstep. You verify via in-app 4-digit code.',
-                                        style: TextStyle(fontSize: 10.5, color: Colors.brown, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
                           ],
                         ],
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    // Pickup Booking Section
+                    // Pickup Booking Section (Date & Slot)
                     GlassContainer(
                       padding: const EdgeInsets.all(16),
                       borderRadius: BorderRadius.circular(22),
@@ -710,32 +634,161 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                               _buildSlotChip('Evening (5:00 PM - 8:00 PM)', 'Evening\n5PM - 8PM'),
                             ],
                           ),
-
-                          const SizedBox(height: 16),
-
-                          // Book Pickup Button
-                          SizedBox(
-                            width: double.infinity,
-                            height: 48,
-                            child: ElevatedButton(
-                              onPressed: _submitting ? null : _submitBooking,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryGreen,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                              ),
-                              child: _submitting
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                                    )
-                                  : const Text(
-                                      'Book Pickup',
-                                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.white),
-                                    ),
-                            ),
-                          ),
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Dedicated Payment Mode Selection (Always Visible during slot booking)
+                    GlassContainer(
+                      padding: const EdgeInsets.all(16),
+                      borderRadius: BorderRadius.circular(22),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryGreen.withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.payment_rounded, color: AppTheme.primaryGreen, size: 18),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Payment Mode / Payout Preference',
+                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Select how you wish to receive payment:',
+                            style: TextStyle(fontSize: 11.5, color: AppTheme.textSecondary),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // 3 Choice Cards: CASH / UPI / BANK
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildPayoutChoice(
+                                  label: 'Cash on Pickup',
+                                  sub: 'Doorstep COD',
+                                  value: 'CASH',
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _buildPayoutChoice(
+                                  label: 'Instant UPI',
+                                  sub: 'GPay/PhonePe',
+                                  value: 'UPI',
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _buildPayoutChoice(
+                                  label: 'Bank Transfer',
+                                  sub: 'IMPS/NEFT',
+                                  value: 'BANK',
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          if (_payoutType == 'CASH') ...[
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.shade50,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.amber.shade300),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.payments_rounded, color: Colors.amber.shade900, size: 22),
+                                  const SizedBox(width: 10),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Cash on Delivery (COD) Selected',
+                                          style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: Colors.brown),
+                                        ),
+                                        SizedBox(height: 2),
+                                        Text(
+                                          'Field agent will count and hand over physical cash at doorstep. A 4-digit verification code will be generated on your order screen to share after receiving the cash.',
+                                          style: TextStyle(fontSize: 11, color: Colors.brown, height: 1.35),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ] else if (_payoutType == 'UPI') ...[
+                            TextFormField(
+                              controller: _upiController,
+                              decoration: const InputDecoration(
+                                labelText: 'Instant UPI ID for Transfer *',
+                                hintText: 'e.g. 9876543210@paytm or name@okaxis',
+                                prefixIcon: Icon(Icons.bolt_rounded, color: AppTheme.primaryGreen),
+                                isDense: true,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              '* Payout will be disbursed by Super Admin to this UPI ID after doorstep inspection.',
+                              style: TextStyle(fontSize: 10.5, color: AppTheme.textSecondary),
+                            ),
+                          ] else if (_payoutType == 'BANK') ...[
+                            TextFormField(
+                              controller: _upiController,
+                              decoration: const InputDecoration(
+                                labelText: 'Bank Account & IFSC *',
+                                hintText: 'e.g. Account No: 123456789, IFSC: SBIN0001234',
+                                prefixIcon: Icon(Icons.account_balance_rounded, color: AppTheme.primaryGreen),
+                                isDense: true,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              '* Payout will be disbursed by Super Admin via IMPS/NEFT to this bank account.',
+                              style: TextStyle(fontSize: 10.5, color: AppTheme.textSecondary),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Book Pickup Button (Placed below Payment Mode)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _submitting ? null : _submitBooking,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryGreen,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          elevation: 0,
+                        ),
+                        child: _submitting
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text(
+                                'Book Pickup',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.white),
+                              ),
                       ),
                     ),
                   ] else ...[

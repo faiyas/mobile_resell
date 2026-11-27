@@ -104,10 +104,13 @@ class PhoneSale(models.Model):
         if not self.sale_code:
             short_id = str(self.id)[:6].upper()
             self.sale_code = f"PHN-2026-{short_id}"
-        if not self.cash_handover_otp:
-            # Deterministic 4-digit code based on UUID, ensures stable display across reads
-            import random
-            self.cash_handover_otp = f"{random.randint(1000, 9999)}"
+        # Only generate Cash Handover OTP when Cash on Pickup (COD) is chosen
+        if self.beneficiary_type == 'CASH':
+            if not self.cash_handover_otp:
+                import random
+                self.cash_handover_otp = f"{random.randint(1000, 9999)}"
+        else:
+            self.cash_handover_otp = ''
         super().save(*args, **kwargs)
 
     def __str__(self):

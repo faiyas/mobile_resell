@@ -463,9 +463,10 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
               </div>
             </div>
 
-            {/* In-App Cash Handover Verification OTP Card */}
+            {/* In-App Cash Handover Verification OTP Card (ONLY for Cash on Pickup / COD) */}
             {['CUSTOMER_ACCEPTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING'].includes(selectedSale.status) &&
-             (selectedSale.beneficiary_type === 'CASH' || selectedSale.cash_handover_otp) && (
+             selectedSale.beneficiary_type === 'CASH' &&
+             selectedSale.cash_handover_otp && (
               <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-[#0BAA4B] text-center space-y-2">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-[#0BAA4B] font-extrabold text-xs">
                   <ShieldCheck className="w-4 h-4" /> Cash Handover Verification
@@ -481,6 +482,24 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
                 <p className="text-[10px] text-slate-400 font-medium">
                   🔒 Do not share this code before receiving cash in your hand.
                 </p>
+              </div>
+            )}
+
+            {/* Online Transfer Info Card (For UPI & Bank Transfer) */}
+            {['CUSTOMER_ACCEPTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING'].includes(selectedSale.status) &&
+             selectedSale.beneficiary_type !== 'CASH' && (
+              <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-blue-100 text-blue-700 shrink-0">
+                  <IndianRupee className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="font-extrabold text-blue-950">
+                    {selectedSale.beneficiary_type === 'BANK' ? 'Direct Bank Transfer (IMPS/NEFT)' : 'Instant Online UPI Transfer'}
+                  </h4>
+                  <p className="text-blue-800 text-[11px] mt-0.5 leading-relaxed">
+                    Doorstep physical inspection verified. Super Admin payout desk will release <strong>₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}</strong> directly to your registered {selectedSale.beneficiary_type === 'BANK' ? 'Bank Account' : 'UPI ID'}.
+                  </p>
+                </div>
               </div>
             )}
 

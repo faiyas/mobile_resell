@@ -1185,9 +1185,11 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
           const SizedBox(height: 14),
         ],
 
-        // In-App Cash Handover OTP Card
+        // In-App Cash Handover OTP Card (ONLY for Cash on Pickup / COD orders)
         if (['CUSTOMER_ACCEPTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING'].contains(order.status) &&
-            (order.beneficiaryType == 'CASH' || (order.cashHandoverOtp != null && order.cashHandoverOtp!.isNotEmpty))) ...[
+            order.beneficiaryType == 'CASH' &&
+            order.cashHandoverOtp != null &&
+            order.cashHandoverOtp!.isNotEmpty) ...[
           GlassContainer(
             padding: const EdgeInsets.all(20),
             borderRadius: BorderRadius.circular(22),
@@ -1234,6 +1236,40 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
                     SizedBox(width: 4),
                     Text('Do not share this code before receiving physical cash', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w600)),
                   ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ] else if (['CUSTOMER_ACCEPTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING'].contains(order.status) &&
+            order.beneficiaryType != 'CASH') ...[
+          // Online Transfer / Admin Payout Desk Card (UPI / Bank Transfer)
+          GlassContainer(
+            padding: const EdgeInsets.all(16),
+            borderRadius: BorderRadius.circular(20),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: Colors.blue.shade50, shape: BoxShape.circle),
+                  child: Icon(Icons.account_balance_wallet_rounded, color: Colors.blue.shade700, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.beneficiaryType == 'BANK' ? 'Direct Bank Transfer (IMPS/NEFT)' : 'Instant UPI Transfer',
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Doorstep physical check verified. Super Admin payout desk will release ₹${(order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)} directly to your registered ${order.beneficiaryType == "BANK" ? "bank account" : "UPI ID"}.',
+                        style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary, height: 1.3),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
