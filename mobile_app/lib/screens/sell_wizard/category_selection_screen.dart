@@ -8,7 +8,6 @@ import '../../widgets/glass_container.dart';
 import '../../widgets/brand_logo.dart';
 import '../../utils/image_helper.dart';
 import 'device_health_check_screen.dart';
-import 'questionnaire_screen.dart';
 
 class CategorySelectionScreen extends StatefulWidget {
   final DeviceCategoryModel? selectedCategory;
@@ -1202,7 +1201,6 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                       },
                     );
                   },
-                ),
                 ),
         ),
       ],
