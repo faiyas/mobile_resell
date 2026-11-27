@@ -188,6 +188,86 @@ export default function SystemSettingsView({ mode = 'settings' }) {
             </div>
           </div>
 
+          {/* Card 3: Mobile App Release & Updates Control (OTA Broadcast) */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm border-b border-slate-100 pb-3">
+              <Globe className="w-4 h-4 text-emerald-600" />
+              <h3>Mobile App Release & Update Pipeline (OTA Broadcast)</h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Latest App Version
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 2.4.0"
+                  value={form.latest_version || ''}
+                  onChange={(e) => setForm({ ...form, latest_version: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Broadcasts update notification banner to mobile apps lower than this version.
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Minimum Supported Version
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 2.0.0"
+                  value={form.min_version || ''}
+                  onChange={(e) => setForm({ ...form, min_version: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  Devices below this version are forced to update before proceeding.
+                </span>
+              </div>
+
+              <div className="flex items-center pt-5">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-800 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={!!form.force_update}
+                    onChange={(e) => setForm({ ...form, force_update: e.target.checked })}
+                    className="w-4 h-4 accent-rose-600 rounded"
+                  />
+                  <span>⚠️ Force Mandatory Update</span>
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Direct APK / App Store Download URL
+              </label>
+              <input
+                type="text"
+                placeholder="https://.../dolly-latest.apk"
+                value={form.apk_download_url || ''}
+                onChange={(e) => setForm({ ...form, apk_download_url: e.target.value })}
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Release Notes / What's New Announcement
+              </label>
+              <textarea
+                rows={2}
+                placeholder="• Feature updates, bug fixes, or promotional announcements..."
+                value={form.release_notes || ''}
+                onChange={(e) => setForm({ ...form, release_notes: e.target.value })}
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:border-[#0BAA4B] outline-none"
+              />
+            </div>
+          </div>
+
           {errorMsg && (
             <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center gap-2 animate-fade-in">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
