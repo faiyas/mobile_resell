@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/models.dart';
+import 'api_service.dart';
 
 enum NotificationCategory {
   all,
@@ -89,6 +90,9 @@ class AppNotificationService extends ChangeNotifier {
     await _initLocalNotifications();
     _initialized = true;
     notifyListeners();
+
+    // Trigger asynchronous remote sync
+    syncRemoteNotifications();
   }
 
   Future<void> _initLocalNotifications() async {
@@ -216,6 +220,13 @@ class AppNotificationService extends ChangeNotifier {
     }
     await _save();
     notifyListeners();
+
+    if (id.startsWith('remote_')) {
+      final remoteId = int.tryParse(id.replaceFirst('remote_', ''));
+      if (remoteId != null) {
+        ApiService().markNotificationRead(remoteId);
+      }
+    }
   }
 
   Future<void> markAllAsRead() async {
@@ -224,12 +235,20 @@ class AppNotificationService extends ChangeNotifier {
     }
     await _save();
     notifyListeners();
+    ApiService().markAllNotificationsRead();
   }
 
   Future<void> removeNotification(String id) async {
     _notifications.removeWhere((n) => n.id == id);
     await _save();
     notifyListeners();
+
+    if (id.startsWith('remote_')) {
+      final remoteId = int.tryParse(id.replaceFirst('remote_', ''));
+      if (remoteId != null) {
+        ApiService().dismissNotification(remoteId);
+      }
+    }
   }
 
   Future<void> restoreNotification(AppNotificationItem item, int index) async {
@@ -246,6 +265,54 @@ class AppNotificationService extends ChangeNotifier {
     _notifications.clear();
     await _save();
     notifyListeners();
+    ApiService().clearAllNotifications();
+  }
+
+  /// Syncs notifications broadcasted from the server/admin
+  Future<void> syncRemoteNotifications() async {
+    try {
+      final res = await ApiService().getNotifications();
+      final results = res['results'];
+      if (results is List && results.isNotEmpty) {
+        bool hasNew = false;
+        for (var item in results) {
+          if (item is! Map) continue;
+          final idNum = item['id'];
+          final notifId = 'remote_$idNum';
+          final exists = _notifications.any((n) => n.id == notifId);
+          if (!exists) {
+            final parsedTime = item['created_at'] != null 
+                ? (DateTime.tryParse(item['created_at'].toString()) ?? DateTime.now()) 
+                : DateTime.now();
+            final newItem = AppNotificationItem(
+              id: notifId,
+              title: item['title']?.toString() ?? 'Notification',
+              body: item['message']?.toString() ?? '',
+              category: item['category']?.toString() ?? 'SYSTEM',
+              timestamp: parsedTime,
+              isRead: item['is_read'] == true,
+              actionUrl: item['redirect_route']?.toString(),
+              actionType: item['action_type']?.toString(),
+            );
+            _notifications.insert(0, newItem);
+            hasNew = true;
+            if (!newItem.isRead) {
+              _showNativePopup(newItem);
+            }
+          }
+        }
+        if (hasNew) {
+          _notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+          if (_notifications.length > 100) {
+            _notifications = _notifications.sublist(0, 100);
+          }
+          await _save();
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('Error syncing remote notifications: $e');
+    }
   }
 
   /// Syncs order status changes into notifications for Customer or Field Agent

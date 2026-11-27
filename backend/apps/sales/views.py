@@ -710,6 +710,9 @@ def notifications_list_view(request):
                 q_filter |= Q(target_audience='AGENTS')
             else:
                 q_filter |= Q(target_audience='CUSTOMERS')
+        else:
+            # Guest customers browsing mobile app or web should see customer-facing alerts
+            q_filter |= Q(target_audience='CUSTOMERS')
 
         if phone:
             q_filter |= Q(related_order__customer_phone=phone)
@@ -724,7 +727,13 @@ def notifications_list_view(request):
 
     elif request.method == 'POST':
         # Admin broadcast or manual alert creation
-        if not (request.user.is_authenticated and getattr(request.user, 'is_admin_role', False)):
+        is_admin = request.user.is_authenticated and (
+            getattr(request.user, 'is_admin_role', False) or
+            getattr(request.user, 'is_staff', False) or
+            getattr(request.user, 'is_superuser', False) or
+            str(getattr(request.user, 'role', '')).upper() in ['ADMIN', 'SUPER_ADMIN']
+        )
+        if not is_admin:
             return Response({'detail': 'Admin access required to broadcast notifications'}, status=status.HTTP_403_FORBIDDEN)
 
         title = request.data.get('title')

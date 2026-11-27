@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/theme.dart';
 import '../services/app_notification_service.dart';
+import '../screens/orders/track_order_screen.dart';
 
 class NotificationCenterSheet extends StatefulWidget {
   const NotificationCenterSheet({super.key});
@@ -27,6 +28,8 @@ class _NotificationCenterSheetState extends State<NotificationCenterSheet> {
   void initState() {
     super.initState();
     _service.addListener(_onServiceUpdate);
+    // Fetch latest notifications from backend immediately on open
+    _service.syncRemoteNotifications();
   }
 
   @override
@@ -144,88 +147,133 @@ class _NotificationCenterSheetState extends State<NotificationCenterSheet> {
                       ],
                     ),
                   )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (ctx, idx) {
-                      final item = filtered[idx];
-                      return Dismissible(
-                        key: Key('notif_${item.id}'),
-                        direction: DismissDirection.horizontal,
-                        background: Container(
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryGreen.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.open_in_new_rounded, color: AppTheme.primaryGreen, size: 20),
-                              SizedBox(width: 8),
-                              Text('Open', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 12)),
-                            ],
-                          ),
-                        ),
-                        secondaryBackground: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text('Dismiss', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
-                              SizedBox(width: 8),
-                              Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
-                            ],
-                          ),
-                        ),
-                        confirmDismiss: (direction) async {
-                          if (direction == DismissDirection.startToEnd) {
-                            // Swipe Right -> Open/Navigate
-                            _service.markAsRead(item.id);
-                            if (item.actionType == 'APP_UPDATE' && item.actionUrl != null) {
-                              final uri = Uri.parse(item.actionUrl!);
-                              if (await canLaunchUrl(uri)) {
-                                await launchUrl(uri, mode: LaunchMode.externalApplication);
-                              }
-                            }
-                            return false; // Don't remove on open
-                          } else {
-                            // Swipe Left -> Dismiss with Undo option
-                            final originalIndex = _service.notifications.indexOf(item);
-                            await _service.removeNotification(item.id);
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Dismissed: "${item.title}"'),
-                                  duration: const Duration(seconds: 5),
-                                  action: SnackBarAction(
-                                    label: 'Undo',
-                                    textColor: AppTheme.primaryGreen,
-                                    onPressed: () {
-                                      _service.restoreNotification(item, originalIndex);
-                                    },
-                                  ),
-                                ),
-                              );
-                            }
-                            return true;
-                          }
-                        },
-                        child: _buildNotificationCard(item),
-                      );
+                : RefreshIndicator(
+                    color: AppTheme.primaryGreen,
+                    onRefresh: () async {
+                      await _service.syncRemoteNotifications();
                     },
+                    child: ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      itemCount: filtered.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (ctx, idx) {
+                        final item = filtered[idx];
+                        return Dismissible(
+                          key: Key('notif_${item.id}'),
+                          direction: DismissDirection.horizontal,
+                          background: Container(
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.open_in_new_rounded, color: AppTheme.primaryGreen, size: 20),
+                                SizedBox(width: 8),
+                                Text('Swipe to Open', style: TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          secondaryBackground: Container(
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text('Swipe to Delete', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12)),
+                                SizedBox(width: 8),
+                                Icon(Icons.delete_outline_rounded, color: Colors.red, size: 20),
+                              ],
+                            ),
+                          ),
+                          confirmDismiss: (direction) async {
+                            if (direction == DismissDirection.startToEnd) {
+                              // Swipe Right -> Open/Navigate
+                              _handleOpenNotification(context, item);
+                              return false; // Don't remove on open
+                            } else {
+                              // Swipe Left -> Dismiss with Undo option
+                              final originalIndex = _service.notifications.indexOf(item);
+                              await _service.removeNotification(item.id);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).clearSnackBars();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Dismissed: "${item.title}"'),
+                                    duration: const Duration(seconds: 5),
+                                    action: SnackBarAction(
+                                      label: 'Undo',
+                                      textColor: AppTheme.primaryGreen,
+                                      onPressed: () {
+                                        _service.restoreNotification(item, originalIndex);
+                                      },
+                                    ),
+                                  ),
+                                );
+                              }
+                              return true;
+                            }
+                          },
+                          child: _buildNotificationCard(item),
+                        );
+                      },
+                    ),
                   ),
           ),
         ],
       ),
     );
+  }
+
+  void _handleOpenNotification(BuildContext context, AppNotificationItem item) async {
+    _service.markAsRead(item.id);
+
+    // 1. App Update
+    if (item.actionType == 'APP_UPDATE' && item.actionUrl != null && item.actionUrl!.isNotEmpty) {
+      final uri = Uri.parse(item.actionUrl!);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      return;
+    }
+
+    // 2. Order Navigation
+    String? orderCode;
+    if (item.actionUrl != null && item.actionUrl!.contains('code=')) {
+      final uri = Uri.tryParse(item.actionUrl!);
+      orderCode = uri?.queryParameters['code'];
+    } else if (item.id.startsWith('order_')) {
+      final parts = item.id.split('_');
+      if (parts.length >= 2) orderCode = parts[1];
+    } else if (item.body.contains('#PHN-') || item.title.contains('#PHN-')) {
+      final match = RegExp(r'#(PHN-[A-Z0-9\-]+)').firstMatch('${item.title} ${item.body}');
+      if (match != null) orderCode = match.group(1);
+    }
+
+    if (orderCode != null && orderCode.isNotEmpty && context.mounted) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => TrackOrderScreen(initialSaleCode: orderCode),
+        ),
+      );
+      return;
+    }
+
+    // 3. Web URL or External Link
+    if (item.actionUrl != null && (item.actionUrl!.startsWith('http://') || item.actionUrl!.startsWith('https://'))) {
+      final uri = Uri.parse(item.actionUrl!);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+      return;
+    }
   }
 
   Widget _buildCatChip(String label, NotificationCategory cat) {
@@ -262,15 +310,7 @@ class _NotificationCenterSheetState extends State<NotificationCenterSheet> {
     }
 
     return InkWell(
-      onTap: () async {
-        _service.markAsRead(item.id);
-        if (item.actionType == 'APP_UPDATE' && item.actionUrl != null) {
-          final uri = Uri.parse(item.actionUrl!);
-          if (await canLaunchUrl(uri)) {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          }
-        }
-      },
+      onTap: () => _handleOpenNotification(context, item),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(12),

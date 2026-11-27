@@ -56,6 +56,9 @@ class BackgroundNotificationRunner {
           await AppNotificationService().syncOrderNotifications(sales, isAgent: isAgent);
         }
       }
+
+      // 3. Sync remote broadcast notifications from backend API
+      await AppNotificationService().syncRemoteNotifications();
     } catch (e) {
       debugPrint('Background notification runner cycle: $e');
     }

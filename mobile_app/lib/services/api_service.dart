@@ -1398,6 +1398,64 @@ class ApiService {
     } catch (_) {}
   }
 
+  // ================= NOTIFICATIONS ENGINE =================
+  Future<Map<String, dynamic>> getNotifications({String? phone}) async {
+    try {
+      final p = phone ?? _currentUser?.phone ?? '';
+      final query = p.isNotEmpty ? '?phone=${Uri.encodeComponent(p)}' : '';
+      final url = Uri.parse('${ApiConfig.baseUrl}/sales/notifications/$query');
+      final res = await http.get(url, headers: _headers).timeout(const Duration(seconds: 8));
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body);
+      }
+    } catch (e) {
+      debugPrint('Error getting notifications: $e');
+    }
+    return {'unread_count': 0, 'results': []};
+  }
+
+  Future<void> markNotificationRead(int id) async {
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/sales/notifications/$id/read/');
+      await http.post(url, headers: _headers).timeout(const Duration(seconds: 5));
+    } catch (_) {}
+  }
+
+  Future<void> dismissNotification(int id) async {
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/sales/notifications/$id/dismiss/');
+      await http.post(url, headers: _headers).timeout(const Duration(seconds: 5));
+    } catch (_) {}
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/sales/notifications/mark-all-read/');
+      await http.post(url, headers: _headers).timeout(const Duration(seconds: 5));
+    } catch (_) {}
+  }
+
+  Future<void> clearAllNotifications() async {
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/sales/notifications/clear-all/');
+      await http.post(url, headers: _headers).timeout(const Duration(seconds: 5));
+    } catch (_) {}
+  }
+
+  Future<Map<String, dynamic>> broadcastNotification(Map<String, dynamic> data) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/sales/notifications/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(data),
+    ).timeout(const Duration(seconds: 10));
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return jsonDecode(res.body);
+    }
+    final err = jsonDecode(res.body);
+    throw Exception(err['detail'] ?? 'Failed to send broadcast alert');
+  }
+
   void clearCatalogCache() {
     _cachedCMSSections = null;
     _cachedCategories = null;
