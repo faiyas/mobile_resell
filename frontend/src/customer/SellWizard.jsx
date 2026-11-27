@@ -1287,16 +1287,102 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                       className="p-2 text-xs rounded-xl border border-slate-200 font-mono font-bold"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Instant UPI ID for Doorstep Transfer (Optional)</label>
-                    <input
-                      type="text"
-                      value={beneficiaryUpiId}
-                      onChange={(e) => setBeneficiaryUpiId(e.target.value)}
-                      placeholder="e.g. name@okaxis or 9876543210@paytm"
-                      className="w-full p-2 text-xs rounded-xl border border-slate-200 font-mono"
-                    />
+                  {/* Payment / Payout Preference Selector */}
+                  <div className="pt-1 space-y-1.5">
+                    <label className="block text-[11px] font-black text-slate-700">Payout Preference:</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBeneficiaryType('UPI')}
+                        className={`p-2 rounded-xl border text-center transition ${
+                          beneficiaryType === 'UPI'
+                            ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38] font-bold shadow-xs'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        <span className="block text-[11px] font-extrabold">Instant UPI</span>
+                        <span className="text-[9px] text-slate-400">GPay/PhonePe</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBeneficiaryType('BANK')}
+                        className={`p-2 rounded-xl border text-center transition ${
+                          beneficiaryType === 'BANK'
+                            ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38] font-bold shadow-xs'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        <span className="block text-[11px] font-extrabold">Bank Transfer</span>
+                        <span className="text-[9px] text-slate-400">NEFT / IMPS</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBeneficiaryType('CASH')}
+                        className={`p-2 rounded-xl border text-center transition ${
+                          beneficiaryType === 'CASH'
+                            ? 'border-[#0BAA4B] bg-[#E8F8ED] text-[#087C38] font-bold shadow-xs'
+                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        <span className="block text-[11px] font-extrabold">Cash on Pickup</span>
+                        <span className="text-[9px] text-[#0BAA4B] font-bold">In-app OTP</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {beneficiaryType === 'UPI' && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Instant UPI ID for Doorstep Transfer</label>
+                      <input
+                        type="text"
+                        value={beneficiaryUpiId}
+                        onChange={(e) => setBeneficiaryUpiId(e.target.value)}
+                        placeholder="e.g. name@okaxis or 9876543210@paytm"
+                        className="w-full p-2 text-xs rounded-xl border border-slate-200 font-mono"
+                      />
+                    </div>
+                  )}
+
+                  {beneficiaryType === 'BANK' && (
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 mb-0.5">Account Number</label>
+                        <input
+                          type="text"
+                          value={beneficiaryAccountNo}
+                          onChange={(e) => setBeneficiaryAccountNo(e.target.value)}
+                          placeholder="e.g. 50100234567890"
+                          className="w-full p-2 text-xs rounded-xl border border-slate-200 font-mono"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={beneficiaryIfsc}
+                          onChange={(e) => setBeneficiaryIfsc(e.target.value.toUpperCase())}
+                          placeholder="IFSC Code (e.g. HDFC0001234)"
+                          className="p-2 text-xs rounded-xl border border-slate-200 font-mono font-bold"
+                        />
+                        <input
+                          type="text"
+                          value={beneficiaryName}
+                          onChange={(e) => setBeneficiaryName(e.target.value)}
+                          placeholder="Account Holder Name"
+                          className="p-2 text-xs rounded-xl border border-slate-200 font-bold"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {beneficiaryType === 'CASH' && (
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/70 text-[11px] text-amber-900 flex items-start gap-2">
+                      <Banknote className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-extrabold block">Cash on Pickup Chosen:</span>
+                        <span>Our agent will hand over physical cash during doorstep pickup. You will verify via a 4-digit code shown in your tracking screen.</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
