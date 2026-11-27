@@ -2395,7 +2395,12 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                 <div className="bg-white rounded-3xl border border-slate-200/90 p-14 text-center shadow-sm flex flex-col items-center justify-center my-4 animate-fade-in">
                   <div className="relative w-16 h-16 flex items-center justify-center mb-4">
                     <div className="absolute inset-0 rounded-2xl bg-[#0BAA4B]/20 animate-ping" />
-                    <img src="/logo.png" alt="Dolly" className="w-12 h-12 object-contain relative animate-pulse" />
+                    <img
+                      src="/dolly_icon.png"
+                      alt="Dolly"
+                      onError={(e) => { e.currentTarget.src = '/dolly_logo.png'; }}
+                      className="w-12 h-12 object-contain rounded-2xl relative animate-pulse shadow-md"
+                    />
                   </div>
                   <h4 className="text-base font-extrabold text-slate-900">Loading Catalogue Models</h4>
                   <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
@@ -2732,7 +2737,12 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                             <td colSpan={7} className="text-center py-12">
                               <div className="relative w-12 h-12 mx-auto mb-3 flex items-center justify-center">
                                 <div className="absolute inset-0 rounded-2xl bg-[#0BAA4B]/20 animate-ping" />
-                                <img src="/logo.png" alt="Dolly" className="w-9 h-9 object-contain relative animate-pulse" />
+                                <img
+                                  src="/dolly_icon.png"
+                                  alt="Dolly"
+                                  onError={(e) => { e.currentTarget.src = '/dolly_logo.png'; }}
+                                  className="w-9 h-9 object-contain rounded-xl relative animate-pulse shadow-sm"
+                                />
                               </div>
                               <p className="font-bold text-sm text-slate-700">Loading Storage Variants...</p>
                               <p className="text-xs text-slate-400 mt-0.5">Fetching pricing matrix and models...</p>
