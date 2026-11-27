@@ -196,6 +196,22 @@ class ApiService {
     }
   }
 
+  Future<List<Map<String, dynamic>>> getCustomers([String search = '']) async {
+    final query = search.trim().isNotEmpty ? '?search=${Uri.encodeComponent(search.trim())}' : '';
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/customers/$query');
+    try {
+      final res = await http.get(url, headers: _headers);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data is List) return List<Map<String, dynamic>>.from(data);
+        if (data is Map && data['results'] is List) return List<Map<String, dynamic>>.from(data['results']);
+      }
+    } catch (e) {
+      debugPrint('Error fetching customers: $e');
+    }
+    return [];
+  }
+
   Future<Map<String, dynamic>> adminResetAgentPassword({
     required int agentId,
     required String newPassword,

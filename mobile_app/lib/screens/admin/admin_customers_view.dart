@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
+import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
 
 class AdminCustomersView extends StatefulWidget {
@@ -19,13 +20,44 @@ class AdminCustomersView extends StatefulWidget {
 }
 
 class _AdminCustomersViewState extends State<AdminCustomersView> {
+  final ApiService _api = ApiService();
   String _searchQuery = '';
+  List<Map<String, dynamic>> _registeredCustomers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchRegisteredCustomers();
+  }
+
+  Future<void> _fetchRegisteredCustomers() async {
+    try {
+      final res = await _api.getCustomers();
+      if (mounted) setState(() => _registeredCustomers = res);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
     // Group sales by unique customer (phone or customer name)
     final Map<String, _CustomerSummary> customersMap = {};
 
+    // 1. Add registered users first
+    for (var u in _registeredCustomers) {
+      final phone = (u['phone'] ?? '').toString();
+      final name = (u['full_name'] ?? u['email'] ?? 'User').toString();
+      final email = u['email']?.toString();
+      final key = phone.isNotEmpty ? phone : (email ?? 'user_${u['id']}');
+      customersMap[key] = _CustomerSummary(
+        name: name,
+        phone: phone,
+        email: email,
+        city: null,
+        orders: [],
+      );
+    }
+
+    // 2. Merge sales orders
     for (var o in widget.orders) {
       final key = o.customerPhone.isNotEmpty ? o.customerPhone : (o.customerName.isNotEmpty ? o.customerName : 'Unknown_${o.id}');
       if (!customersMap.containsKey(key)) {
@@ -48,7 +80,10 @@ class _AdminCustomersViewState extends State<AdminCustomersView> {
     }).toList();
 
     return RefreshIndicator(
-      onRefresh: () async => widget.onRefresh(),
+      onRefresh: () async {
+        await _fetchRegisteredCustomers();
+        widget.onRefresh();
+      },
       color: AppTheme.primaryGreen,
       child: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
