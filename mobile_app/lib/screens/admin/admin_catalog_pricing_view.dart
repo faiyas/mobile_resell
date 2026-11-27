@@ -937,7 +937,7 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                         )
                       : ListView.builder(
                           controller: _scrollController,
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
                           itemCount: _models.length + (_totalPages > 1 ? 1 : 0),
                           itemBuilder: (ctx, idx) {
                             if (idx == _models.length) {
@@ -948,94 +948,82 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                           },
                         ),
         ),
-
-        // Sticky bottom pagination bar for instant 1-tap navigation
-        if (_selectedBrand != null && _totalPages > 1)
-          _buildPaginationBar(isBottomSticky: true),
       ],
     );
   }
 
-  Widget _buildPaginationBar({bool isBottomSticky = false}) {
+  Widget _buildPaginationBar() {
     if (_totalPages <= 1) return const SizedBox.shrink();
 
     return Container(
-      margin: isBottomSticky ? EdgeInsets.zero : const EdgeInsets.only(top: 8, bottom: 24),
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: isBottomSticky ? 8 : 12),
+      margin: const EdgeInsets.only(top: 8, bottom: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: isBottomSticky ? null : BorderRadius.circular(16),
-        border: isBottomSticky
-            ? Border(top: BorderSide(color: AppTheme.border.withOpacity(0.5)))
-            : Border.all(color: AppTheme.border),
-        boxShadow: isBottomSticky
-            ? [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, -3),
-                ),
-              ]
-            : null,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: SafeArea(
-        top: false,
-        bottom: isBottomSticky,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Previous Button
-            ElevatedButton.icon(
-              onPressed: (_hasPrevious && !_isLoadingModels && _selectedBrand != null)
-                  ? () => _loadModels(_selectedBrand!, page: _currentPage - 1)
-                  : null,
-              icon: const Icon(Icons.arrow_back_ios_rounded, size: 12),
-              label: const Text('Previous', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.lightGreen,
-                foregroundColor: AppTheme.darkGreen,
-                disabledBackgroundColor: Colors.grey.shade100,
-                disabledForegroundColor: Colors.grey.shade400,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Previous Button
+          ElevatedButton.icon(
+            onPressed: (_hasPrevious && !_isLoadingModels && _selectedBrand != null)
+                ? () => _loadModels(_selectedBrand!, page: _currentPage - 1)
+                : null,
+            icon: const Icon(Icons.arrow_back_ios_rounded, size: 12),
+            label: const Text('Previous', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.lightGreen,
+              foregroundColor: AppTheme.darkGreen,
+              disabledBackgroundColor: Colors.grey.shade100,
+              disabledForegroundColor: Colors.grey.shade400,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
+          ),
 
-            // Page info
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Page $_currentPage of $_totalPages',
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppTheme.textPrimary),
-                ),
-                Text(
-                  '$_totalCount Models Total',
-                  style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
-                ),
-              ],
-            ),
-
-            // Next Button
-            ElevatedButton.icon(
-              onPressed: (_hasNext && !_isLoadingModels && _selectedBrand != null)
-                  ? () => _loadModels(_selectedBrand!, page: _currentPage + 1)
-                  : null,
-              icon: const Icon(Icons.arrow_forward_ios_rounded, size: 12),
-              label: const Text('Next', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryGreen,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor: Colors.grey.shade100,
-                disabledForegroundColor: Colors.grey.shade400,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          // Page info
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Page $_currentPage of $_totalPages',
+                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppTheme.textPrimary),
               ),
+              Text(
+                '$_totalCount Models Total',
+                style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+
+          // Next Button
+          ElevatedButton.icon(
+            onPressed: (_hasNext && !_isLoadingModels && _selectedBrand != null)
+                ? () => _loadModels(_selectedBrand!, page: _currentPage + 1)
+                : null,
+            icon: const Icon(Icons.arrow_forward_ios_rounded, size: 12),
+            label: const Text('Next', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryGreen,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: Colors.grey.shade100,
+              disabledForegroundColor: Colors.grey.shade400,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
