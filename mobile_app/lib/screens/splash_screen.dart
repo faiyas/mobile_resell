@@ -56,12 +56,34 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _startSessionAndNavigate() async {
-    // 1. Kick off parallel background pre-warm and delta-sync in the background
-    // (Decoupled completely so it NEVER blocks or delays the 5-second splash transition)
-    _runBackgroundSync();
+    final startTime = DateTime.now();
 
-    // 2. Strict 5-second duration for brand impression
-    await Future.delayed(const Duration(milliseconds: 5000));
+    // 1. Kick off parallel background pre-warm, API init and delta-sync concurrently
+    final syncTask = () async {
+      try {
+        final api = ApiService();
+        await api.init();
+        await Future.wait<dynamic>([
+          api.pingHealth().catchError((_) => false),
+          CustomerCacheService.syncCustomerDataSilently(api).catchError((_) => false),
+          DraftSellService.getDraft().catchError((_) => null),
+        ]);
+      } catch (e) {
+        debugPrint('Splash background pre-sync error (non-fatal): $e');
+      }
+    }();
+
+    // 2. Elegant splash presentation duration (~1800ms)
+    await Future.delayed(const Duration(milliseconds: 1800));
+
+    // Wait a brief extra moment up to 2200ms total if sync completes fast
+    final elapsed = DateTime.now().difference(startTime).inMilliseconds;
+    if (elapsed < 2200) {
+      await Future.any([
+        syncTask,
+        Future.delayed(Duration(milliseconds: 2200 - elapsed)),
+      ]);
+    }
 
     if (!mounted) return;
 
@@ -79,28 +101,9 @@ class _SplashScreenState extends State<SplashScreen>
             child: child,
           );
         },
-        transitionDuration: const Duration(milliseconds: 650),
+        transitionDuration: const Duration(milliseconds: 500),
       ),
     );
-  }
-
-  void _runBackgroundSync() {
-    Future(() async {
-      try {
-        final api = ApiService();
-        // Init auth token and user state
-        await api.init();
-
-        // Silent background pre-warm & delta sync
-        await Future.wait<dynamic>([
-          api.pingHealth().catchError((_) => false),
-          CustomerCacheService.syncCustomerDataSilently(api).catchError((_) => false),
-          DraftSellService.getDraft().catchError((_) => null),
-        ]);
-      } catch (e) {
-        debugPrint('Splash background pre-sync error (non-fatal): $e');
-      }
-    });
   }
 
   @override

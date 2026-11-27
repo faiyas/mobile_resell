@@ -15,6 +15,7 @@ import AdminHeader from './AdminHeader';
 import OperationsDashboardView from './OperationsDashboardView';
 import SystemSettingsView from './SystemSettingsView';
 import ImageZoomModal from '../components/ImageZoomModal';
+import { formatImageSrc } from '../utils/imageCompressor';
 
 export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'sales' | 'customers' | 'payouts' | ...
@@ -1831,7 +1832,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
                               title="Click to open & zoom"
                               className="group border border-slate-200 hover:border-indigo-400 hover:ring-2 hover:ring-indigo-200 rounded-lg overflow-hidden bg-white p-1 text-center cursor-zoom-in transition"
                             >
-                              <img src={ph.image_base64} alt={ph.label} className="w-full h-16 object-contain rounded group-hover:scale-105 transition" />
+                              <img src={formatImageSrc(ph.image_base64)} alt={ph.label} className="w-full h-16 object-contain rounded group-hover:scale-105 transition" />
                               <span className="text-[9px] text-slate-500 block truncate mt-0.5">{ph.label}</span>
                             </button>
                           ))}

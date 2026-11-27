@@ -7,6 +7,7 @@ import {
   HelpCircle, AlertTriangle, Copy, Truck, Gift, FileText, X
 } from 'lucide-react';
 import { api } from '../services/api';
+import { formatImageSrc } from '../utils/imageCompressor';
 
 function ResponsiveModal({ isOpen, onClose, title, children }) {
   if (!isOpen) return null;
@@ -484,7 +485,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
             {slide.type === 'IMAGE' && slide.image_base64 ? (
               <div className="relative w-full aspect-[2.7/1] max-h-[380px] min-h-[160px] overflow-hidden rounded-3xl">
                 <img
-                  src={slide.image_base64}
+                  src={formatImageSrc(slide.image_base64)}
                   alt={slide.title || 'Promotional Banner'}
                   className="w-full h-full object-cover transition-opacity duration-500"
                 />
@@ -597,7 +598,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
               >
                 <div className="w-14 h-14 rounded-2xl bg-[#E8F8ED] text-[#0BAA4B] flex items-center justify-center text-2xl group-hover:scale-110 transition-transform border border-[#0BAA4B]/20 overflow-hidden p-1.5">
                   {cat.image_base64 ? (
-                    <img src={cat.image_base64} alt={cat.name} className="w-full h-full object-contain" />
+                    <img src={formatImageSrc(cat.image_base64)} alt={cat.name} className="w-full h-full object-contain" />
                   ) : (
                     <span>{cat.name === 'Mobile' ? '📱' : cat.name === 'Tablet' ? '📟' : cat.name === 'Laptop' ? '💻' : cat.name === 'Smartwatch' ? '⌚' : cat.name === 'Dead Phone' ? '⚠️' : '🔌'}</span>
                   )}
@@ -659,7 +660,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                 >
                   <div className="w-16 h-12 flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
                     {brand.logo_base64 ? (
-                      <img src={brand.logo_base64} alt={brand.name} className="max-h-10 max-w-full object-contain" />
+                      <img src={formatImageSrc(brand.logo_base64)} alt={brand.name} className="max-h-10 max-w-full object-contain" />
                     ) : (
                       <Smartphone className="w-8 h-8 text-[#0BAA4B]" />
                     )}
@@ -749,7 +750,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                     >
                       <div className="w-16 h-20 bg-white/70 rounded-xl flex items-center justify-center p-1.5 overflow-hidden border border-white/80">
                         {m.image_base64 ? (
-                          <img src={m.image_base64} alt={m.name} className="max-h-full object-contain" />
+                          <img src={formatImageSrc(m.image_base64)} alt={m.name} className="max-h-full object-contain" />
                         ) : (
                           <Smartphone className="w-8 h-8 text-[#0BAA4B]" />
                         )}
@@ -901,7 +902,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                         {/* Visual Image */}
                         <div className="w-full h-32 sm:h-36 rounded-xl bg-white/80 border border-white overflow-hidden flex items-center justify-center p-2 mb-2 shadow-inner">
                           {opt.image_base64 ? (
-                            <img src={opt.image_base64} alt={opt.title} className="max-h-full max-w-full object-contain" />
+                            <img src={formatImageSrc(opt.image_base64)} alt={opt.title} className="max-h-full max-w-full object-contain" />
                           ) : (
                             <Smartphone className="w-10 h-10 text-slate-300" />
                           )}
@@ -1203,7 +1204,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
               <div className="w-24 h-24 mx-auto flex items-center justify-center">
                 {selectedModel?.image_base64 ? (
                   <img
-                    src={selectedModel.image_base64}
+                    src={formatImageSrc(selectedModel.image_base64)}
                     alt={selectedModel.name}
                     className="max-h-full max-w-full object-contain drop-shadow"
                   />

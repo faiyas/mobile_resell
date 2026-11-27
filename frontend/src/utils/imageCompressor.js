@@ -111,3 +111,27 @@ export const cropAndResizeToBanner = (
     }
   });
 };
+
+/**
+ * Safely formats any image string into a valid img src attribute.
+ * If the string is raw base64 (without data: prefix), automatically prepends data:image/jpeg;base64,
+ * Handles standard data URIs, web URLs, relative paths, and blobs cleanly.
+ */
+export const formatImageSrc = (src) => {
+  if (!src || typeof src !== 'string') return '';
+  const s = src.trim();
+  if (
+    s.startsWith('data:') ||
+    s.startsWith('http://') ||
+    s.startsWith('https://') ||
+    s.startsWith('blob:') ||
+    s.startsWith('/logo') ||
+    s.startsWith('/assets') ||
+    s.startsWith('/static')
+  ) {
+    return s;
+  }
+  // If it's a raw base64 payload or starts with a slash from a base64 string (e.g. /9j/4AAQ...):
+  return `data:image/jpeg;base64,${s}`;
+};
+

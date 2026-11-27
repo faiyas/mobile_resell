@@ -8,7 +8,7 @@ import {
   Image as ImageIcon, Type, Sliders, Crop, MoveVertical, ZoomIn
 } from 'lucide-react';
 import { api } from '../services/api';
-import { fileToBase64, cropAndResizeToBanner } from '../utils/imageCompressor';
+import { fileToBase64, cropAndResizeToBanner, formatImageSrc } from '../utils/imageCompressor';
 
 function ResponsiveModal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' }) {
   if (!isOpen) return null;
@@ -130,6 +130,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
   });
 
   const [loading, setLoading] = useState(false);
+  const [modelsLoading, setModelsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBrandId, setFilterBrandId] = useState('');
   const [filterSeriesId, setFilterSeriesId] = useState('');
@@ -353,6 +354,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
 
   const loadAllData = async () => {
     setLoading(true);
+    setModelsLoading(true);
     try {
       // PHASE 1: Lightning-fast core endpoints (< 250ms total)
       const [bData, cData, oData, dCats, sData, cmsData, tqData] = await Promise.all([
@@ -434,12 +436,15 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
         if (mData && mData.length > 0) setModels(mData);
         if (vData && vData.length > 0) setVariants(vData);
         if (hData && hData.length > 0) setPriceHistory(hData);
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => {
+        setModelsLoading(false);
+      });
 
     } catch (err) {
       console.error(err);
       showFeedback('error', 'Failed to load catalogue data');
       setLoading(false);
+      setModelsLoading(false);
     }
   };
 
@@ -1939,7 +1944,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                     <div className="flex items-center gap-3">
                       {categoryForm.image_base64 && (
                         <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1">
-                          <img src={categoryForm.image_base64} alt="" className="w-full h-full object-contain" />
+                          <img src={formatImageSrc(categoryForm.image_base64)} alt="" className="w-full h-full object-contain" />
                           <button
                             type="button"
                             onClick={() => setCategoryForm({ ...categoryForm, image_base64: '' })}
@@ -1992,7 +1997,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                         <div key={opt.id} className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between text-center relative group">
                           <div className="text-left">
                             {opt.image_base64 && (
-                              <img src={opt.image_base64} alt="" className="w-10 h-10 object-contain mx-auto mb-1 rounded" />
+                              <img src={formatImageSrc(opt.image_base64)} alt="" className="w-10 h-10 object-contain mx-auto mb-1 rounded" />
                             )}
                             <h6 className="font-extrabold text-slate-900 text-xs truncate">{opt.title}</h6>
                             <span className="text-[10px] font-black text-rose-600 block mt-0.5">
@@ -2209,7 +2214,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
 
                   <div className="h-14 flex items-center justify-center p-2 mb-3 bg-slate-50 rounded-xl border border-slate-100">
                     {b.logo_base64 ? (
-                      <img src={b.logo_base64} alt={b.name} className="max-h-10 max-w-full object-contain" />
+                      <img src={formatImageSrc(b.logo_base64)} alt={b.name} className="max-h-10 max-w-full object-contain" />
                     ) : (
                       <Smartphone className="w-8 h-8 text-slate-400" />
                     )}
@@ -2385,6 +2390,21 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
           })()}
 
           {(() => {
+            if (modelsLoading) {
+              return (
+                <div className="bg-white rounded-3xl border border-slate-200/90 p-14 text-center shadow-sm flex flex-col items-center justify-center my-4 animate-fade-in">
+                  <div className="relative w-16 h-16 flex items-center justify-center mb-4">
+                    <div className="absolute inset-0 rounded-2xl bg-[#0BAA4B]/20 animate-ping" />
+                    <img src="/logo.png" alt="Dolly" className="w-12 h-12 object-contain relative animate-pulse" />
+                  </div>
+                  <h4 className="text-base font-extrabold text-slate-900">Loading Catalogue Models</h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Retrieving devices, series & valuation matrix...
+                  </p>
+                </div>
+              );
+            }
+
             const filteredModels = models.filter(m => {
               if (filterBrandId && (m.brand !== parseInt(filterBrandId) && m.brand?.id !== parseInt(filterBrandId))) return false;
               if (filterSeriesId && (m.series !== parseInt(filterSeriesId) && m.series?.id !== parseInt(filterSeriesId))) return false;
@@ -2460,7 +2480,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
 
                         <div className="h-24 flex items-center justify-center p-2 my-2 bg-slate-50 rounded-xl">
                           {m.image_base64 ? (
-                            <img src={m.image_base64} alt={m.name} className="max-h-20 max-w-full object-contain" />
+                            <img src={formatImageSrc(m.image_base64)} alt={m.name} className="max-h-20 max-w-full object-contain" />
                           ) : (
                             <Smartphone className="w-10 h-10 text-slate-400" />
                           )}
@@ -2707,7 +2727,18 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {filteredVariants.length === 0 ? (
+                        {modelsLoading ? (
+                          <tr>
+                            <td colSpan={7} className="text-center py-12">
+                              <div className="relative w-12 h-12 mx-auto mb-3 flex items-center justify-center">
+                                <div className="absolute inset-0 rounded-2xl bg-[#0BAA4B]/20 animate-ping" />
+                                <img src="/logo.png" alt="Dolly" className="w-9 h-9 object-contain relative animate-pulse" />
+                              </div>
+                              <p className="font-bold text-sm text-slate-700">Loading Storage Variants...</p>
+                              <p className="text-xs text-slate-400 mt-0.5">Fetching pricing matrix and models...</p>
+                            </td>
+                          </tr>
+                        ) : filteredVariants.length === 0 ? (
                           <tr>
                             <td colSpan={7} className="text-center py-12 text-slate-400">
                               <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-40 text-slate-400" />
@@ -3012,7 +3043,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-2.5">
                           {opt.image_base64 ? (
-                            <img src={opt.image_base64} alt="" className="w-10 h-10 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 p-0.5" />
+                            <img src={formatImageSrc(opt.image_base64)} alt="" className="w-10 h-10 rounded-xl object-contain bg-slate-50 border border-slate-200 shrink-0 p-0.5" />
                           ) : (
                             <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400 text-[9px] font-bold shrink-0">
                               No Pic
@@ -3388,7 +3419,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             />
             {brandForm.logo_base64 && (
               <div className="mt-2 p-2 bg-slate-50 border rounded-lg flex items-center justify-center h-12">
-                <img src={brandForm.logo_base64} alt="Preview" className="max-h-8 object-contain" />
+                <img src={formatImageSrc(brandForm.logo_base64)} alt="Preview" className="max-h-8 object-contain" />
               </div>
             )}
           </div>
@@ -3499,7 +3530,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             <div className="flex items-center gap-3">
               {modelForm.image_base64 && (
                 <div className="w-16 h-16 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
-                  <img src={modelForm.image_base64} alt="" className="w-full h-full object-contain" />
+                  <img src={formatImageSrc(modelForm.image_base64)} alt="" className="w-full h-full object-contain" />
                   <button
                     type="button"
                     onClick={() => setModelForm(prev => ({ ...prev, image_base64: '' }))}
@@ -3749,7 +3780,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             <div className="flex items-center gap-3">
               {categoryForm.image_base64 && (
                 <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
-                  <img src={categoryForm.image_base64} alt="" className="w-full h-full object-contain" />
+                  <img src={formatImageSrc(categoryForm.image_base64)} alt="" className="w-full h-full object-contain" />
                   <button
                     type="button"
                     onClick={() => setCategoryForm(prev => ({ ...prev, image_base64: '' }))}
@@ -3958,7 +3989,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             <div className="flex items-center gap-3">
               {optionForm.image_base64 && (
                 <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1">
-                  <img src={optionForm.image_base64} alt="" className="w-full h-full object-contain" />
+                  <img src={formatImageSrc(optionForm.image_base64)} alt="" className="w-full h-full object-contain" />
                   <button
                     type="button"
                     onClick={() => setOptionForm({ ...optionForm, image_base64: '' })}
@@ -4109,7 +4140,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             <div className="flex items-center gap-3">
               {deviceCategoryForm.image_base64 && (
                 <div className="w-14 h-14 rounded-xl border border-slate-200 overflow-hidden bg-slate-50 shrink-0 relative p-1 flex items-center justify-center">
-                  <img src={deviceCategoryForm.image_base64} alt="" className="w-full h-full object-contain" />
+                  <img src={formatImageSrc(deviceCategoryForm.image_base64)} alt="" className="w-full h-full object-contain" />
                   <button
                     type="button"
                     onClick={() => setDeviceCategoryForm(prev => ({ ...prev, image_base64: '' }))}

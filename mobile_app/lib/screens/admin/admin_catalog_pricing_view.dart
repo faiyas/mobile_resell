@@ -145,7 +145,9 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                       final xfile = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 400);
                       if (xfile != null) {
                         final bytes = await xfile.readAsBytes();
-                        setM(() => base64Img = base64Encode(bytes));
+                        final pathLower = xfile.path.toLowerCase();
+                        final mime = pathLower.endsWith('.png') ? 'image/png' : (pathLower.endsWith('.webp') ? 'image/webp' : 'image/jpeg');
+                        setM(() => base64Img = 'data:$mime;base64,${base64Encode(bytes)}');
                       }
                     },
                   ),
@@ -440,7 +442,9 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                       final xfile = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 600);
                       if (xfile != null) {
                         final bytes = await xfile.readAsBytes();
-                        setM(() => base64Img = base64Encode(bytes));
+                        final pathLower = xfile.path.toLowerCase();
+                        final mime = pathLower.endsWith('.png') ? 'image/png' : (pathLower.endsWith('.webp') ? 'image/webp' : 'image/jpeg');
+                        setM(() => base64Img = 'data:$mime;base64,${base64Encode(bytes)}');
                       }
                     },
                   ),

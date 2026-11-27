@@ -38,7 +38,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final ApiService _api = ApiService();
   int _currentIndex = 0;
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   List<CMSSectionModel> _cmsSections = [];
   List<DeviceCategoryModel> _categories = [];
@@ -127,25 +127,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    // 1. Instant 0ms Load from Local Device Storage (No spinner if cache exists)
+    // 1. Instant 0ms Load from Local Device Storage
     await CustomerCacheService.hydrateApiFromLocalCache(_api);
     final cachedCms = await CustomerCacheService.getCachedCMSSections();
     final cachedCats = await CustomerCacheService.getCachedCategories();
     final cachedBrands = await CustomerCacheService.getCachedBrands();
     final draft = await DraftSellService.getDraft();
 
-    final bool hasCachedContent = cachedCats.isNotEmpty || cachedBrands.isNotEmpty;
-
     if (mounted) {
       setState(() {
-        if (hasCachedContent) {
-          _cmsSections = cachedCms;
-          _categories = cachedCats;
-          _brands = cachedBrands;
-          _isLoading = false;
-        } else {
-          _isLoading = true;
-        }
+        _cmsSections = cachedCms.isNotEmpty ? cachedCms : _cmsSections;
+        _categories = cachedCats.isNotEmpty
+            ? cachedCats
+            : CustomerCacheService.getDefaultFallbackCategories();
+        _brands = cachedBrands.isNotEmpty ? cachedBrands : _brands;
+        _isLoading = false;
         _savedDraft = draft;
       });
 
@@ -153,42 +149,33 @@ class _HomeScreenState extends State<HomeScreen> {
       _startHeroAutoScroll();
     }
 
-    // 2. Silent Background Delta Sync (Does NOT block user or show spinner)
-    try {
-      final bool hasChanges = await CustomerCacheService.syncCustomerDataSilently(_api);
-      if (hasChanges && mounted) {
-        final freshCms = await CustomerCacheService.getCachedCMSSections();
-        final freshCats = await CustomerCacheService.getCachedCategories();
-        final freshBrands = await CustomerCacheService.getCachedBrands();
+    // 2. Silent Background Delta Sync (Runs seamlessly in background without blocking UI or showing spinner)
+    Future(() async {
+      try {
+        final bool hasChanges = await CustomerCacheService.syncCustomerDataSilently(_api);
+        if (hasChanges && mounted) {
+          final freshCms = await CustomerCacheService.getCachedCMSSections();
+          final freshCats = await CustomerCacheService.getCachedCategories();
+          final freshBrands = await CustomerCacheService.getCachedBrands();
 
-        setState(() {
-          _cmsSections = freshCms;
-          _categories = freshCats;
-          _brands = freshBrands;
-          _isLoading = false;
-        });
+          setState(() {
+            _cmsSections = freshCms;
+            _categories = freshCats;
+            _brands = freshBrands;
+          });
 
-        if (freshBrands.isNotEmpty) _startBrandsAutoScroll();
-        _startHeroAutoScroll();
-      } else if (!hasCachedContent && mounted) {
-        // Cold start fallback if first install and offline check returned false
-        final freshCms = await _api.getCMSSections(forceRefresh: true);
-        final freshCats = await _api.getDeviceCategories(forceRefresh: true);
-        final freshBrands = await _api.getBrands(forceRefresh: true);
-
-        setState(() {
-          _cmsSections = freshCms;
-          _categories = freshCats;
-          _brands = freshBrands;
-          _isLoading = false;
-        });
-
-        if (freshBrands.isNotEmpty) _startBrandsAutoScroll();
-        _startHeroAutoScroll();
-      }
-    } catch (_) {
-      if (mounted && _isLoading) setState(() => _isLoading = false);
-    }
+          if (freshBrands.isNotEmpty) _startBrandsAutoScroll();
+          _startHeroAutoScroll();
+        } else if (_brands.isEmpty && mounted) {
+          // Cold start fallback if brands were empty
+          final freshBrands = await _api.getBrands(forceRefresh: true);
+          if (mounted && freshBrands.isNotEmpty) {
+            setState(() => _brands = freshBrands);
+            _startBrandsAutoScroll();
+          }
+        }
+      } catch (_) {}
+    });
   }
 
   void _resumeDraft(SellDraftData draft) {
