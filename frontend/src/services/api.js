@@ -161,7 +161,8 @@ export const api = {
   getSystemSettings: () => request('/catalog/settings/'),
   updateSystemSettings: (data) => request('/catalog/settings/', { method: 'POST', body: JSON.stringify(data) }),
 
-  getVariants: (modelId, all = false) => request(`/catalog/variants/?${modelId ? `model=${modelId}&` : ''}all=${all}`).then(res => (res && Array.isArray(res.results)) ? res.results : res),
+  getVariants: (modelId, all = false, brandId = null, seriesId = null) => 
+    request(`/catalog/variants/?${modelId ? `model=${modelId}&` : ''}${brandId ? `brand=${brandId}&` : ''}${seriesId ? `series=${seriesId}&` : ''}all=${all}`).then(res => (res && Array.isArray(res.results)) ? res.results : res),
   createVariant: (data) => request('/catalog/variants/', { method: 'POST', body: JSON.stringify(data) }),
   updateVariant: (id, data) => request(`/catalog/variants/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteVariant: (id) => request(`/catalog/variants/${id}/`, { method: 'DELETE' }),

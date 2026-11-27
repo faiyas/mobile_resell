@@ -26,12 +26,15 @@ class DeviceSeriesSerializer(serializers.ModelSerializer):
 
 class StorageVariantSerializer(serializers.ModelSerializer):
     brand_name = serializers.ReadOnlyField(source='model.brand.name')
+    brand_id = serializers.ReadOnlyField(source='model.brand.id')
+    series_name = serializers.ReadOnlyField(source='model.series.name')
+    series_id = serializers.ReadOnlyField(source='model.series.id')
     model_name = serializers.ReadOnlyField(source='model.name')
     model_id = serializers.ReadOnlyField(source='model.id')
 
     class Meta:
         model = StorageVariant
-        fields = ['id', 'model', 'model_id', 'brand_name', 'model_name', 'ram', 'storage', 'base_price', 'min_price', 'is_active', 'created_at']
+        fields = ['id', 'model', 'model_id', 'brand_id', 'brand_name', 'series_id', 'series_name', 'model_name', 'ram', 'storage', 'base_price', 'min_price', 'is_active', 'created_at']
 
 class PhoneModelSerializer(serializers.ModelSerializer):
     variants = StorageVariantSerializer(many=True, read_only=True)

@@ -132,7 +132,21 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBrandId, setFilterBrandId] = useState('');
+  const [filterSeriesId, setFilterSeriesId] = useState('');
+  const [filterModelId, setFilterModelId] = useState('');
+  const [variantSearch, setVariantSearch] = useState('');
   const [filterCategoryId, setFilterCategoryId] = useState('');
+
+  const handleBrandFilterChange = (bId) => {
+    setFilterBrandId(bId);
+    setFilterSeriesId('');
+    setFilterModelId('');
+  };
+
+  const handleSeriesFilterChange = (sId) => {
+    setFilterSeriesId(sId);
+    setFilterModelId('');
+  };
 
   // Modals state
   const [brandModalOpen, setBrandModalOpen] = useState(false);
@@ -2236,10 +2250,10 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
               <p className="text-xs text-slate-500">Configure models per manufacturer with release year and specifications.</p>
             </div>
             
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <select
                 value={filterBrandId}
-                onChange={(e) => setFilterBrandId(e.target.value)}
+                onChange={(e) => handleBrandFilterChange(e.target.value)}
                 className="px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold bg-white"
               >
                 <option value="">All Brands ({brands.length})</option>
@@ -2247,6 +2261,30 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
+
+              <select
+                value={filterSeriesId}
+                onChange={(e) => handleSeriesFilterChange(e.target.value)}
+                className="px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold bg-white"
+              >
+                <option value="">All Series ({seriesList.filter(s => !filterBrandId || String(s.brand || s.brand_id) === String(filterBrandId)).length})</option>
+                {seriesList
+                  .filter(s => !filterBrandId || String(s.brand || s.brand_id) === String(filterBrandId))
+                  .map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+              </select>
+
+              {(filterBrandId || filterSeriesId) && (
+                <button
+                  type="button"
+                  onClick={() => { setFilterBrandId(''); setFilterSeriesId(''); setFilterModelId(''); }}
+                  className="px-2 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                  title="Clear Filters"
+                >
+                  <X className="w-3.5 h-3.5" /> Clear
+                </button>
+              )}
 
               <button
                 onClick={() => handleOpenModelModal()}
@@ -2327,7 +2365,11 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
           })()}
 
           {(() => {
-            const filteredModels = models.filter(m => filterBrandId ? (m.brand === parseInt(filterBrandId) || m.brand?.id === parseInt(filterBrandId)) : true);
+            const filteredModels = models.filter(m => {
+              if (filterBrandId && (m.brand !== parseInt(filterBrandId) && m.brand?.id !== parseInt(filterBrandId))) return false;
+              if (filterSeriesId && (m.series !== parseInt(filterSeriesId) && m.series?.id !== parseInt(filterSeriesId))) return false;
+              return true;
+            });
             return (
               <BulkActionBar
                 totalCount={filteredModels.length}
@@ -2336,14 +2378,18 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                 loading={bulkDeleting}
                 onToggleSelectAll={() => setSelectedIds(selectedIds.length === filteredModels.length ? [] : filteredModels.map(m => m.id))}
                 onDeleteSelected={() => handleBulkDelete('catalog', 'models', false, selectedIds, 'Deleting models will also delete all their Storage Variants.')}
-                onDeleteAll={() => handleBulkDelete('catalog', 'models', !filterBrandId, filterBrandId ? filteredModels.map(m => m.id) : [], 'This will delete ALL displayed Models and their Storage Variants!')}
+                onDeleteAll={() => handleBulkDelete('catalog', 'models', !filterBrandId && !filterSeriesId, (filterBrandId || filterSeriesId) ? filteredModels.map(m => m.id) : [], 'This will delete ALL displayed Models and their Storage Variants!')}
               />
             );
           })()}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {models
-              .filter(m => filterBrandId ? (m.brand === parseInt(filterBrandId) || m.brand?.id === parseInt(filterBrandId)) : true)
+              .filter(m => {
+                if (filterBrandId && (m.brand !== parseInt(filterBrandId) && m.brand?.id !== parseInt(filterBrandId))) return false;
+                if (filterSeriesId && (m.series !== parseInt(filterSeriesId) && m.series?.id !== parseInt(filterSeriesId))) return false;
+                return true;
+              })
               .map((m) => {
                 const modelVariants = variants.filter(v => v.model === m.id || v.model_id === m.id);
                 return (
@@ -2440,92 +2486,269 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             </button>
           </div>
 
-          <BulkActionBar
-            totalCount={variants.length}
-            selectedIds={selectedIds}
-            itemName="Storage Variants"
-            loading={bulkDeleting}
-            onToggleSelectAll={() => setSelectedIds(selectedIds.length === variants.length ? [] : variants.map(v => v.id))}
-            onDeleteSelected={() => handleBulkDelete('catalog', 'variants', false, selectedIds)}
-            onDeleteAll={() => handleBulkDelete('catalog', 'variants', true, [], 'This will delete ALL Storage Variants & Base Prices!')}
-          />
+          {/* ================= BRAND, SERIES & MODEL FILTERS BAR ================= */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-sm flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mr-1">
+                <Filter className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Filters:</span>
+              </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-900 text-white uppercase text-[10px] tracking-wider font-bold">
-                  <tr>
-                    <th className="py-3 px-4 w-10">
-                      <input
-                        type="checkbox"
-                        checked={variants.length > 0 && selectedIds.length === variants.length}
-                        onChange={() => setSelectedIds(selectedIds.length === variants.length ? [] : variants.map(v => v.id))}
-                        className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
-                      />
-                    </th>
-                    <th className="py-3 px-4">Brand & Model</th>
-                    <th className="py-3 px-4">Spec / Storage</th>
-                    <th className="py-3 px-4">Configured Base Price</th>
-                    <th className="py-3 px-4">Min Floor Price</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {variants.map((v) => (
-                    <tr key={v.id} className={`hover:bg-slate-50 transition ${selectedIds.includes(v.id) ? 'bg-emerald-50/40' : ''}`}>
-                      <td className="py-3 px-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(v.id)}
-                          onChange={() => toggleSelectId(v.id)}
-                          className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
-                        />
-                      </td>
-                      <td className="py-3 px-4 font-bold text-slate-900">
-                        {v.brand_name} {v.model_name}
-                      </td>
-                      <td className="py-3 px-4 font-mono font-semibold text-slate-700">
-                        {v.ram ? `${v.ram} / ` : ''}{v.storage}
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="font-extrabold text-emerald-700 text-sm">
-                          ₹{Number(v.base_price).toLocaleString('en-IN')}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 font-mono text-slate-500">
-                        ₹{Number(v.min_price).toLocaleString('en-IN')}
-                      </td>
-                      <td className="py-3 px-4">
-                        <button
-                          onClick={() => handleToggleVariantActive(v)}
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            v.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                          }`}
-                        >
-                          {v.is_active ? 'Active' : 'Disabled'}
-                        </button>
-                      </td>
-                      <td className="py-3 px-4 text-right space-x-2">
-                        <button
-                          onClick={() => handleOpenVariantModal(v)}
-                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-[11px]"
-                        >
-                          Update Price
-                        </button>
-                        <button
-                          onClick={() => handleDeleteVariant(v)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 inline" />
-                        </button>
-                      </td>
-                    </tr>
+              {/* Brand Filter */}
+              <select
+                value={filterBrandId}
+                onChange={(e) => handleBrandFilterChange(e.target.value)}
+                className="px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold bg-white text-slate-800 focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="">All Brands ({brands.length})</option>
+                {brands.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+
+              {/* Series Filter */}
+              <select
+                value={filterSeriesId}
+                onChange={(e) => handleSeriesFilterChange(e.target.value)}
+                className="px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold bg-white text-slate-800 focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="">All Series ({seriesList.filter(s => !filterBrandId || String(s.brand || s.brand_id) === String(filterBrandId)).length})</option>
+                {seriesList
+                  .filter(s => !filterBrandId || String(s.brand || s.brand_id) === String(filterBrandId))
+                  .map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
-                </tbody>
-              </table>
+              </select>
+
+              {/* Model Filter */}
+              <select
+                value={filterModelId}
+                onChange={(e) => setFilterModelId(e.target.value)}
+                className="px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold bg-white text-slate-800 focus:ring-2 focus:ring-indigo-500/20 max-w-[220px]"
+              >
+                <option value="">All Models</option>
+                {models
+                  .filter(m => (!filterBrandId || String(m.brand || m.brand?.id) === String(filterBrandId)) && (!filterSeriesId || String(m.series || m.series?.id) === String(filterSeriesId)))
+                  .map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+              </select>
+
+              {/* Text Search */}
+              <div className="relative min-w-[180px] flex-1 max-w-xs">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search model, storage, RAM..."
+                  value={variantSearch}
+                  onChange={(e) => setVariantSearch(e.target.value)}
+                  className="w-full pl-8 pr-7 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500/20 bg-slate-50 focus:bg-white"
+                />
+                {variantSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setVariantSearch('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Reset Filters */}
+              {(filterBrandId || filterSeriesId || filterModelId || variantSearch) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterBrandId('');
+                    setFilterSeriesId('');
+                    setFilterModelId('');
+                    setVariantSearch('');
+                  }}
+                  className="px-2.5 py-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                >
+                  <X className="w-3.5 h-3.5" /> Reset
+                </button>
+              )}
             </div>
+
+            {/* Total / Filtered Counts */}
+            {(() => {
+              const count = variants.filter(v => {
+                const m = models.find(mod => mod.id === (v.model || v.model_id));
+                const vBrandId = v.brand_id || (m ? (m.brand?.id || m.brand) : null);
+                const vSeriesId = v.series_id || (m ? (m.series?.id || m.series) : null);
+                if (filterBrandId && String(vBrandId) !== String(filterBrandId)) return false;
+                if (filterSeriesId && String(vSeriesId) !== String(filterSeriesId)) return false;
+                if (filterModelId && String(v.model || v.model_id) !== String(filterModelId)) return false;
+                if (variantSearch.trim()) {
+                  const q = variantSearch.toLowerCase().trim();
+                  const bName = (v.brand_name || (m?.brand_name) || '').toLowerCase();
+                  const mName = (v.model_name || (m?.name) || '').toLowerCase();
+                  const sName = (v.series_name || (m?.series_name) || '').toLowerCase();
+                  const storageStr = (v.storage || '').toLowerCase();
+                  const ramStr = (v.ram || '').toLowerCase();
+                  if (!bName.includes(q) && !mName.includes(q) && !sName.includes(q) && !storageStr.includes(q) && !ramStr.includes(q)) return false;
+                }
+                return true;
+              }).length;
+
+              return (
+                <div className="text-[11px] font-bold text-slate-500 whitespace-nowrap">
+                  Showing <span className="text-slate-900 font-extrabold">{count}</span> of {variants.length}
+                </div>
+              );
+            })()}
           </div>
+
+          {(() => {
+            const filteredVariants = variants.filter(v => {
+              const m = models.find(mod => mod.id === (v.model || v.model_id));
+              const vBrandId = v.brand_id || (m ? (m.brand?.id || m.brand) : null);
+              const vSeriesId = v.series_id || (m ? (m.series?.id || m.series) : null);
+
+              if (filterBrandId && String(vBrandId) !== String(filterBrandId)) return false;
+              if (filterSeriesId && String(vSeriesId) !== String(filterSeriesId)) return false;
+              if (filterModelId && String(v.model || v.model_id) !== String(filterModelId)) return false;
+              if (variantSearch.trim()) {
+                const q = variantSearch.toLowerCase().trim();
+                const bName = (v.brand_name || (m?.brand_name) || '').toLowerCase();
+                const mName = (v.model_name || (m?.name) || '').toLowerCase();
+                const sName = (v.series_name || (m?.series_name) || '').toLowerCase();
+                const storageStr = (v.storage || '').toLowerCase();
+                const ramStr = (v.ram || '').toLowerCase();
+                if (!bName.includes(q) && !mName.includes(q) && !sName.includes(q) && !storageStr.includes(q) && !ramStr.includes(q)) return false;
+              }
+              return true;
+            });
+
+            const hasActiveFilters = Boolean(filterBrandId || filterSeriesId || filterModelId || variantSearch);
+
+            return (
+              <>
+                <BulkActionBar
+                  totalCount={filteredVariants.length}
+                  selectedIds={selectedIds}
+                  itemName="Storage Variants"
+                  loading={bulkDeleting}
+                  onToggleSelectAll={() => setSelectedIds(selectedIds.length === filteredVariants.length ? [] : filteredVariants.map(v => v.id))}
+                  onDeleteSelected={() => handleBulkDelete('catalog', 'variants', false, selectedIds)}
+                  onDeleteAll={() => handleBulkDelete(
+                    'catalog',
+                    'variants',
+                    !hasActiveFilters,
+                    hasActiveFilters ? filteredVariants.map(v => v.id) : [],
+                    hasActiveFilters
+                      ? `This will delete ALL ${filteredVariants.length} filtered Storage Variants!`
+                      : 'This will delete ALL Storage Variants & Base Prices!'
+                  )}
+                />
+
+                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-900 text-white uppercase text-[10px] tracking-wider font-bold">
+                        <tr>
+                          <th className="py-3 px-4 w-10">
+                            <input
+                              type="checkbox"
+                              checked={filteredVariants.length > 0 && selectedIds.length === filteredVariants.length}
+                              onChange={() => setSelectedIds(selectedIds.length === filteredVariants.length ? [] : filteredVariants.map(v => v.id))}
+                              className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
+                            />
+                          </th>
+                          <th className="py-3 px-4">Brand & Model</th>
+                          <th className="py-3 px-4">Spec / Storage</th>
+                          <th className="py-3 px-4">Configured Base Price</th>
+                          <th className="py-3 px-4">Min Floor Price</th>
+                          <th className="py-3 px-4">Status</th>
+                          <th className="py-3 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredVariants.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="text-center py-12 text-slate-400">
+                              <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-40 text-slate-400" />
+                              <p className="font-bold text-sm text-slate-600">No Storage Variants Found</p>
+                              <p className="text-xs text-slate-400 mt-0.5">
+                                {hasActiveFilters ? 'Try adjusting or clearing your filters.' : 'No storage variants configured yet.'}
+                              </p>
+                              {hasActiveFilters && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setFilterBrandId('');
+                                    setFilterSeriesId('');
+                                    setFilterModelId('');
+                                    setVariantSearch('');
+                                  }}
+                                  className="mt-3 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition inline-flex items-center gap-1.5"
+                                >
+                                  <X className="w-3.5 h-3.5" /> Clear All Filters
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ) : (
+                          filteredVariants.map((v) => (
+                            <tr key={v.id} className={`hover:bg-slate-50 transition ${selectedIds.includes(v.id) ? 'bg-emerald-50/40' : ''}`}>
+                              <td className="py-3 px-4">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedIds.includes(v.id)}
+                                  onChange={() => toggleSelectId(v.id)}
+                                  className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
+                                />
+                              </td>
+                              <td className="py-3 px-4 font-bold text-slate-900">
+                                {v.brand_name} {v.model_name}
+                              </td>
+                              <td className="py-3 px-4 font-mono font-semibold text-slate-700">
+                                {v.ram ? `${v.ram} / ` : ''}{v.storage}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span className="font-extrabold text-emerald-700 text-sm">
+                                  ₹{Number(v.base_price).toLocaleString('en-IN')}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 font-mono text-slate-500">
+                                ₹{Number(v.min_price).toLocaleString('en-IN')}
+                              </td>
+                              <td className="py-3 px-4">
+                                <button
+                                  onClick={() => handleToggleVariantActive(v)}
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    v.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                                  }`}
+                                >
+                                  {v.is_active ? 'Active' : 'Disabled'}
+                                </button>
+                              </td>
+                              <td className="py-3 px-4 text-right space-x-2">
+                                <button
+                                  onClick={() => handleOpenVariantModal(v)}
+                                  className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold rounded-lg text-[11px]"
+                                >
+                                  Update Price
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteVariant(v)}
+                                  className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 inline" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
       )}
 

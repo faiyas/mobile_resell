@@ -268,15 +268,21 @@ def model_detail_view(request, pk):
 def variants_list_create_view(request):
     if request.method == 'GET':
         model_id = request.GET.get('model')
+        brand_id = request.GET.get('brand')
+        series_id = request.GET.get('series')
         show_all = request.GET.get('all', 'false').lower() == 'true'
         
         if show_all and is_admin_user(request.user):
-            queryset = StorageVariant.objects.all().select_related('model__brand')
+            queryset = StorageVariant.objects.all().select_related('model__brand', 'model__series')
         else:
-            queryset = StorageVariant.objects.filter(is_active=True).select_related('model__brand')
+            queryset = StorageVariant.objects.filter(is_active=True).select_related('model__brand', 'model__series')
 
         if model_id:
             queryset = queryset.filter(model_id=model_id)
+        if brand_id:
+            queryset = queryset.filter(model__brand_id=brand_id)
+        if series_id:
+            queryset = queryset.filter(model__series_id=series_id)
 
         page = request.GET.get('page')
         page_size = int(request.GET.get('page_size', 10))
