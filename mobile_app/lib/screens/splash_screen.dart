@@ -57,37 +57,31 @@ class _SplashScreenState extends State<SplashScreen>
 
   Future<void> _startSessionAndNavigate() async {
     final startTime = DateTime.now();
+    final api = ApiService();
 
-    // 1. Kick off parallel background pre-warm, API init and delta-sync concurrently
-    final syncTask = () async {
-      try {
-        final api = ApiService();
-        await api.init();
-        await Future.wait<dynamic>([
-          api.pingHealth().catchError((_) => false),
-          CustomerCacheService.syncCustomerDataSilently(api).catchError((_) => false),
-          DraftSellService.getDraft().catchError((_) => null),
-        ]);
-      } catch (e) {
-        debugPrint('Splash background pre-sync error (non-fatal): $e');
-      }
-    }();
+    // 1. Fetch real front screen data first during splash screen
+    try {
+      await api.init();
+      await Future.wait<dynamic>([
+        api.getCMSSections(forceRefresh: true),
+        api.getDeviceCategories(forceRefresh: true),
+        api.getBrands(forceRefresh: true),
+        CustomerCacheService.hydrateApiFromLocalCache(api),
+        DraftSellService.getDraft().catchError((_) => null),
+      ]).timeout(const Duration(seconds: 4), onTimeout: () => []);
+    } catch (e) {
+      debugPrint('Splash front-screen fetch error: $e');
+    }
 
-    // 2. Elegant splash presentation duration (~1800ms)
-    await Future.delayed(const Duration(milliseconds: 1800));
-
-    // Wait a brief extra moment up to 2200ms total if sync completes fast
+    // Minimum display duration for elegant logo branding (~1500ms)
     final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-    if (elapsed < 2200) {
-      await Future.any([
-        syncTask,
-        Future.delayed(Duration(milliseconds: 2200 - elapsed)),
-      ]);
+    if (elapsed < 1500) {
+      await Future.delayed(Duration(milliseconds: 1500 - elapsed));
     }
 
     if (!mounted) return;
 
-    // 3. Fluid Cross-Fade Transition to HomeScreen
+    // 2. Transition to HomeScreen with real live data immediately displayed
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
@@ -101,9 +95,12 @@ class _SplashScreenState extends State<SplashScreen>
             child: child,
           );
         },
-        transitionDuration: const Duration(milliseconds: 500),
+        transitionDuration: const Duration(milliseconds: 400),
       ),
     );
+
+    // 3. Proceed with heavy valuation sync bundle in background AFTER showing front screen
+    CustomerCacheService.syncCustomerDataSilently(api);
   }
 
   @override

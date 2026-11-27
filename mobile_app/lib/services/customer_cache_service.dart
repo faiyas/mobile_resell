@@ -15,16 +15,6 @@ class CustomerCacheService {
   static const String _keySyncBundle = 'customer_cache_sync_bundle_v1';
   static const String _keyLastSync = 'customer_cache_last_sync_timestamp';
 
-  /// Instant fallback categories if app is launched for the first time offline
-  static List<DeviceCategoryModel> getDefaultFallbackCategories() {
-    return [
-      DeviceCategoryModel(id: 1, name: 'Mobile', slug: 'mobile', iconName: 'Smartphone', subtitle: 'Sell your used smartphone', isActive: true),
-      DeviceCategoryModel(id: 2, name: 'Tablet', slug: 'tablet', iconName: 'Tablet', subtitle: 'Sell your used tablet', isActive: true),
-      DeviceCategoryModel(id: 3, name: 'Laptop', slug: 'laptop', iconName: 'Laptop', subtitle: 'Sell your used laptop', isActive: true),
-      DeviceCategoryModel(id: 4, name: 'Smartwatch', slug: 'smartwatch', iconName: 'Watch', subtitle: 'Sell your used smartwatch', isActive: true),
-    ];
-  }
-
   /// Hydrates ApiService memory with cached Series, Models, Variants & Questionnaires
   static Future<void> hydrateApiFromLocalCache(ApiService api) async {
     try {

@@ -127,20 +127,38 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadInitialData() async {
-    // 1. Instant 0ms Load from Local Device Storage
+    // 1. Instant Load from Local Device Storage (or ApiService memory preloaded during splash)
     await CustomerCacheService.hydrateApiFromLocalCache(_api);
-    final cachedCms = await CustomerCacheService.getCachedCMSSections();
-    final cachedCats = await CustomerCacheService.getCachedCategories();
-    final cachedBrands = await CustomerCacheService.getCachedBrands();
+    var cachedCms = await CustomerCacheService.getCachedCMSSections();
+    var cachedCats = await CustomerCacheService.getCachedCategories();
+    var cachedBrands = await CustomerCacheService.getCachedBrands();
     final draft = await DraftSellService.getDraft();
+
+    // If local storage is empty, fetch real live data directly from ApiService
+    if (cachedCats.isEmpty || cachedBrands.isEmpty) {
+      try {
+        final results = await Future.wait<dynamic>([
+          _api.getCMSSections(),
+          _api.getDeviceCategories(),
+          _api.getBrands(),
+        ]);
+        if (results[0] is List<CMSSectionModel> && (results[0] as List).isNotEmpty) {
+          cachedCms = results[0] as List<CMSSectionModel>;
+        }
+        if (results[1] is List<DeviceCategoryModel> && (results[1] as List).isNotEmpty) {
+          cachedCats = results[1] as List<DeviceCategoryModel>;
+        }
+        if (results[2] is List<BrandModel> && (results[2] as List).isNotEmpty) {
+          cachedBrands = results[2] as List<BrandModel>;
+        }
+      } catch (_) {}
+    }
 
     if (mounted) {
       setState(() {
-        _cmsSections = cachedCms.isNotEmpty ? cachedCms : _cmsSections;
-        _categories = cachedCats.isNotEmpty
-            ? cachedCats
-            : CustomerCacheService.getDefaultFallbackCategories();
-        _brands = cachedBrands.isNotEmpty ? cachedBrands : _brands;
+        _cmsSections = cachedCms;
+        _categories = cachedCats;
+        _brands = cachedBrands;
         _isLoading = false;
         _savedDraft = draft;
       });
@@ -149,33 +167,23 @@ class _HomeScreenState extends State<HomeScreen> {
       _startHeroAutoScroll();
     }
 
-    // 2. Silent Background Delta Sync (Runs seamlessly in background without blocking UI or showing spinner)
-    Future(() async {
-      try {
-        final bool hasChanges = await CustomerCacheService.syncCustomerDataSilently(_api);
-        if (hasChanges && mounted) {
-          final freshCms = await CustomerCacheService.getCachedCMSSections();
-          final freshCats = await CustomerCacheService.getCachedCategories();
-          final freshBrands = await CustomerCacheService.getCachedBrands();
+    // 2. Silent Background Delta Sync (Runs in background without blocking UI or showing spinner)
+    CustomerCacheService.syncCustomerDataSilently(_api).then((hasChanges) async {
+      if (hasChanges && mounted) {
+        final freshCms = await CustomerCacheService.getCachedCMSSections();
+        final freshCats = await CustomerCacheService.getCachedCategories();
+        final freshBrands = await CustomerCacheService.getCachedBrands();
 
-          setState(() {
-            _cmsSections = freshCms;
-            _categories = freshCats;
-            _brands = freshBrands;
-          });
+        setState(() {
+          _cmsSections = freshCms;
+          _categories = freshCats;
+          _brands = freshBrands;
+        });
 
-          if (freshBrands.isNotEmpty) _startBrandsAutoScroll();
-          _startHeroAutoScroll();
-        } else if (_brands.isEmpty && mounted) {
-          // Cold start fallback if brands were empty
-          final freshBrands = await _api.getBrands(forceRefresh: true);
-          if (mounted && freshBrands.isNotEmpty) {
-            setState(() => _brands = freshBrands);
-            _startBrandsAutoScroll();
-          }
-        }
-      } catch (_) {}
-    });
+        if (freshBrands.isNotEmpty) _startBrandsAutoScroll();
+        _startHeroAutoScroll();
+      }
+    }).catchError((_) {});
   }
 
   void _resumeDraft(SellDraftData draft) {
