@@ -2855,7 +2855,103 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
       {/* ================= 5. DEDUCTION RULES ================= */}
       {subTab === 'deductions' && (
         <div className="space-y-4 animate-fade-in">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          {/* Top Section: Initial Triage Gate Deductions */}
+          <div className="bg-rose-50/60 border border-rose-200/80 rounded-2xl p-4 sm:p-5 shadow-xs">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    Initial Triage Gate Deductions
+                    <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                      {triageQuestions.length} Gates
+                    </span>
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Upfront health check questions evaluated first. Answering "No" deducts percentage or flat amount, or rejects dead devices.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleOpenTriageModal()}
+                className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow transition flex items-center gap-1.5 shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Triage Question
+              </button>
+            </div>
+
+            {triageQuestions.length === 0 ? (
+              <div className="bg-white rounded-xl border border-rose-100 p-4 text-center text-xs text-slate-500">
+                No initial triage questions configured yet. Click "+ Add Triage Question" to add power-on or screen gates.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                {triageQuestions.map((tq, idx) => (
+                  <div
+                    key={tq.id || idx}
+                    className="bg-white p-3.5 rounded-xl border border-rose-100 shadow-xs hover:border-rose-300 transition flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-xs font-black text-slate-900 leading-snug">
+                          {idx + 1}. {tq.question_text}
+                        </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenTriageModal(tq)}
+                            className="p-1.5 text-slate-500 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition"
+                            title="Edit Question & Deduction"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTriageQuestion(tq)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
+                            title="Delete Question"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      {tq.subtitle && (
+                        <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
+                          {tq.subtitle}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-1.5">
+                        {tq.is_power_on_gate ? (
+                          <span className="bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 text-[10px]">
+                            ⚡ Reject / Power-On Gate
+                          </span>
+                        ) : (
+                          <span className="bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full text-[10px]">
+                            Progressive Gate
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${tq.is_active !== false ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {tq.is_active !== false ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <span className="font-extrabold text-rose-600">
+                        Deduct on "No": {tq.deduction_type === 'PERCENTAGE' ? `-${tq.deduction_value_on_no}%` : `-₹${tq.deduction_value_on_no}`}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2">
             <div>
               <h3 className="text-base font-extrabold text-slate-900">Condition & Deduction Rules Matrix</h3>
               <p className="text-xs text-slate-500">
