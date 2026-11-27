@@ -7,3 +7,4 @@
 -keep class io.flutter.plugins.** { *; }
 -dontwarn io.flutter.embedding.**
 -ignorewarnings
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
