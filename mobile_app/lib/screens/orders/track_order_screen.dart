@@ -297,6 +297,109 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
     }
   }
 
+  Future<void> _adminCancelOrder(SaleOrderModel order) async {
+    String selectedReason = 'Customer requested cancellation';
+    final adminReasons = [
+      'Customer requested cancellation',
+      'Customer unreachable / Invalid phone',
+      'Out of operational service area',
+      'Device mismatch / Fake details entered',
+      'Duplicate order booking',
+      'Other operational reason',
+    ];
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDlgState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: Colors.red.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.red, size: 20),
+              ),
+              const SizedBox(width: 8),
+              const Text('Admin Cancel Order', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Cancel order ${order.saleCode.isNotEmpty ? order.saleCode : "#${order.id}"} (${order.brandName} ${order.modelName})?',
+                style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 14),
+              const Text('Administrative Cancellation Reason:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: AppTheme.textPrimary)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedReason,
+                    isExpanded: true,
+                    style: const TextStyle(fontSize: 12, color: AppTheme.textPrimary, fontWeight: FontWeight.bold),
+                    items: adminReasons.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setDlgState(() => selectedReason = val);
+                      }
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Back'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Confirm Admin Cancel', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _loading = true);
+    try {
+      await _api.cancelOrder(order.id, reason: '[ADMIN] $selectedReason');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✓ Order ${order.saleCode} cancelled by Admin ($selectedReason).'),
+          backgroundColor: AppTheme.darkGreen,
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      _lookupOrder(order.saleCode);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Admin cancel error: $e'), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -1185,26 +1288,46 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
           ),
         ),
 
-        // 4. Cancel Order Button (if cancellable)
+        // 4. Cancel Order Button (Role-aware: Admin vs Customer)
         if (['SUBMITTED', 'PICKUP_SCHEDULED', 'INSPECTION_PENDING', 'FINAL_OFFER_SENT'].contains(order.status)) ...[
           const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                side: BorderSide(color: Colors.red.shade300, width: 1.2),
-                backgroundColor: Colors.red.withOpacity(0.04),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          if (_api.currentUser?.isAdmin == true) ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  side: BorderSide(color: Colors.red.shade400, width: 1.2),
+                  backgroundColor: Colors.red.withOpacity(0.05),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.admin_panel_settings_rounded, size: 18, color: Colors.red),
+                label: const Text(
+                  'Admin Cancel Order',
+                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                onPressed: () => _adminCancelOrder(order),
               ),
-              icon: const Icon(Icons.cancel_outlined, size: 18, color: Colors.red),
-              label: const Text(
-                'Cancel This Selling Order',
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              onPressed: () => _cancelOrder(order),
             ),
-          ),
+          ] else ...[
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                  side: BorderSide(color: Colors.red.shade300, width: 1.2),
+                  backgroundColor: Colors.red.withOpacity(0.04),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.cancel_outlined, size: 18, color: Colors.red),
+                label: const Text(
+                  'Cancel This Selling Order',
+                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                onPressed: () => _cancelOrder(order),
+              ),
+            ),
+          ],
         ],
       ],
     );

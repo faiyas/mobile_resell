@@ -3,11 +3,17 @@ import '../../config/theme.dart';
 import '../../services/api_service.dart';
 
 enum AdminNavSection {
+  overview,
   operations,
+  customers,
   payouts,
+  payoutHistory,
+  agents,
   catalog,
   triage,
-  agents,
+  simulator,
+  cms,
+  settings,
 }
 
 class AdminSidebarDrawer extends StatelessWidget {
@@ -15,7 +21,11 @@ class AdminSidebarDrawer extends StatelessWidget {
   final Function(AdminNavSection) onSelectSection;
   final VoidCallback? onRefresh;
   final int pendingOrdersCount;
+  final int customersCount;
   final int pendingPayoutsCount;
+  final int paidPayoutsCount;
+  final int agentsCount;
+  final int brandsCount;
 
   const AdminSidebarDrawer({
     super.key,
@@ -23,7 +33,11 @@ class AdminSidebarDrawer extends StatelessWidget {
     required this.onSelectSection,
     this.onRefresh,
     this.pendingOrdersCount = 0,
+    this.customersCount = 0,
     this.pendingPayoutsCount = 0,
+    this.paidPayoutsCount = 0,
+    this.agentsCount = 0,
+    this.brandsCount = 0,
   });
 
   @override
@@ -31,152 +45,230 @@ class AdminSidebarDrawer extends StatelessWidget {
     final user = ApiService().currentUser;
 
     return Drawer(
-      backgroundColor: Colors.white.withValues(alpha: 0.94),
-      elevation: 16,
+      backgroundColor: const Color(0xFF082F1D), // Dark emerald theme matching Web Admin
+      elevation: 20,
       child: SafeArea(
         child: Column(
           children: [
-            // Header
+            // Header - Dolly BUYBACK Branding
             Container(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-              decoration: BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.black.withValues(alpha: 0.06))),
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+              decoration: const BoxDecoration(
+                color: Color(0xFF062617),
+                border: Border(bottom: BorderSide(color: Color(0xFF0D442B))),
               ),
               child: Row(
                 children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [AppTheme.primaryGreen, AppTheme.darkGreen],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryGreen.withValues(alpha: 0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                          color: AppTheme.primaryGreen.withValues(alpha: 0.4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
-                    child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 24),
+                    child: const Icon(Icons.bolt_rounded, color: Colors.white, size: 24),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'DOLLY CONSOLE',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.6,
-                            color: AppTheme.textPrimary,
-                          ),
+                        Row(
+                          children: [
+                            const Text(
+                              'Dolly',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 18,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                              ),
+                              child: const Text(
+                                'BUYBACK',
+                                style: TextStyle(
+                                  color: Color(0xFF34D399),
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                        const SizedBox(height: 2),
                         Text(
                           user?.fullName.isNotEmpty == true ? user!.fullName : 'Super Admin',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppTheme.textSecondary,
-                          ),
                         ),
                       ],
                     ),
                   ),
-                  if (onRefresh != null)
-                    IconButton(
-                      icon: const Icon(Icons.refresh_rounded, size: 20, color: AppTheme.textSecondary),
-                      onPressed: onRefresh,
-                      tooltip: 'Sync Data',
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                  ),
                 ],
               ),
             ),
 
-            // Navigation Items
+            // Navigation Items Scrollable List
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(left: 12, top: 8, bottom: 6),
-                    child: Text(
-                      'OPERATIONS',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.textSecondary, letterSpacing: 0.8),
-                    ),
+                  // OVERVIEW
+                  _buildSectionHeader('OVERVIEW'),
+                  _buildNavItem(
+                    section: AdminNavSection.overview,
+                    icon: Icons.dashboard_rounded,
+                    label: 'Dashboard',
                   ),
+
+                  const SizedBox(height: 12),
+                  // SALES
+                  _buildSectionHeader('SALES'),
                   _buildNavItem(
                     section: AdminNavSection.operations,
-                    icon: Icons.dashboard_rounded,
-                    label: 'Live Operations Desk',
-                    badge: pendingOrdersCount > 0 ? pendingOrdersCount.toString() : null,
-                    badgeColor: Colors.amber.shade700,
+                    icon: Icons.shopping_bag_outlined,
+                    label: 'Customer Sales',
+                    badgeCount: pendingOrdersCount,
                   ),
+                  _buildNavItem(
+                    section: AdminNavSection.customers,
+                    icon: Icons.people_outline_rounded,
+                    label: 'Customers',
+                    badgeCount: customersCount > 0 ? customersCount : null,
+                  ),
+
+                  const SizedBox(height: 12),
+                  // OPERATIONS
+                  _buildSectionHeader('OPERATIONS'),
                   _buildNavItem(
                     section: AdminNavSection.payouts,
-                    icon: Icons.qr_code_scanner_rounded,
-                    label: 'Smart Payout Desk',
-                    badge: pendingPayoutsCount > 0 ? pendingPayoutsCount.toString() : null,
-                    badgeColor: Colors.blue.shade700,
-                  ),
-                  const SizedBox(height: 14),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 12, top: 8, bottom: 6),
-                    child: Text(
-                      'CATALOG & VALUATION',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.textSecondary, letterSpacing: 0.8),
-                    ),
+                    icon: Icons.currency_rupee_rounded,
+                    label: 'Payout Desk',
+                    badgeCount: pendingPayoutsCount,
+                    isAlert: pendingPayoutsCount > 0,
                   ),
                   _buildNavItem(
-                    section: AdminNavSection.catalog,
-                    icon: Icons.phone_android_rounded,
-                    label: 'Catalogue & Pricing',
-                  ),
-                  _buildNavItem(
-                    section: AdminNavSection.triage,
-                    icon: Icons.rule_folder_rounded,
-                    label: 'Triage Questions & Rules',
-                  ),
-                  const SizedBox(height: 14),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 12, top: 8, bottom: 6),
-                    child: Text(
-                      'TEAM & LOGISTICS',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.textSecondary, letterSpacing: 0.8),
-                    ),
+                    section: AdminNavSection.payoutHistory,
+                    icon: Icons.history_rounded,
+                    label: 'Payout History',
+                    badgeCount: paidPayoutsCount > 0 ? paidPayoutsCount : null,
                   ),
                   _buildNavItem(
                     section: AdminNavSection.agents,
-                    icon: Icons.people_alt_rounded,
-                    label: 'Field Agents & Dispatch',
+                    icon: Icons.badge_outlined,
+                    label: 'Field Agents',
+                    badgeCount: agentsCount > 0 ? agentsCount : null,
+                  ),
+
+                  const SizedBox(height: 12),
+                  // CATALOGUE & PRICING
+                  _buildSectionHeader('CATALOGUE & PRICING'),
+                  _buildNavItem(
+                    section: AdminNavSection.catalog,
+                    icon: Icons.phone_android_rounded,
+                    label: 'Brands, Models & Prices',
+                    badgeCount: brandsCount > 0 ? brandsCount : null,
+                  ),
+
+                  const SizedBox(height: 12),
+                  // VALUATION
+                  _buildSectionHeader('VALUATION'),
+                  _buildNavItem(
+                    section: AdminNavSection.triage,
+                    icon: Icons.quiz_outlined,
+                    label: 'Questionnaire Builder',
+                  ),
+                  _buildNavItem(
+                    section: AdminNavSection.simulator,
+                    icon: Icons.calculate_outlined,
+                    label: 'Valuation Simulator',
+                  ),
+
+                  const SizedBox(height: 12),
+                  // WEBSITE CMS
+                  _buildSectionHeader('WEBSITE CMS'),
+                  _buildNavItem(
+                    section: AdminNavSection.cms,
+                    icon: Icons.image_outlined,
+                    label: 'Hero Banners (CMS)',
+                  ),
+
+                  const SizedBox(height: 12),
+                  // SYSTEM
+                  _buildSectionHeader('SYSTEM'),
+                  _buildNavItem(
+                    section: AdminNavSection.settings,
+                    icon: Icons.tune_rounded,
+                    label: 'Settings & Diagnostics',
                   ),
                 ],
               ),
             ),
 
-            // Footer
+            // Footer Status
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: Colors.black.withValues(alpha: 0.06))),
+              padding: const EdgeInsets.all(14),
+              decoration: const BoxDecoration(
+                color: Color(0xFF062617),
+                border: Border(top: BorderSide(color: Color(0xFF0D442B))),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.shield_outlined, size: 16, color: AppTheme.primaryGreen),
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF10B981),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  const Text('Dolly Buyback v2.0', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Engine Online · v2.4',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const Spacer(),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('Exit Admin', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 12)),
+                  const Text(
+                    'Dolly Buyback',
+                    style: TextStyle(
+                      color: Colors.white38,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -187,60 +279,77 @@ class AdminSidebarDrawer extends StatelessWidget {
     );
   }
 
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 10, top: 4, bottom: 6),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: const Color(0xFF34D399).withValues(alpha: 0.65),
+          fontSize: 9,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.0,
+        ),
+      ),
+    );
+  }
+
   Widget _buildNavItem({
     required AdminNavSection section,
     required IconData icon,
     required String label,
-    String? badge,
-    Color? badgeColor,
+    int? badgeCount,
+    bool isAlert = false,
   }) {
     final isSelected = currentSection == section;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           onTap: () => onSelectSection(section),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.12) : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isSelected ? AppTheme.primaryGreen.withValues(alpha: 0.3) : Colors.transparent,
-              ),
+              color: isSelected ? const Color(0xFFE8F8ED) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
                 Icon(
                   icon,
-                  size: 20,
-                  color: isSelected ? AppTheme.primaryGreen : AppTheme.textSecondary,
+                  size: 19,
+                  color: isSelected ? const Color(0xFF087C38) : Colors.white70,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
-                      color: isSelected ? AppTheme.darkGreen : AppTheme.textPrimary,
+                      color: isSelected ? const Color(0xFF087C38) : Colors.white,
+                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
+                      fontSize: 12.5,
                     ),
                   ),
                 ),
-                if (badge != null)
+                if (badgeCount != null && badgeCount > 0)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                     decoration: BoxDecoration(
-                      color: badgeColor ?? AppTheme.primaryGreen,
+                      color: isSelected
+                          ? const Color(0xFF087C38)
+                          : (isAlert ? Colors.amber.shade700 : Colors.white.withValues(alpha: 0.15)),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      badge,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
+                      '$badgeCount',
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : (isAlert ? Colors.white : Colors.white70),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   ),
               ],

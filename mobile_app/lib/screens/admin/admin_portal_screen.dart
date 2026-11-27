@@ -1,15 +1,28 @@
 import 'package:flutter/material.dart';
+export 'admin_sidebar_drawer.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import 'admin_sidebar_drawer.dart';
+import 'admin_overview_dashboard_view.dart';
 import 'admin_operations_view.dart';
+import 'admin_customers_view.dart';
 import 'admin_payout_desk_view.dart';
+import 'admin_payout_history_view.dart';
+import 'admin_agents_view.dart';
 import 'admin_catalog_pricing_view.dart';
 import 'admin_triage_valuation_view.dart';
+import 'admin_valuation_simulator_view.dart';
+import 'admin_cms_view.dart';
+import 'admin_settings_view.dart';
 
 class AdminPortalScreen extends StatefulWidget {
-  const AdminPortalScreen({super.key});
+  final AdminNavSection initialSection;
+
+  const AdminPortalScreen({
+    super.key,
+    this.initialSection = AdminNavSection.overview,
+  });
 
   @override
   State<AdminPortalScreen> createState() => _AdminPortalScreenState();
@@ -19,7 +32,7 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
   final ApiService _api = ApiService();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  AdminNavSection _currentSection = AdminNavSection.operations;
+  late AdminNavSection _currentSection;
   bool _isLoading = true;
 
   List<SaleOrderModel> _orders = [];
@@ -29,7 +42,16 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
   @override
   void initState() {
     super.initState();
+    _currentSection = widget.initialSection;
     _loadAllAdminData();
+  }
+
+  @override
+  void didUpdateWidget(covariant AdminPortalScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialSection != widget.initialSection) {
+      setState(() => _currentSection = widget.initialSection);
+    }
   }
 
   Future<void> _loadAllAdminData() async {
@@ -58,7 +80,10 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
       _loadAllAdminData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Order ${order.saleCode.isNotEmpty ? order.saleCode : "#${order.id}"} marked as $newStatus'), backgroundColor: AppTheme.darkGreen),
+          SnackBar(
+            content: Text('Order ${order.saleCode.isNotEmpty ? order.saleCode : "#${order.id}"} marked as $newStatus'),
+            backgroundColor: AppTheme.darkGreen,
+          ),
         );
       }
     } catch (e) {
@@ -112,21 +137,40 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
 
   String _getSectionTitle() {
     switch (_currentSection) {
+      case AdminNavSection.overview:
+        return 'Operations Dashboard';
       case AdminNavSection.operations:
-        return 'Operations Live Desk';
+        return 'Customer Sales';
+      case AdminNavSection.customers:
+        return 'Customers Registry';
       case AdminNavSection.payouts:
         return 'Smart Payout Desk';
+      case AdminNavSection.payoutHistory:
+        return 'Payout History';
+      case AdminNavSection.agents:
+        return 'Field Agents & Dispatch';
       case AdminNavSection.catalog:
         return 'Catalogue & Pricing';
       case AdminNavSection.triage:
-        return 'Triage Questions';
-      case AdminNavSection.agents:
-        return 'Field Agents & Dispatch';
+        return 'Questionnaire Builder';
+      case AdminNavSection.simulator:
+        return 'Valuation Simulator';
+      case AdminNavSection.cms:
+        return 'Hero Banners (CMS)';
+      case AdminNavSection.settings:
+        return 'Settings & Diagnostics';
     }
   }
 
   Widget _buildBody() {
     switch (_currentSection) {
+      case AdminNavSection.overview:
+        return AdminOverviewDashboardView(
+          orders: _orders,
+          agents: _agents,
+          onRefresh: _loadAllAdminData,
+          onNavigateSection: (sec) => setState(() => _currentSection = sec),
+        );
       case AdminNavSection.operations:
         return AdminOperationsView(
           orders: _orders,
@@ -136,11 +180,27 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
           onUpdateStatus: _handleUpdateStatus,
           onAssignAgent: _handleAssignAgent,
         );
+      case AdminNavSection.customers:
+        return AdminCustomersView(
+          orders: _orders,
+          onRefresh: _loadAllAdminData,
+        );
       case AdminNavSection.payouts:
         return AdminPayoutDeskView(
           orders: _orders,
           onRefresh: _loadAllAdminData,
           onConfirmPayout: _handleConfirmPayout,
+        );
+      case AdminNavSection.payoutHistory:
+        return AdminPayoutHistoryView(
+          orders: _orders,
+          onRefresh: _loadAllAdminData,
+        );
+      case AdminNavSection.agents:
+        return AdminAgentsView(
+          agents: _agents,
+          orders: _orders,
+          onRefresh: _loadAllAdminData,
         );
       case AdminNavSection.catalog:
         return AdminCatalogPricingView(
@@ -151,59 +211,72 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
         return AdminTriageValuationView(
           onRefresh: _loadAllAdminData,
         );
-      case AdminNavSection.agents:
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.people_outline_rounded, size: 48, color: AppTheme.textSecondary),
-              const SizedBox(height: 10),
-              Text('${_agents.length} Field Agents Active', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-              const SizedBox(height: 4),
-              const Text('Manage agent onboarding & assigned zip codes', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-            ],
-          ),
+      case AdminNavSection.simulator:
+        return AdminValuationSimulatorView(
+          brands: _brands,
         );
+      case AdminNavSection.cms:
+        return AdminCmsView(
+          onRefresh: _loadAllAdminData,
+        );
+      case AdminNavSection.settings:
+        return const AdminSettingsView();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final pendingOrders = _orders.where((o) => o.status == 'PENDING_PICKUP' || o.status == 'PENDING').length;
-    final pendingPayouts = _orders.where((o) => o.status == 'READY_FOR_PAYOUT').length;
+    final pendingOrders = _orders.where((o) => ['SUBMITTED', 'PICKUP_SCHEDULED', 'INSPECTION_PENDING'].contains(o.status)).length;
+    final pendingPayouts = _orders.where((o) => ['OWNERSHIP_TRANSFERRED', 'CUSTOMER_ACCEPTED'].contains(o.status)).length;
+    final paidPayouts = _orders.where((o) => o.status == 'PAYMENT_COMPLETED').length;
+
+    // Count unique customers
+    final customerPhones = _orders.map((o) => o.customerPhone).where((p) => p.isNotEmpty).toSet().length;
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: Colors.grey.shade50,
       drawer: AdminSidebarDrawer(
         currentSection: _currentSection,
         pendingOrdersCount: pendingOrders,
+        customersCount: customerPhones,
         pendingPayoutsCount: pendingPayouts,
-        onRefresh: _loadAllAdminData,
-        onSelectSection: (section) {
-          setState(() => _currentSection = section);
-          Navigator.of(context).pop(); // close drawer
+        paidPayoutsCount: paidPayouts,
+        agentsCount: _agents.length,
+        brandsCount: _brands.length,
+        onSelectSection: (sec) {
+          setState(() => _currentSection = sec);
+          Navigator.pop(context); // Close drawer
         },
+        onRefresh: _loadAllAdminData,
       ),
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.menu_rounded, color: AppTheme.textPrimary, size: 26),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-        ),
         title: Text(
           _getSectionTitle(),
-          style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w900, fontSize: 17),
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: AppTheme.textPrimary),
+        ),
+        centerTitle: false,
+        elevation: 0,
+        backgroundColor: Colors.white.withValues(alpha: 0.9),
+        leading: IconButton(
+          icon: const Icon(Icons.menu_rounded, color: AppTheme.primaryGreen),
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          tooltip: 'Open navigation',
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: AppTheme.primaryGreen),
             onPressed: _loadAllAdminData,
+            tooltip: 'Refresh',
           ),
         ],
       ),
-      body: _buildBody(),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: AppTheme.primaryGreen,
+              ),
+            )
+          : _buildBody(),
     );
   }
 }

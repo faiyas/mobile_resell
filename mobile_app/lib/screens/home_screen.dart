@@ -539,9 +539,9 @@ class _HomeScreenState extends State<HomeScreen> {
     if (isAdmin) {
       if (_currentIndex >= 3) _currentIndex = 0;
       if (_currentIndex == 0) {
-        body = const AdminPortalScreen();
+        body = const AdminPortalScreen(initialSection: AdminNavSection.overview);
       } else if (_currentIndex == 1) {
-        body = const TrackOrderScreen();
+        body = const AdminPortalScreen(initialSection: AdminNavSection.operations);
       } else {
         body = _buildProfileContent(user);
       }
