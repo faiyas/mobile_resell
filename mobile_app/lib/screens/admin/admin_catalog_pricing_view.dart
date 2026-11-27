@@ -108,7 +108,7 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade200, foregroundColor: Colors.black87),
                     icon: const Icon(Icons.upload, size: 16),
-                    label: const Text('Pick Logo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    label: Text(base64Img != null ? 'Change Logo' : 'Pick Logo', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     onPressed: () async {
                       final xfile = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 400);
                       if (xfile != null) {
@@ -117,6 +117,14 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                       }
                     },
                   ),
+                  if (base64Img != null) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                      tooltip: 'Remove Logo',
+                      onPressed: () => setM(() => base64Img = null),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 20),
@@ -395,7 +403,7 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                   ElevatedButton.icon(
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade200, foregroundColor: Colors.black87),
                     icon: const Icon(Icons.upload, size: 16),
-                    label: const Text('Pick Image', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    label: Text(base64Img != null ? 'Change Picture' : 'Pick Picture', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     onPressed: () async {
                       final xfile = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 600);
                       if (xfile != null) {
@@ -404,6 +412,14 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                       }
                     },
                   ),
+                  if (base64Img != null) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                      tooltip: 'Remove Picture',
+                      onPressed: () => setM(() => base64Img = null),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 20),

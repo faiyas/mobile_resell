@@ -2666,6 +2666,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     IconButton(
+                                      icon: const Icon(Icons.edit_outlined, size: 20, color: AppTheme.textSecondary),
+                                      tooltip: 'Edit Brand & Logo',
+                                      onPressed: () => _showEditBrandDialog(b, categories: categories, onUpdated: () async {
+                                        final updated = await _api.getBrands(forceRefresh: true);
+                                        setSheetState(() => brands = updated);
+                                      }),
+                                    ),
+                                    IconButton(
                                       icon: const Icon(Icons.add_a_photo_outlined, size: 20, color: AppTheme.primaryGreen),
                                       tooltip: 'Pick Logo (Gallery)',
                                       onPressed: () async {
@@ -2814,6 +2822,129 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             }
                           },
                           child: const Text('Create'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEditBrandDialog(BrandModel brand, {required List<DeviceCategoryModel> categories, required VoidCallback onUpdated}) {
+    final nameCtrl = TextEditingController(text: brand.name);
+    int? selectedCatId = brand.categoryId ?? (categories.isNotEmpty ? categories.first.id : null);
+    String? selectedLogoBase64 = brand.logoBase64;
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (dlgCtx, setDlgState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassContainer(
+            padding: const EdgeInsets.all(22),
+            borderRadius: BorderRadius.circular(22),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Edit Brand: ${brand.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Brand Name *', hintText: 'e.g. Apple, Google, Xiaomi'),
+                  ),
+                  const SizedBox(height: 10),
+                  if (categories.isNotEmpty)
+                    DropdownButtonFormField<int>(
+                      value: selectedCatId,
+                      decoration: const InputDecoration(labelText: 'Device Category'),
+                      items: categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+                      onChanged: (v) => setDlgState(() => selectedCatId = v),
+                    ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.lightGreen,
+                          foregroundColor: AppTheme.darkGreen,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppTheme.primaryGreen),
+                        label: Text(selectedLogoBase64 != null ? 'Change Logo' : 'Pick Logo (Gallery)', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final b64 = await ImageHelper.pickImageAsBase64();
+                          if (b64 != null) {
+                            setDlgState(() => selectedLogoBase64 = b64);
+                          }
+                        },
+                      ),
+                      if (selectedLogoBase64 != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                          tooltip: 'Remove Logo',
+                          onPressed: () => setDlgState(() => selectedLogoBase64 = null),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (selectedLogoBase64 != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 60,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(ImageHelper.decodeBase64(selectedLogoBase64)!, fit: BoxFit.contain),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('Cancel')),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                          onPressed: () async {
+                            final name = nameCtrl.text.trim();
+                            if (name.isEmpty) return;
+                            Navigator.pop(dlgCtx);
+                            try {
+                              await _api.updateBrand(brand.id, {
+                                'name': name,
+                                if (selectedCatId != null) 'category': selectedCatId,
+                                'logo_base64': selectedLogoBase64 ?? '',
+                              });
+                              onUpdated();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('✓ Brand "$name" updated!'), backgroundColor: AppTheme.primaryGreen),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                              }
+                            }
+                          },
+                          child: const Text('Save Changes'),
                         ),
                       ),
                     ],
@@ -2983,6 +3114,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit_outlined, size: 20, color: AppTheme.textSecondary),
+                                        tooltip: 'Edit Model & Picture',
+                                        onPressed: () => _showEditPhoneModelDialog(m, brands: brands, onUpdated: () async {
+                                          final updated = await _api.getModels();
+                                          setSheetState(() => models = updated);
+                                        }),
+                                      ),
                                       IconButton(
                                         icon: const Icon(Icons.add_a_photo_outlined, size: 20, color: AppTheme.primaryGreen),
                                         tooltip: 'Pick Photo (Gallery)',
@@ -3186,6 +3325,177 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> with Single
                             }
                           },
                           child: const Text('Create'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEditPhoneModelDialog(PhoneModelItem model, {required List<BrandModel> brands, required VoidCallback onUpdated}) {
+    final nameCtrl = TextEditingController(text: model.name);
+    final yearCtrl = TextEditingController(text: model.releaseYear.toString());
+    int selectedBrandId = model.brandId ?? (brands.isNotEmpty ? brands.first.id : 0);
+    int? selectedSeriesId = model.seriesId;
+    bool hasWarranty = model.hasWarranty;
+    List<SeriesModel> brandSeries = [];
+    bool loadedSeries = false;
+    String? selectedPhotoBase64 = model.imageBase64;
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (dlgCtx, setDlgState) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: GlassContainer(
+            padding: const EdgeInsets.all(22),
+            borderRadius: BorderRadius.circular(22),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Edit Model: ${model.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+                  const SizedBox(height: 14),
+                  Builder(builder: (ctx) {
+                    if (!loadedSeries) {
+                      loadedSeries = true;
+                      _api.getSeries(brandId: selectedBrandId).then((s) {
+                        setDlgState(() => brandSeries = s);
+                      });
+                    }
+                    return const SizedBox.shrink();
+                  }),
+                  DropdownButtonFormField<int>(
+                    value: selectedBrandId,
+                    decoration: const InputDecoration(labelText: 'Brand *'),
+                    items: brands.map((b) => DropdownMenuItem(value: b.id, child: Text(b.name))).toList(),
+                    onChanged: (v) {
+                      setDlgState(() {
+                        selectedBrandId = v!;
+                        selectedSeriesId = null;
+                      });
+                      _api.getSeries(brandId: v).then((s) {
+                        setDlgState(() => brandSeries = s);
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<int?>(
+                    value: selectedSeriesId,
+                    decoration: const InputDecoration(labelText: 'Series (Optional)'),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('No Series Grouping')),
+                      ...brandSeries.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))),
+                    ],
+                    onChanged: (v) => setDlgState(() => selectedSeriesId = v),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(labelText: 'Model Name *', hintText: 'e.g. iPhone 15 Pro, Galaxy S24'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: yearCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'Release Year'),
+                  ),
+                  const SizedBox(height: 10),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Warranty Eligible', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    value: hasWarranty,
+                    activeColor: AppTheme.primaryGreen,
+                    onChanged: (v) => setDlgState(() => hasWarranty = v),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.lightGreen,
+                          foregroundColor: AppTheme.darkGreen,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.photo_library_rounded, size: 16, color: AppTheme.primaryGreen),
+                        label: Text(selectedPhotoBase64 != null ? 'Change Photo' : 'Pick Photo (Gallery)', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final b64 = await ImageHelper.pickImageAsBase64();
+                          if (b64 != null) {
+                            setDlgState(() => selectedPhotoBase64 = b64);
+                          }
+                        },
+                      ),
+                      if (selectedPhotoBase64 != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18, color: Colors.red),
+                          tooltip: 'Remove Photo',
+                          onPressed: () => setDlgState(() => selectedPhotoBase64 = null),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (selectedPhotoBase64 != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 60,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.memory(ImageHelper.decodeBase64(selectedPhotoBase64)!, fit: BoxFit.contain),
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(onPressed: () => Navigator.pop(dlgCtx), child: const Text('Cancel')),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen),
+                          onPressed: () async {
+                            final name = nameCtrl.text.trim();
+                            if (name.isEmpty) return;
+                            Navigator.pop(dlgCtx);
+                            try {
+                              await _api.updatePhoneModel(model.id, {
+                                'brand': selectedBrandId,
+                                if (selectedSeriesId != null) 'series': selectedSeriesId,
+                                'name': name,
+                                'release_year': int.tryParse(yearCtrl.text.trim()) ?? DateTime.now().year,
+                                'has_warranty': hasWarranty,
+                                'image_base64': selectedPhotoBase64 ?? '',
+                              });
+                              onUpdated();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('✓ Model "$name" updated!'), backgroundColor: AppTheme.primaryGreen),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+                              }
+                            }
+                          },
+                          child: const Text('Save Changes'),
                         ),
                       ),
                     ],

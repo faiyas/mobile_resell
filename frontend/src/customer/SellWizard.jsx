@@ -294,7 +294,8 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
       }
       setBrandsLoading(false);
 
-      const heroSec = (cmsData || []).find((s) => s.section_type === 'HERO_CAROUSEL');
+      const sections = Array.isArray(cmsData) ? cmsData : (Array.isArray(cmsData?.results) ? cmsData.results : []);
+      const heroSec = sections.find((s) => s.section_type === 'HERO_CAROUSEL');
       if (heroSec && Array.isArray(heroSec.data_json?.slides)) {
         const activeSlides = heroSec.data_json.slides.filter((s) => s.is_active && (s.image_base64 || s.type !== 'IMAGE'));
         if (activeSlides.length > 0) {

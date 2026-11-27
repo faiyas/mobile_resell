@@ -287,6 +287,22 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> createCustomer(Map<String, dynamic> data) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/customers/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(data),
+    );
+    final json = jsonDecode(res.body);
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      return json is Map<String, dynamic> ? json : {'data': json};
+    } else {
+      final msg = json is Map ? (json['detail'] ?? json['message'] ?? json.values.first) : 'Failed to create customer';
+      throw Exception(msg.toString());
+    }
+  }
+
   Future<Map<String, dynamic>> updateCustomer(int customerId, Map<String, dynamic> data) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/auth/customers/$customerId/');
     final res = await http.patch(

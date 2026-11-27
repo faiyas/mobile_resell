@@ -156,7 +156,7 @@ export const api = {
   updateModel: (id, data) => { clearCatalogCache(); return request(`/catalog/models/${id}/`, { method: 'PUT', body: JSON.stringify(data) }); },
   deleteModel: (id) => { clearCatalogCache(); return request(`/catalog/models/${id}/`, { method: 'DELETE' }); },
 
-  getCMSSections: () => cachedRequest('/catalog/cms/sections/'),
+  getCMSSections: () => cachedRequest('/catalog/cms/sections/').then(res => Array.isArray(res) ? res : (Array.isArray(res?.results) ? res.results : [])),
   updateCMSSection: (data) => { clearCatalogCache(); return request('/catalog/cms/sections/', { method: 'POST', body: JSON.stringify(data) }); },
   getSystemSettings: () => request('/catalog/settings/'),
   updateSystemSettings: (data) => request('/catalog/settings/', { method: 'POST', body: JSON.stringify(data) }),

@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
+import '../../utils/image_helper.dart';
 
 class AdminTriageValuationView extends StatefulWidget {
   final VoidCallback onRefresh;
@@ -15,6 +18,7 @@ class AdminTriageValuationView extends StatefulWidget {
 
 class _AdminTriageValuationViewState extends State<AdminTriageValuationView> with SingleTickerProviderStateMixin {
   final ApiService _api = ApiService();
+  final ImagePicker _picker = ImagePicker();
   late TabController _tabController;
 
   List<EvaluationTriageQuestionModel> _triageQuestions = [];
@@ -239,6 +243,7 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
     final stepCtrl = TextEditingController(text: (existing?.stepNumber ?? (_conditionSteps.length + 1)).toString());
     String selType = existing?.selectionType ?? 'MULTIPLE';
     int? brandId = existing?.brand ?? _selectedBrandFilter?.id;
+    String? base64Img = existing?.imageBase64;
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -331,6 +336,42 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
                 ],
                 onChanged: (val) => setM(() => brandId = val),
               ),
+              const SizedBox(height: 14),
+              const Text('Step Icon / Illustration', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.border)),
+                    child: base64Img != null
+                        ? ClipRRect(borderRadius: BorderRadius.circular(11), child: Image.memory(ImageHelper.decodeBase64(base64Img)!, fit: BoxFit.contain))
+                        : const Icon(Icons.category_rounded, color: AppTheme.textSecondary),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade200, foregroundColor: Colors.black87),
+                    icon: const Icon(Icons.upload, size: 16),
+                    label: Text(base64Img != null ? 'Change Icon' : 'Pick Icon', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    onPressed: () async {
+                      final xfile = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 400);
+                      if (xfile != null) {
+                        final bytes = await xfile.readAsBytes();
+                        setM(() => base64Img = base64Encode(bytes));
+                      }
+                    },
+                  ),
+                  if (base64Img != null) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                      tooltip: 'Remove Icon',
+                      onPressed: () => setM(() => base64Img = null),
+                    ),
+                  ],
+                ],
+              ),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -351,6 +392,7 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
                               'step_number': sNum,
                               'selection_type': selType,
                               'brand': brandId,
+                              if (base64Img != null) 'image_base64': base64Img,
                               'is_active': true,
                             };
                             if (existing == null) {
@@ -487,6 +529,7 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
     String dedType = existing?.deductionType ?? 'PERCENTAGE';
     bool isRejection = existing?.isRejection ?? false;
     bool isBonus = existing?.isAccessoryBonus ?? false;
+    String? base64Img = existing?.imageBase64;
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -572,6 +615,42 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
                 activeColor: AppTheme.primaryGreen,
                 onChanged: (val) => setM(() => isBonus = val),
               ),
+              const SizedBox(height: 12),
+              const Text('Sample Defect / Accessory Photo', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.border)),
+                    child: base64Img != null
+                        ? ClipRRect(borderRadius: BorderRadius.circular(11), child: Image.memory(ImageHelper.decodeBase64(base64Img)!, fit: BoxFit.contain))
+                        : const Icon(Icons.broken_image_rounded, color: AppTheme.textSecondary),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade200, foregroundColor: Colors.black87),
+                    icon: const Icon(Icons.upload, size: 16),
+                    label: Text(base64Img != null ? 'Change Photo' : 'Pick Photo', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    onPressed: () async {
+                      final xfile = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 500);
+                      if (xfile != null) {
+                        final bytes = await xfile.readAsBytes();
+                        setM(() => base64Img = base64Encode(bytes));
+                      }
+                    },
+                  ),
+                  if (base64Img != null) ...[
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                      tooltip: 'Remove Photo',
+                      onPressed: () => setM(() => base64Img = null),
+                    ),
+                  ],
+                ],
+              ),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
@@ -594,6 +673,7 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
                               'default_deduction_value': val,
                               'is_rejection': isRejection,
                               'is_accessory_bonus': isBonus,
+                              if (base64Img != null) 'image_base64': base64Img,
                               'is_active': true,
                             };
                             if (existing == null) {
@@ -919,14 +999,81 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
 
   // TAB 3: DEDUCTION RULES
   Widget _buildDeductionsTab() {
-    return _conditionSteps.isEmpty
-        ? const Center(child: Text('No steps configured'))
-        : ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-            itemCount: _conditionSteps.length,
-            itemBuilder: (ctx, idx) {
-              final step = _conditionSteps[idx];
-              return Container(
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+      children: [
+        // 1. TOP SECTION: Initial Triage Gate Deductions
+        if (_triageQuestions.isNotEmpty)
+          Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            child: GlassContainer(
+              borderRadius: 18,
+              padding: const EdgeInsets.all(12),
+              child: ExpansionTile(
+                initiallyExpanded: true,
+                shape: const Border(),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: const Icon(Icons.bolt_rounded, color: Colors.amber, size: 20),
+                ),
+                title: const Text('Initial Triage Gate Deductions', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                subtitle: Text('${_triageQuestions.length} gate questions (auto-rejection & gate penalties)', style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                children: [
+                  const Divider(),
+                  ..._triageQuestions.map((q) => ListTile(
+                        dense: true,
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                q.questionText,
+                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: q.isPowerOnGate ? Colors.red.shade50 : Colors.orange.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: q.isPowerOnGate ? Colors.red.shade200 : Colors.orange.shade200),
+                              ),
+                              child: Text(
+                                q.isPowerOnGate
+                                    ? 'REJECT IF NO'
+                                    : (q.deductionType == 'PERCENTAGE'
+                                        ? '-${q.deductionValueOnNo.toStringAsFixed(0)}% IF NO'
+                                        : '-₹${q.deductionValueOnNo.toStringAsFixed(0)} IF NO'),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 11,
+                                  color: q.isPowerOnGate ? Colors.red.shade700 : Colors.orange.shade800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        subtitle: q.subtitle.isNotEmpty ? Text(q.subtitle, style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary)) : null,
+                        trailing: IconButton(
+                          icon: const Icon(Icons.edit, size: 18, color: AppTheme.textSecondary),
+                          tooltip: 'Edit Gate Deduction',
+                          onPressed: () => _showTriageQuestionModal(q),
+                        ),
+                      )),
+                ],
+              ),
+            ),
+          ),
+
+        // 2. Physical Condition Steps & Deduction Rules
+        if (_conditionSteps.isEmpty)
+          const Center(child: Padding(padding: EdgeInsets.all(32), child: Text('No steps configured')))
+        else
+          ..._conditionSteps.map((step) => Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: GlassContainer(
                   borderRadius: 18,
@@ -939,6 +1086,17 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
                       const Divider(),
                       ...step.options.map((opt) => ListTile(
                             dense: true,
+                            leading: opt.imageBase64 != null && opt.imageBase64!.isNotEmpty
+                                ? Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppTheme.border)),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(7),
+                                      child: Image.memory(ImageHelper.decodeBase64(opt.imageBase64)!, fit: BoxFit.contain),
+                                    ),
+                                  )
+                                : null,
                             title: Row(
                               children: [
                                 Expanded(child: Text(opt.title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13))),
@@ -991,8 +1149,8 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
                     ],
                   ),
                 ),
-              );
-            },
-          );
+              )),
+      ],
+    );
   }
 }

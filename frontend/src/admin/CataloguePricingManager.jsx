@@ -373,8 +373,9 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
       setCmsSections(cmsData);
       setTriageQuestions(tqData);
 
-      if (cmsData.length > 0) {
-        const heroSec = cmsData.find(s => s.section_type === 'HERO_CAROUSEL') || cmsData[0];
+      const cmsList = Array.isArray(cmsData) ? cmsData : (Array.isArray(cmsData?.results) ? cmsData.results : []);
+      if (cmsList.length > 0) {
+        const heroSec = cmsList.find(s => s.section_type === 'HERO_CAROUSEL') || cmsList[0];
         setEditingCmsSection(heroSec);
         setCmsForm({
           title: heroSec.title,
@@ -2383,87 +2384,127 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             );
           })()}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {models
-              .filter(m => {
-                if (filterBrandId && (m.brand !== parseInt(filterBrandId) && m.brand?.id !== parseInt(filterBrandId))) return false;
-                if (filterSeriesId && (m.series !== parseInt(filterSeriesId) && m.series?.id !== parseInt(filterSeriesId))) return false;
-                return true;
-              })
-              .map((m) => {
-                const modelVariants = variants.filter(v => v.model === m.id || v.model_id === m.id);
-                return (
-                  <div key={m.id} className={`bg-white rounded-2xl border p-4 shadow-sm flex flex-col justify-between ${
-                    selectedIds.includes(m.id) ? 'border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20' : 'border-slate-200'
-                  }`}>
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(m.id)}
-                            onChange={() => toggleSelectId(m.id)}
-                            className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
-                          />
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
-                            {m.brand_name || 'Brand'}
-                          </span>
+          {(() => {
+            const filteredModels = models.filter(m => {
+              if (filterBrandId && (m.brand !== parseInt(filterBrandId) && m.brand?.id !== parseInt(filterBrandId))) return false;
+              if (filterSeriesId && (m.series !== parseInt(filterSeriesId) && m.series?.id !== parseInt(filterSeriesId))) return false;
+              return true;
+            });
+
+            if (filteredModels.length === 0) {
+              const activeBrand = brands.find(b => String(b.id) === String(filterBrandId));
+              const activeSeries = seriesList.find(s => String(s.id) === String(filterSeriesId));
+              return (
+                <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center shadow-sm">
+                  <Smartphone className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                  <h4 className="text-sm font-extrabold text-slate-800">
+                    No models found {activeSeries ? `under "${activeSeries.name}"` : (activeBrand ? `for ${activeBrand.name}` : '')}
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    {filterSeriesId 
+                      ? 'This series has no models configured yet. You can view all series models or add a new model to this series.'
+                      : 'No models configured yet. Click below to add a model.'}
+                  </p>
+                  <div className="flex items-center justify-center gap-2 mt-4">
+                    {filterSeriesId && (
+                      <button
+                        type="button"
+                        onClick={() => setFilterSeriesId('')}
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition"
+                      >
+                        View All {activeBrand ? activeBrand.name : ''} Series
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleOpenModelModal()}
+                      className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Model
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {filteredModels.map((m) => {
+                  const modelVariants = variants.filter(v => v.model === m.id || v.model_id === m.id);
+                  return (
+                    <div key={m.id} className={`bg-white rounded-2xl border p-4 shadow-sm flex flex-col justify-between ${
+                      selectedIds.includes(m.id) ? 'border-[#0BAA4B] ring-2 ring-[#0BAA4B]/20' : 'border-slate-200'
+                    }`}>
+                      <div>
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(m.id)}
+                              onChange={() => toggleSelectId(m.id)}
+                              className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
+                            />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                              {m.brand_name || 'Brand'}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => handleToggleModelActive(m)}
+                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                              m.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
+                            }`}
+                          >
+                            {m.is_active ? 'Active' : 'Disabled'}
+                          </button>
                         </div>
+
+                        <div className="h-24 flex items-center justify-center p-2 my-2 bg-slate-50 rounded-xl">
+                          {m.image_base64 ? (
+                            <img src={m.image_base64} alt={m.name} className="max-h-20 max-w-full object-contain" />
+                          ) : (
+                            <Smartphone className="w-10 h-10 text-slate-400" />
+                          )}
+                        </div>
+
+                        <h4 className="font-extrabold text-slate-900 text-sm">{m.name}</h4>
+                        <p className="text-xs text-slate-500 mt-0.5">Year: {m.release_year || 'N/A'}</p>
+                        
+                        <div className="mt-2 text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg space-y-1">
+                          <span className="font-bold block text-slate-700">Storage Variants ({modelVariants.length}):</span>
+                          {modelVariants.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {modelVariants.map(v => (
+                                <span key={v.id} className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[10px] font-mono">
+                                  {v.storage}: ₹{Number(v.base_price).toLocaleString('en-IN')}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400 italic">No variants configured</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 pt-3 border-t border-slate-100 mt-3">
                         <button
-                          onClick={() => handleToggleModelActive(m)}
-                          className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                            m.is_active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'
-                          }`}
+                          onClick={() => handleOpenModelModal(m)}
+                          className="flex-1 border border-slate-200 hover:bg-slate-50 font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1"
                         >
-                          {m.is_active ? 'Active' : 'Disabled'}
+                          <Edit2 className="w-3 h-3" /> Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteModel(m)}
+                          className="p-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-xs"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
-
-                      <div className="h-24 flex items-center justify-center p-2 my-2 bg-slate-50 rounded-xl">
-                        {m.image_base64 ? (
-                          <img src={m.image_base64} alt={m.name} className="max-h-20 max-w-full object-contain" />
-                        ) : (
-                          <Smartphone className="w-10 h-10 text-slate-400" />
-                        )}
-                      </div>
-
-                      <h4 className="font-extrabold text-slate-900 text-sm">{m.name}</h4>
-                      <p className="text-xs text-slate-500 mt-0.5">Year: {m.release_year || 'N/A'}</p>
-                      
-                      <div className="mt-2 text-[11px] text-slate-600 bg-slate-50 p-2 rounded-lg space-y-1">
-                        <span className="font-bold block text-slate-700">Storage Variants ({modelVariants.length}):</span>
-                        {modelVariants.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {modelVariants.map(v => (
-                              <span key={v.id} className="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-[10px] font-mono">
-                                {v.storage}: ₹{Number(v.base_price).toLocaleString('en-IN')}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 italic">No variants configured</span>
-                        )}
-                      </div>
                     </div>
-
-                    <div className="flex gap-2 pt-3 border-t border-slate-100 mt-3">
-                      <button
-                        onClick={() => handleOpenModelModal(m)}
-                        className="flex-1 border border-slate-200 hover:bg-slate-50 font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1"
-                      >
-                        <Edit2 className="w-3 h-3" /> Edit
-                      </button>
-                      <button
-                        onClick={() => handleDeleteModel(m)}
-                        className="p-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-lg text-xs"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
