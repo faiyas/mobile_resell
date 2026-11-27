@@ -1018,20 +1018,46 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                               ),
                             ),
                             const SizedBox(height: 3),
-                            Text(
-                              'Base Buyback Value: ₹${v.basePrice.toStringAsFixed(0)}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.darkGreen,
-                              ),
+                            Row(
+                              children: [
+                                Text(
+                                  'Base: ₹${v.basePrice.toStringAsFixed(0)}',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Mint: ₹${v.mintPrice.toStringAsFixed(0)}',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
+                                      color: AppTheme.darkGreen,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
                       ),
+                      if (_api.currentUser?.isAdmin == true)
+                        IconButton(
+                          icon: const Icon(Icons.edit_note_rounded, color: AppTheme.primaryGreen, size: 24),
+                          tooltip: 'Edit Pricing (Admin)',
+                          onPressed: () => _showEditPriceBottomSheet(v),
+                        ),
                       if (isSelected)
                         const Icon(Icons.check_circle_rounded, color: AppTheme.primaryGreen, size: 24)
-                      else
+                      else if (_api.currentUser?.isAdmin != true)
                         const Icon(Icons.radio_button_unchecked_rounded, color: AppTheme.border, size: 22),
                     ],
                   ),
@@ -1135,6 +1161,197 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
           fontSize: 11,
         ),
         onSelected: (_) => _selectSeries(s),
+      ),
+    );
+  }
+
+  void _showEditPriceBottomSheet(StorageVariantModel variant) {
+    final baseController = TextEditingController(text: variant.basePrice.toStringAsFixed(0));
+    final mintController = TextEditingController(text: variant.mintPrice.toStringAsFixed(0));
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Edit Pricing · ${variant.storage}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'Admin Only',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.darkGreen,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${_brand?.name ?? ''} ${_model?.name ?? ''}'.trim(),
+                  style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Base Buyback Price (₹)',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: baseController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.currency_rupee, color: AppTheme.primaryGreen),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  onChanged: (val) {
+                    final bVal = double.tryParse(val) ?? 0.0;
+                    if (bVal > 0) {
+                      setModalState(() {
+                        mintController.text = (bVal * 1.15).toStringAsFixed(0);
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Mint Price (Top "Up To" Offer) (₹)',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+                    ),
+                    TextButton(
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      onPressed: () {
+                        final bVal = double.tryParse(baseController.text) ?? 0.0;
+                        if (bVal > 0) {
+                          setModalState(() {
+                            mintController.text = (bVal * 1.15).toStringAsFixed(0);
+                          });
+                        }
+                      },
+                      child: const Text('+15% Auto', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: mintController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.star_rounded, color: Colors.amber),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryGreen,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
+                    ),
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            final newBase = double.tryParse(baseController.text) ?? 0.0;
+                            final newMint = double.tryParse(mintController.text) ?? 0.0;
+                            if (newBase <= 0) return;
+
+                            setModalState(() => isSaving = true);
+                            try {
+                              final updated = await _api.updateStorageVariant(
+                                variant.id,
+                                basePrice: newBase,
+                                mintPrice: newMint > 0 ? newMint : (newBase * 1.15),
+                              );
+
+                              if (!mounted) return;
+                              setState(() {
+                                final idx = _variants.indexWhere((x) => x.id == variant.id);
+                                if (idx != -1) {
+                                  _variants[idx] = updated;
+                                }
+                                if (_variant?.id == variant.id) {
+                                  _variant = updated;
+                                }
+                              });
+
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Updated pricing for ${variant.storage} to ₹${newBase.toStringAsFixed(0)}'),
+                                  backgroundColor: AppTheme.darkGreen,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            } catch (e) {
+                              setModalState(() => isSaving = false);
+                              if (ctx.mounted) {
+                                ScaffoldMessenger.of(ctx).showSnackBar(
+                                  SnackBar(content: Text('Error updating price: $e'), backgroundColor: Colors.red),
+                                );
+                              }
+                            }
+                          },
+                    child: isSaving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('Save & Update Price', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

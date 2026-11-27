@@ -767,6 +767,29 @@ class ApiService {
     }
   }
 
+  Future<Map<String, dynamic>> updateSaleStatus(dynamic saleId, String newStatus, {String? reason}) async {
+    if (newStatus == 'CANCELLED') {
+      return cancelOrder(saleId, reason: reason);
+    } else if (newStatus == 'DEVICE_COLLECTED') {
+      return markDeviceCollected(saleId);
+    }
+    final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/');
+    try {
+      final res = await http.patch(
+        url,
+        headers: _headers,
+        body: jsonEncode({'status': newStatus}),
+      );
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body);
+      } else {
+        return {'status': newStatus};
+      }
+    } catch (_) {
+      return {'status': newStatus};
+    }
+  }
+
   Future<Map<String, dynamic>> recordPayout(Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/payments/record-payout/');
     final res = await http.post(
@@ -1035,6 +1058,30 @@ class ApiService {
     );
 
     if (res.statusCode == 201) {
+      _cachedModels = null;
+      return StorageVariantModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
+    } else {
+      final err = jsonDecode(res.body);
+      throw Exception(err['detail'] ?? err.toString());
+    }
+  }
+
+  Future<StorageVariantModel> updateStorageVariant(int variantId, {required double basePrice, double? mintPrice, double? minPrice}) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/variants/$variantId/');
+    final payload = <String, dynamic>{
+      'base_price': basePrice,
+    };
+    if (mintPrice != null) payload['mint_price'] = mintPrice;
+    if (minPrice != null) payload['min_price'] = minPrice;
+
+    final res = await http.patch(
+      url,
+      headers: _headers,
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode == 200) {
+      _cachedModels = null;
       return StorageVariantModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
     } else {
       final err = jsonDecode(res.body);

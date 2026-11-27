@@ -17,7 +17,7 @@ import 'sell_wizard/quote_and_booking_screen.dart';
 import 'orders/track_order_screen.dart';
 import 'agent/agent_dashboard_screen.dart';
 import 'agent/agent_inspection_screen.dart';
-import 'admin/admin_dashboard_screen.dart';
+import 'admin/admin_portal_screen.dart';
 import 'auth/auth_modal_sheet.dart';
 import '../utils/contact_launcher.dart';
 import '../widgets/brand_logo.dart';
@@ -539,7 +539,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (isAdmin) {
       if (_currentIndex >= 3) _currentIndex = 0;
       if (_currentIndex == 0) {
-        body = const AdminDashboardScreen();
+        body = const AdminPortalScreen();
       } else if (_currentIndex == 1) {
         body = const TrackOrderScreen();
       } else {

@@ -19,6 +19,7 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
 
   bool _isRegister = false;
   bool _loading = false;
+  bool _obscurePassword = true;
   String _error = '';
 
   final _emailController = TextEditingController();
@@ -230,10 +231,17 @@ class _AuthModalSheetState extends State<AuthModalSheet> {
 
                   TextFormField(
                     controller: _passwordController,
-                    obscureText: true,
+                    obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       labelText: 'Password *',
                       prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.primaryGreen),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: AppTheme.textSecondary,
+                        ),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      ),
                       filled: true,
                       fillColor: Colors.white.withOpacity(0.85),
                     ),

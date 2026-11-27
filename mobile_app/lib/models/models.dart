@@ -218,6 +218,7 @@ class StorageVariantModel {
   final String? ram;
   final double basePrice;
   final double minPrice;
+  final double mintPrice;
 
   StorageVariantModel({
     required this.id,
@@ -225,15 +226,37 @@ class StorageVariantModel {
     this.ram,
     required this.basePrice,
     required this.minPrice,
-  });
+    double? mintPrice,
+  }) : mintPrice = mintPrice ?? (basePrice * 1.15);
 
   factory StorageVariantModel.fromJson(Map<String, dynamic> json) {
+    final base = double.tryParse(json['base_price']?.toString() ?? '') ?? 0.0;
+    final parsedMint = double.tryParse(json['mint_price']?.toString() ?? '');
     return StorageVariantModel(
       id: int.tryParse(json['id']?.toString() ?? '') ?? (json['id'] is int ? json['id'] : 0),
       storage: json['storage']?.toString() ?? '',
       ram: json['ram']?.toString(),
-      basePrice: double.tryParse(json['base_price']?.toString() ?? '') ?? 0.0,
+      basePrice: base,
       minPrice: double.tryParse(json['min_price']?.toString() ?? '') ?? 0.0,
+      mintPrice: parsedMint ?? (base * 1.15),
+    );
+  }
+
+  StorageVariantModel copyWith({
+    int? id,
+    String? storage,
+    String? ram,
+    double? basePrice,
+    double? minPrice,
+    double? mintPrice,
+  }) {
+    return StorageVariantModel(
+      id: id ?? this.id,
+      storage: storage ?? this.storage,
+      ram: ram ?? this.ram,
+      basePrice: basePrice ?? this.basePrice,
+      minPrice: minPrice ?? this.minPrice,
+      mintPrice: mintPrice ?? this.mintPrice,
     );
   }
 }
