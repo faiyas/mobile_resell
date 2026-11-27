@@ -171,8 +171,16 @@ export default function NotificationCenterModal({ isOpen, onClose, onSelectOrder
                   key={item.id}
                   onClick={() => {
                     handleMarkAsRead(item.id);
-                    if (item.sale_code && onSelectOrder) {
-                      onSelectOrder(item.sale_code);
+                    const orderCode = item.sale_code || (item.redirect_route?.includes('code=') ? item.redirect_route.split('code=')[1]?.split('&')[0] : null);
+                    if (orderCode && onSelectOrder) {
+                      onSelectOrder(orderCode);
+                      onClose();
+                    } else if (item.redirect_route) {
+                      if (item.redirect_route.startsWith('http')) {
+                        window.open(item.redirect_route, '_blank');
+                      } else {
+                        window.location.href = item.redirect_route;
+                      }
                       onClose();
                     }
                   }}

@@ -252,7 +252,10 @@ export const api = {
   getPaymentReceipt: (saleCode) => request(`/payments/receipt/${saleCode}/`),
 
   // Notifications Engine
-  getNotifications: (phone = '') => request(`/sales/notifications/${phone ? `?phone=${encodeURIComponent(phone)}` : ''}`),
+  getNotifications: (phone = '') => {
+    const p = phone || localStorage.getItem('recell_customer_phone') || '';
+    return request(`/sales/notifications/${p ? `?phone=${encodeURIComponent(p)}` : ''}`);
+  },
   broadcastNotification: (data) => request('/sales/notifications/', { method: 'POST', body: JSON.stringify(data) }),
   markNotificationRead: (id) => request(`/sales/notifications/${id}/read/`, { method: 'POST' }),
   dismissNotification: (id) => request(`/sales/notifications/${id}/dismiss/`, { method: 'POST' }),

@@ -506,6 +506,9 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
         beneficiary_ifsc: beneficiaryIfsc,
       };
       const res = await api.submitSale(payload);
+      if (payload.customer_phone) {
+        try { localStorage.setItem('recell_customer_phone', payload.customer_phone); } catch (_) {}
+      }
       setCreatedOrder(res);
       setCurrentScreen(7); // Show tracking screen
       if (onOrderCreated) onOrderCreated(res);

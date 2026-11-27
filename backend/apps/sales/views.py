@@ -752,6 +752,9 @@ def notifications_list_view(request):
             target_audience=target_audience,
             redirect_route=redirect_route
         )
+        if not notif:
+            return Response({'detail': 'Failed to create notification. Please ensure database migrations are applied.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
         return Response(UserNotificationSerializer(notif).data, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
