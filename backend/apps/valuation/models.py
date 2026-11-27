@@ -111,6 +111,10 @@ class EvaluationTriageQuestion(models.Model):
         max_digits=10, decimal_places=2, default=0.00,
         help_text="Deduction amount (flat ₹ or %) applied if user answers 'No'"
     )
+    disables_question_codes = models.JSONField(
+        default=list, blank=True,
+        help_text="List of question codes to automatically turn OFF/skip if user answers 'No'"
+    )
     display_order = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)

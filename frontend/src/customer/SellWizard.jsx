@@ -37,9 +37,14 @@ function ResponsiveModal({ isOpen, onClose, title, children }) {
 }
 
 export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) {
-  // Navigation: 1=Category, 2=Brand, 3=Model&Variant, 4=Questionnaire(Steps 2-10), 5=Quote, 6=PickupBooking, 7=Success
+  // Navigation: 1=Category, 2=Brand, 3=Model&Variant, 3.5=TriageHealthCheck, 4=Questionnaire(Steps 2-10), 5=Quote, 6=PickupBooking, 7=Success
   const [currentScreen, setCurrentScreen] = useState(1);
   const [questionStepIndex, setQuestionStepIndex] = useState(0);
+
+  // Triage Health Check Questions (Dynamic DB-driven)
+  const [triageQuestions, setTriageQuestions] = useState([]);
+  const [triageAnswers, setTriageAnswers] = useState({}); // code -> 'YES' | 'NO'
+  const [triageLoading, setTriageLoading] = useState(false);
 
   // Dynamic DB Lists
   const [categories, setCategories] = useState([]);
@@ -405,11 +410,12 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
     });
   };
 
-  const computeValuation = async () => {
+  const computeValuation = async (overrideTriageAnswers = null) => {
     if (!selectedVariant) return;
     setValuing(true);
     try {
-      const res = await api.calculateEstimate(selectedVariant.id, selectedOptionCodes);
+      const answersToUse = overrideTriageAnswers || triageAnswers;
+      const res = await api.calculateEstimate(selectedVariant.id, selectedOptionCodes, answersToUse);
       setValuationResult(res);
       setCurrentScreen(5); // Show quote screen
     } catch (e) {
@@ -417,6 +423,38 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
     } finally {
       setValuing(false);
     }
+  };
+
+  const handleTriageAnswer = (code, val) => {
+    setTriageAnswers(prev => {
+      const updated = { ...prev, [code]: val };
+      // If answered NO, find disabled questions and clear them
+      const qObj = triageQuestions.find(q => q.code === code);
+      if (val === 'NO' && qObj && Array.isArray(qObj.disables_question_codes)) {
+        for (const dc of qObj.disables_question_codes) {
+          delete updated[dc];
+        }
+      }
+      return updated;
+    });
+  };
+
+  // Compute disabled triage question codes based on current answers
+  const getDisabledTriageCodes = () => {
+    const disabled = new Set();
+    for (const q of triageQuestions) {
+      if (triageAnswers[q.code] === 'NO' && Array.isArray(q.disables_question_codes)) {
+        for (const dc of q.disables_question_codes) {
+          disabled.add(dc);
+        }
+      }
+    }
+    return disabled;
+  };
+
+  const getVisibleTriageQuestions = () => {
+    const disabled = getDisabledTriageCodes();
+    return triageQuestions.filter(q => !disabled.has(q.code));
   };
 
   const handleSubmitBooking = async (e) => {
@@ -452,6 +490,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
         other_defects_notes: combinedNotes,
         custom_step_notes: stepCustomNotes,
         selected_option_codes: selectedOptionCodes,
+        triage_answers: triageAnswers,
         customer_name: customerName || currentUser.full_name || 'Customer',
         customer_phone: customerPhone || currentUser.phone || '',
         customer_email: customerEmail || currentUser.email || '',
@@ -833,7 +872,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                   </div>
 
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (selectedModel?.has_warranty === false) {
                         setQuestionSteps(prev => prev
                           .filter(cat => !cat.name.toLowerCase().includes('warranty'))
@@ -844,13 +883,31 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                           .filter(cat => cat.options.length > 0)
                         );
                       }
+                      setTriageLoading(true);
+                      try {
+                        const tqs = await api.getTriageQuestions(false);
+                        const safeTqs = Array.isArray(tqs) ? tqs : (tqs?.results || []);
+                        if (safeTqs.length > 0) {
+                          setTriageQuestions(safeTqs);
+                          // Initialize default answers to 'YES'
+                          const initAnswers = {};
+                          safeTqs.forEach(q => { initAnswers[q.code] = 'YES'; });
+                          setTriageAnswers(initAnswers);
+                          setCurrentScreen(3.5); // Open Triage Health Check Screen
+                          return;
+                        }
+                      } catch (err) {
+                        console.warn("Could not load triage questions, proceeding to detailed questionnaire", err);
+                      } finally {
+                        setTriageLoading(false);
+                      }
                       setQuestionStepIndex(0);
-                      setCurrentScreen(4); // Start questionnaire
+                      setCurrentScreen(4); // Fallback to cosmetic questionnaire
                     }}
-                    disabled={!selectedVariant}
+                    disabled={!selectedVariant || triageLoading}
                     className="w-full bg-[#0BAA4B] hover:bg-[#087C38] disabled:bg-slate-200 disabled:text-slate-400 text-white font-black py-3.5 rounded-2xl shadow-lg shadow-[#0BAA4B]/20 transition flex items-center justify-center gap-2 text-sm mt-4"
                   >
-                    Start Device Evaluation <ArrowRight className="w-4 h-4" />
+                    {triageLoading ? 'Loading Checks...' : 'Start Device Evaluation'} <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               ) : (
@@ -858,6 +915,128 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                   ← Tap a phone model on the left to view available storage and base prices.
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= SCREEN 3.5: INITIAL HEALTH CHECK TRIAGE QUESTIONS ================= */}
+      {currentScreen === 3.5 && (
+        <div className="space-y-6 animate-fade-in max-w-2xl mx-auto">
+          <div className="glass-panel rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase text-[#0BAA4B] bg-[#E8F8ED] px-2.5 py-0.5 rounded-full border border-[#0BAA4B]/20">
+                  Step 2 of 11 · Initial Health Check
+                </span>
+                <h3 className="text-xl font-black text-[#17251C] mt-1.5">
+                  {selectedModel?.name} ({selectedVariant?.ram ? `${selectedVariant.ram} / ` : ''}{selectedVariant?.storage})
+                </h3>
+                <p className="text-xs text-[#7B8980]">
+                  Please answer these preliminary functional questions accurately to determine your initial evaluation offer.
+                </p>
+              </div>
+            </div>
+
+            {/* Questions List */}
+            <div className="space-y-5">
+              {getVisibleTriageQuestions().map((q, idx) => {
+                const currentVal = triageAnswers[q.code] || 'YES';
+                const isNo = currentVal === 'NO';
+                const isYes = currentVal === 'YES';
+
+                return (
+                  <div key={q.id || q.code} className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h4 className="font-extrabold text-sm text-[#17251C]">
+                          {idx + 1}. {q.question_text}
+                        </h4>
+                        {q.subtitle && (
+                          <p className="text-xs text-[#7B8980] mt-1 leading-relaxed">
+                            {q.subtitle}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Yes / No Choice Buttons */}
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => handleTriageAnswer(q.code, 'YES')}
+                        className={`py-3 px-4 rounded-xl border-2 font-black text-xs flex items-center justify-center gap-2 transition ${
+                          isYes
+                            ? 'bg-[#E8F8ED] border-[#0BAA4B] text-[#0BAA4B] shadow-sm'
+                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        <Check className="w-4 h-4" />
+                        Yes
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleTriageAnswer(q.code, 'NO')}
+                        className={`py-3 px-4 rounded-xl border-2 font-black text-xs flex items-center justify-center gap-2 transition ${
+                          isNo
+                            ? 'bg-rose-50 border-rose-500 text-rose-600 shadow-sm'
+                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        <X className="w-4 h-4" />
+                        No
+                      </button>
+                    </div>
+
+                    {/* Info note if answered NO */}
+                    {isNo && (
+                      <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/60 text-[11px] text-amber-800 flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>
+                          {q.is_power_on_gate
+                            ? "Device cannot power on. Dead phone minimum floor valuation rule will be applied."
+                            : `Condition deduction will be applied (${q.deduction_type === 'PERCENTAGE' ? `${q.deduction_value_on_no}%` : `₹${q.deduction_value_on_no}`} deduction).`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setCurrentScreen(3)}
+                className="flex items-center gap-1.5 text-xs font-black text-[#17251C] glass-card hover:bg-white px-4 py-2.5 rounded-xl transition"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" /> Back to Variants
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  // If Power On is NO or dead phone, can jump straight to evaluation quote or continue
+                  const isPowerOnNo = Object.entries(triageAnswers).some(([code, ans]) => {
+                    const q = triageQuestions.find(item => item.code === code);
+                    return q?.is_power_on_gate && ans === 'NO';
+                  });
+
+                  if (isPowerOnNo) {
+                    // Direct to estimated quote for dead phone
+                    computeValuation();
+                  } else {
+                    // Proceed to cosmetic defect questionnaire
+                    setQuestionStepIndex(0);
+                    setCurrentScreen(4);
+                  }
+                }}
+                className="flex items-center gap-1.5 text-xs font-black text-white bg-[#0BAA4B] hover:bg-[#087C38] px-6 py-2.5 rounded-xl shadow-md shadow-[#0BAA4B]/20 transition"
+              >
+                Continue Evaluation <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
         </div>
@@ -1339,6 +1518,16 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
               title="Evaluation Summary"
             >
               <div className="space-y-4 text-xs">
+                {/* Variant & Model Name Confirmation */}
+                <div className="p-2.5 rounded-xl bg-slate-100 flex items-center justify-between">
+                  <span className="font-extrabold text-slate-800">
+                    {valuationResult.brand} {valuationResult.model}
+                  </span>
+                  <span className="font-bold text-[#0BAA4B] bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                    {valuationResult.variant}
+                  </span>
+                </div>
+
                 <div className="p-3 bg-slate-50 rounded-xl space-y-2 border border-slate-100">
                   <div className="flex justify-between items-center">
                     <span className="text-slate-600">Base Catalog Price (Flawless):</span>
@@ -1347,8 +1536,8 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                   <div className="flex justify-between items-center">
                     <span className="text-slate-600">Condition Deductions:</span>
                     <strong className="text-rose-600 font-bold">
-                      {Number(valuationResult.base_price) - Number(valuationResult.estimated_price) > 0
-                        ? `-₹${(Number(valuationResult.base_price) - Number(valuationResult.estimated_price)).toLocaleString('en-IN')}`
+                      {Number(valuationResult.total_deduction || (Number(valuationResult.base_price) - Number(valuationResult.estimated_price))) > 0
+                        ? `-₹${Number(valuationResult.total_deduction || (Number(valuationResult.base_price) - Number(valuationResult.estimated_price))).toLocaleString('en-IN')}`
                         : '₹0 (Mint condition)'}
                     </strong>
                   </div>
@@ -1358,21 +1547,41 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                   </div>
                 </div>
 
-                <div>
-                  <h6 className="font-bold text-slate-700 mb-1.5">Selected Condition Details:</h6>
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {selectedOptionCodes.length === 0 ? (
-                      <p className="text-slate-400 italic">No defects selected (Device in excellent condition).</p>
-                    ) : (
-                      selectedOptionCodes.map((code) => (
-                        <div key={code} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 text-[11px]">
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                          <span className="font-mono text-slate-700 font-semibold">{code.replace(/_/g, ' ')}</span>
+                {/* Deductions Breakdown from Backend if available */}
+                {Array.isArray(valuationResult.deductions) && valuationResult.deductions.length > 0 ? (
+                  <div>
+                    <h6 className="font-bold text-slate-700 mb-1.5">Applied Condition Deductions:</h6>
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                      {valuationResult.deductions.map((d, dIdx) => (
+                        <div key={dIdx} className="flex items-center justify-between p-2 rounded-lg bg-rose-50/60 border border-rose-100 text-[11px]">
+                          <div>
+                            <span className="font-bold text-slate-800 block">{d.title}</span>
+                            <span className="text-[10px] text-slate-500">{d.category} · {d.rule_type}</span>
+                          </div>
+                          <span className="font-mono font-bold text-rose-600 shrink-0">
+                            -₹{Number(d.deduction_amount).toLocaleString('en-IN')}
+                          </span>
                         </div>
-                      ))
-                    )}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <h6 className="font-bold text-slate-700 mb-1.5">Selected Condition Details:</h6>
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {selectedOptionCodes.length === 0 ? (
+                        <p className="text-slate-400 italic">No defects selected (Device in excellent / mint condition).</p>
+                      ) : (
+                        selectedOptionCodes.map((code) => (
+                          <div key={code} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 text-[11px]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                            <span className="font-mono text-slate-700 font-semibold">{code.replace(/_/g, ' ')}</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <p className="text-[10px] text-slate-400 leading-relaxed italic">
                   * All evaluations are verified at doorstep by an authorized 1103 RECELL technician prior to instant payment disbursement.

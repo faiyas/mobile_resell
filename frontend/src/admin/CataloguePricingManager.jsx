@@ -125,6 +125,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
     is_power_on_gate: false,
     deduction_type: 'PERCENTAGE',
     deduction_value_on_no: 10,
+    disables_question_codes: [],
     display_order: 1,
     is_active: true
   });
@@ -311,6 +312,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
         is_power_on_gate: !!q.is_power_on_gate,
         deduction_type: q.deduction_type || 'PERCENTAGE',
         deduction_value_on_no: q.deduction_value_on_no !== undefined ? q.deduction_value_on_no : 10,
+        disables_question_codes: Array.isArray(q.disables_question_codes) ? q.disables_question_codes : [],
         display_order: q.display_order || 1,
         is_active: q.is_active !== undefined ? q.is_active : true
       });
@@ -323,6 +325,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
         is_power_on_gate: false,
         deduction_type: 'PERCENTAGE',
         deduction_value_on_no: 10,
+        disables_question_codes: [],
         display_order: triageQuestions.length + 1,
         is_active: true
       });
@@ -4534,6 +4537,46 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                 onChange={(e) => setTriageForm({ ...triageForm, deduction_value_on_no: parseFloat(e.target.value) || 0 })}
                 className="w-full p-2.5 border border-slate-300 rounded-xl font-bold text-slate-900 focus:outline-none"
               />
+            </div>
+          </div>
+
+          {/* Dynamic Gating: Turn off other questions if user answers NO */}
+          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+            <label className="block font-bold text-xs text-slate-700">
+              🔗 Dynamic Gating: If answered "NO", automatically turn OFF these questions:
+            </label>
+            <p className="text-[11px] text-slate-500">
+              Select questions to skip/hide when customer answers "No" to this question (e.g., if Touch not working, disable Display Original).
+            </p>
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pt-1">
+              {triageQuestions
+                .filter(otherQ => otherQ.id !== editingTriage?.id)
+                .map(otherQ => {
+                  const isChecked = (triageForm.disables_question_codes || []).includes(otherQ.code);
+                  return (
+                    <label key={otherQ.id || otherQ.code} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white cursor-pointer text-xs">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const current = triageForm.disables_question_codes || [];
+                          if (e.target.checked) {
+                            setTriageForm({ ...triageForm, disables_question_codes: [...current, otherQ.code] });
+                          } else {
+                            setTriageForm({ ...triageForm, disables_question_codes: current.filter(c => c !== otherQ.code) });
+                          }
+                        }}
+                        className="w-3.5 h-3.5 rounded text-emerald-600 focus:ring-emerald-500"
+                      />
+                      <span className="font-semibold text-slate-800">
+                        {otherQ.question_text}
+                      </span>
+                    </label>
+                  );
+                })}
+              {triageQuestions.filter(otherQ => otherQ.id !== editingTriage?.id).length === 0 && (
+                <span className="text-[11px] text-slate-400 italic">No other triage questions available to link.</span>
+              )}
             </div>
           </div>
 

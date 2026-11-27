@@ -203,10 +203,14 @@ export const api = {
   updateConditionOption: (id, data) => request(`/valuation/options/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteConditionOption: (id) => request(`/valuation/options/${id}/`, { method: 'DELETE' }),
 
-  calculateEstimate: (variantId, selectedCodes) => 
+  calculateEstimate: (variantId, selectedCodes, triageAnswers = {}) => 
     request('/valuation/estimate/', {
       method: 'POST',
-      body: JSON.stringify({ variant_id: variantId, selected_option_codes: selectedCodes })
+      body: JSON.stringify({
+        variant_id: variantId,
+        selected_option_codes: selectedCodes,
+        triage_answers: triageAnswers,
+      })
     }),
   previewValuation: (variantId, selectedCodes) => 
     request('/valuation/pricing/preview/', {

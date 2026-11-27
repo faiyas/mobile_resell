@@ -269,6 +269,7 @@ class EvaluationTriageQuestionModel {
   final bool isPowerOnGate;
   final String deductionType;
   final double deductionValueOnNo;
+  final List<String> disablesQuestionCodes;
   final int displayOrder;
   final bool isActive;
 
@@ -280,11 +281,20 @@ class EvaluationTriageQuestionModel {
     this.isPowerOnGate = false,
     this.deductionType = 'PERCENTAGE',
     this.deductionValueOnNo = 0.0,
+    this.disablesQuestionCodes = const [],
     this.displayOrder = 1,
     this.isActive = true,
   });
 
   factory EvaluationTriageQuestionModel.fromJson(Map<String, dynamic> json) {
+    List<String> disabledList = [];
+    if (json['disables_question_codes'] is List) {
+      disabledList = (json['disables_question_codes'] as List)
+          .map((e) => e.toString().trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
+    }
+
     return EvaluationTriageQuestionModel(
       id: int.tryParse(json['id']?.toString() ?? '') ?? 0,
       code: json['code']?.toString() ?? '',
@@ -293,6 +303,7 @@ class EvaluationTriageQuestionModel {
       isPowerOnGate: json['is_power_on_gate'] == true,
       deductionType: json['deduction_type']?.toString() ?? 'PERCENTAGE',
       deductionValueOnNo: double.tryParse(json['deduction_value_on_no']?.toString() ?? '') ?? 0.0,
+      disablesQuestionCodes: disabledList,
       displayOrder: int.tryParse(json['display_order']?.toString() ?? '') ?? 1,
       isActive: json['is_active'] != false,
     );
@@ -306,6 +317,7 @@ class EvaluationTriageQuestionModel {
     'is_power_on_gate': isPowerOnGate,
     'deduction_type': deductionType,
     'deduction_value_on_no': deductionValueOnNo,
+    'disables_question_codes': disablesQuestionCodes,
     'display_order': displayOrder,
     'is_active': isActive,
   };

@@ -8,7 +8,8 @@ class EvaluationTriageQuestionSerializer(serializers.ModelSerializer):
         model = EvaluationTriageQuestion
         fields = [
             'id', 'code', 'question_text', 'subtitle', 'is_power_on_gate',
-            'deduction_type', 'deduction_value_on_no', 'display_order', 'is_active'
+            'deduction_type', 'deduction_value_on_no', 'disables_question_codes',
+            'display_order', 'is_active'
         ]
 
 class ConditionOptionSerializer(serializers.ModelSerializer):

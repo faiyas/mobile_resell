@@ -121,7 +121,15 @@ class _DeviceHealthCheckScreenState extends State<DeviceHealthCheckScreen> {
     setState(() {
       _answers[code] = value;
 
-      // If Question 1 is answered NO, clear subsequent answers
+      // If answered NO, dynamically clear answers for any question that is disabled by this rule
+      final qObj = _questions.firstWhere((q) => q.code == code, orElse: () => _questions.first);
+      if (value == 'NO' && qObj.disablesQuestionCodes.isNotEmpty) {
+        for (final disabledCode in qObj.disablesQuestionCodes) {
+          _answers.remove(disabledCode);
+        }
+      }
+
+      // Backward-compatible fallback for WORKING_CONDITION
       if (code == 'WORKING_CONDITION' && value == 'NO') {
         _answers.remove('TOUCH_WORKING');
         _answers.remove('DISPLAY_ORIGINAL');
@@ -131,24 +139,53 @@ class _DeviceHealthCheckScreenState extends State<DeviceHealthCheckScreen> {
   }
 
   bool get _isPowerOnGateNo {
-    return _answers['WORKING_CONDITION'] == 'NO';
+    return _answers.entries.any((entry) {
+      if (entry.value != 'NO') return false;
+      final q = _questions.firstWhere((item) => item.code == entry.key, orElse: () => _questions.first);
+      return q.isPowerOnGate;
+    });
+  }
+
+  Set<String> get _disabledQuestionCodes {
+    final Set<String> disabled = {};
+    for (final q in _questions) {
+      if (_answers[q.code] == 'NO') {
+        disabled.addAll(q.disablesQuestionCodes);
+        if (q.isPowerOnGate) {
+          // If a power on gate is NO, turn off all downstream questions
+          final qIndex = _questions.indexOf(q);
+          for (int j = qIndex + 1; j < _questions.length; j++) {
+            disabled.add(_questions[j].code);
+          }
+        }
+      }
+    }
+    return disabled;
   }
 
   bool _isQuestionVisible(int index) {
-    if (index == 0) return true; // Question 1 is always visible
-    if (_isPowerOnGateNo) return false; // If Q1 is NO, hide 2, 3, 4
+    if (index < 0 || index >= _questions.length) return false;
+    final currentQ = _questions[index];
+    if (_disabledQuestionCodes.contains(currentQ.code)) return false;
 
-    // Progressive disclosure: Question N is visible only if Question N-1 is answered
-    final prevCode = _questions[index - 1].code;
-    return _answers.containsKey(prevCode);
+    if (index == 0) return true; // First question is always visible unless disabled
+
+    // Progressive disclosure: Question is visible only if previous non-disabled question is answered
+    for (int i = index - 1; i >= 0; i--) {
+      final prevQ = _questions[i];
+      if (!_disabledQuestionCodes.contains(prevQ.code)) {
+        return _answers.containsKey(prevQ.code);
+      }
+    }
+    return true;
   }
 
   bool get _canProceed {
     if (_isPowerOnGateNo) return true; // Can finish immediately as dead phone
     if (_questions.isEmpty) return false;
-    // Otherwise all visible questions must be answered
+    // All currently visible questions must be answered
     for (int i = 0; i < _questions.length; i++) {
-      if (!_answers.containsKey(_questions[i].code)) {
+      if (_isQuestionVisible(i) && !_answers.containsKey(_questions[i].code)) {
         return false;
       }
     }

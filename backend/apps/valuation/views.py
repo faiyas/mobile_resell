@@ -294,9 +294,17 @@ def calculate_estimate_view(request):
     triage_questions = list(EvaluationTriageQuestion.objects.filter(is_active=True).order_by('display_order'))
     is_dead_device = False
 
+    # Track disabled question codes dynamically (e.g. if Q1 answered NO, disables Q2, Q3, Q4)
+    disabled_codes = set()
     for tq in triage_questions:
+        if tq.code in disabled_codes:
+            continue
         ans = str(triage_answers.get(tq.code, '')).strip().upper()
         if ans == 'NO':
+            if tq.disables_question_codes and isinstance(tq.disables_question_codes, list):
+                for dc in tq.disables_question_codes:
+                    disabled_codes.add(str(dc).strip())
+
             if tq.is_power_on_gate:
                 is_dead_device = True
                 floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
@@ -395,11 +403,17 @@ def calculate_estimate_view(request):
     min_floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
     estimated_price = max(base_price - total_deduction, min_floor)
 
+    # In our business hierarchy: Mint (Flawless) is variant.base_price.
+    # Base price must always be >= min_floor. If deductions == 0, offer is mint.
+    mint_price = base_price
+
     return Response({
         'brand': phone_model.brand.name,
         'model': phone_model.name,
         'variant': f"{variant.ram} / {variant.storage}" if variant.ram else variant.storage,
+        'variant_id': variant.id,
         'base_price': float(base_price),
+        'mint_price': float(mint_price),
         'min_price': float(min_floor),
         'total_deduction': float(total_deduction),
         'estimated_price': float(estimated_price),
