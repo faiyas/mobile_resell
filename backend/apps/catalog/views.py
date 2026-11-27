@@ -377,9 +377,15 @@ def variant_detail_view(request, pk):
 # ================= 6. DYNAMIC CMS HOMEPAGE BUILDER =================
 @api_view(['GET', 'POST', 'PUT'])
 @permission_classes([AllowAny])
+@api_view(['GET', 'POST', 'PUT'])
+@permission_classes([AllowAny])
 def cms_sections_view(request):
     if request.method == 'GET':
-        sections = CMSHomeSection.objects.filter(is_active=True).order_by('display_order')
+        show_all = request.GET.get('all', 'false').lower() == 'true'
+        if show_all and is_admin_user(request.user):
+            sections = CMSHomeSection.objects.all().order_by('display_order')
+        else:
+            sections = CMSHomeSection.objects.filter(is_active=True).order_by('display_order')
         return Response(CMSHomeSectionSerializer(sections, many=True).data)
 
     if not is_admin_user(request.user):
@@ -387,14 +393,51 @@ def cms_sections_view(request):
 
     if request.method in ['POST', 'PUT']:
         section_type = request.data.get('section_type')
+        if not section_type:
+            return Response({'detail': 'section_type is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing = CMSHomeSection.objects.filter(section_type=section_type).first()
+
+        data_json = request.data.get('data_json')
+        if data_json is None:
+            data_json = existing.data_json if existing else {}
+        elif isinstance(data_json, dict) and existing and isinstance(existing.data_json, dict):
+            # Preserve existing slides if not provided in update
+            if 'slides' not in data_json and 'slides' in existing.data_json:
+                data_json['slides'] = existing.data_json['slides']
+
+        title = request.data.get('title')
+        if title is None and existing:
+            title = existing.title
+        elif title is None:
+            title = 'Hero Banners'
+
+        subtitle = request.data.get('subtitle')
+        if subtitle is None and existing:
+            subtitle = existing.subtitle
+        elif subtitle is None:
+            subtitle = ''
+
+        display_order = request.data.get('display_order')
+        if display_order is None and existing:
+            display_order = existing.display_order
+        elif display_order is None:
+            display_order = 0
+
+        is_active = request.data.get('is_active')
+        if is_active is None and existing:
+            is_active = existing.is_active
+        elif is_active is None:
+            is_active = True
+
         section, _ = CMSHomeSection.objects.update_or_create(
             section_type=section_type,
             defaults={
-                'title': request.data.get('title', ''),
-                'subtitle': request.data.get('subtitle', ''),
-                'data_json': request.data.get('data_json', {}),
-                'display_order': request.data.get('display_order', 0),
-                'is_active': request.data.get('is_active', True),
+                'title': title,
+                'subtitle': subtitle,
+                'data_json': data_json,
+                'display_order': display_order,
+                'is_active': is_active,
             }
         )
         return Response(CMSHomeSectionSerializer(section).data)
