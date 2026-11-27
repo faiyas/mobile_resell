@@ -574,6 +574,7 @@ class SaleOrderModel {
   final String beneficiaryType;
   final String beneficiaryName;
   final String? beneficiaryUpiId;
+  final String? cashHandoverOtp;
   final String? imeiNumber;
   final String createdAt;
   final String? createdAtIst;
@@ -612,6 +613,7 @@ class SaleOrderModel {
     required this.beneficiaryType,
     required this.beneficiaryName,
     this.beneficiaryUpiId,
+    this.cashHandoverOtp,
     this.imeiNumber,
     required this.createdAt,
     this.createdAtIst,
@@ -683,6 +685,7 @@ class SaleOrderModel {
       beneficiaryType: json['beneficiary_type']?.toString() ?? 'UPI',
       beneficiaryName: json['beneficiary_name']?.toString() ?? '',
       beneficiaryUpiId: json['beneficiary_upi_id']?.toString(),
+      cashHandoverOtp: json['cash_handover_otp']?.toString(),
       imeiNumber: json['imei_number']?.toString(),
       createdAt: json['created_at']?.toString() ?? '',
       createdAtIst: json['created_at_ist']?.toString(),
@@ -724,6 +727,7 @@ class SaleOrderModel {
       'beneficiary_type': beneficiaryType,
       'beneficiary_name': beneficiaryName,
       'beneficiary_upi_id': beneficiaryUpiId,
+      'cash_handover_otp': cashHandoverOtp,
       'imei_number': imeiNumber,
       'created_at': createdAt,
       'created_at_ist': createdAtIst,

@@ -593,12 +593,22 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                   fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
-                onChanged: (val) {
-                  final b = double.tryParse(val) ?? 0.0;
-                  if (b > 0) setM(() => mintCtrl.text = (b * 1.15).toStringAsFixed(0));
-                },
               ),
               const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Mint Price (Flawless) (₹)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                  TextButton(
+                    onPressed: () {
+                      final b = double.tryParse(baseCtrl.text) ?? 0.0;
+                      if (b > 0) setM(() => mintCtrl.text = (b * 1.15).toStringAsFixed(0));
+                    },
+                    child: const Text('+15% Auto', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
               TextField(
                 controller: mintCtrl,
                 keyboardType: TextInputType.number,
@@ -710,12 +720,6 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                   fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                 ),
-                onChanged: (val) {
-                  final b = double.tryParse(val) ?? 0.0;
-                  if (b > 0) {
-                    setMState(() => mintController.text = (b * 1.15).toStringAsFixed(0));
-                  }
-                },
               ),
               const SizedBox(height: 14),
               Row(

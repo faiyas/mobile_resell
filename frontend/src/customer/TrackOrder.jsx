@@ -463,6 +463,27 @@ export default function TrackOrder({ initialSaleCode, currentUser }) {
               </div>
             </div>
 
+            {/* In-App Cash Handover Verification OTP Card */}
+            {['CUSTOMER_ACCEPTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING'].includes(selectedSale.status) &&
+             (selectedSale.beneficiary_type === 'CASH' || selectedSale.cash_handover_otp) && (
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-[#0BAA4B] text-center space-y-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-[#0BAA4B] font-extrabold text-xs">
+                  <ShieldCheck className="w-4 h-4" /> Cash Handover Verification
+                </div>
+                <p className="text-xs text-slate-600 max-w-md mx-auto">
+                  Collect <strong className="text-slate-800">₹{Number(selectedSale.final_price || selectedSale.estimated_price).toLocaleString('en-IN')}</strong> in physical cash from the agent. Once counted, share this 4-digit code with the agent:
+                </p>
+                <div className="inline-block px-6 py-2 rounded-xl bg-white border border-emerald-300 shadow-sm">
+                  <span className="font-mono text-3xl font-black tracking-widest text-[#0BAA4B]">
+                    {selectedSale.cash_handover_otp || '----'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  🔒 Do not share this code before receiving cash in your hand.
+                </p>
+              </div>
+            )}
+
             {/* Stepper Timeline (Amazon Screenshot 3 style) */}
             <div className="pt-2">
               <h5 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">

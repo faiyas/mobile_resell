@@ -6,11 +6,14 @@ class PaymentRecordSerializer(serializers.Serializer):
     sale_id = serializers.CharField()
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     payment_method = serializers.ChoiceField(choices=['GPAY', 'PHONEPE', 'PAYTM', 'BHIM', 'IMPS', 'CASH'], default='GPAY')
-    utr_number = serializers.CharField(max_length=50)
-    payment_proof_base64 = serializers.CharField(help_text="Base64 encoded screenshot of payment confirmation")
+    utr_number = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
+    payment_proof_base64 = serializers.CharField(required=False, allow_blank=True, default='', help_text="Base64 encoded screenshot of payment confirmation")
+    cash_otp = serializers.CharField(max_length=10, required=False, allow_blank=True, default='', help_text="Customer 4-digit handover OTP when method is CASH")
     admin_notes = serializers.CharField(required=False, allow_blank=True, default='')
 
     def validate_utr_number(self, value):
+        if not value:
+            return ''
         cleaned_utr = value.strip().upper()
         if Payment.objects.filter(utr_number=cleaned_utr).exists():
             raise serializers.ValidationError(f"A payment with UTR reference '{cleaned_utr}' has already been recorded!")

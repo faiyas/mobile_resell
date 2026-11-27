@@ -1185,6 +1185,62 @@ class _TrackOrderScreenState extends State<TrackOrderScreen> {
           const SizedBox(height: 14),
         ],
 
+        // In-App Cash Handover OTP Card
+        if (['CUSTOMER_ACCEPTED', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING'].contains(order.status) &&
+            (order.beneficiaryType == 'CASH' || (order.cashHandoverOtp != null && order.cashHandoverOtp!.isNotEmpty))) ...[
+          GlassContainer(
+            padding: const EdgeInsets.all(20),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppTheme.primaryGreen, width: 2),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: AppTheme.primaryGreen.withOpacity(0.12), shape: BoxShape.circle),
+                      child: const Icon(Icons.payments_rounded, color: AppTheme.primaryGreen, size: 22),
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Cash Handover Verification', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.textPrimary)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Collect ₹${(order.finalPrice ?? order.estimatedPrice).toStringAsFixed(0)} in cash from the agent. Once you have counted and received the cash, share this 4-digit OTP with the agent:',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.4),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.primaryGreen.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    order.cashHandoverOtp ?? '----',
+                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, letterSpacing: 8, color: AppTheme.primaryGreen, fontFamily: 'monospace'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.lock_outline, size: 13, color: AppTheme.textSecondary),
+                    SizedBox(width: 4),
+                    Text('Do not share this code before receiving physical cash', style: TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+        ],
+
         // 2. Amazon Stepper Timeline (Screenshot 3 style)
         GlassContainer(
           padding: const EdgeInsets.all(20),

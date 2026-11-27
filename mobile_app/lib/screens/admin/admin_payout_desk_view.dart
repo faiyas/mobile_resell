@@ -20,51 +20,41 @@ class AdminPayoutDeskView extends StatefulWidget {
 }
 
 class _AdminPayoutDeskViewState extends State<AdminPayoutDeskView> {
-  String _tab = 'READY'; // 'READY' or 'PAID'
-
   List<SaleOrderModel> get _payoutOrders {
-    if (_tab == 'READY') {
-      return widget.orders.where((o) => o.status == 'READY_FOR_PAYOUT').toList();
-    }
-    return widget.orders.where((o) => o.status == 'PAID' || o.status == 'COMPLETED').toList();
+    return widget.orders.where((o) => ['OWNERSHIP_TRANSFERRED', 'CUSTOMER_ACCEPTED', 'READY_FOR_PAYOUT'].contains(o.status)).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Tab selector
+        // Sub-header indicator
         Container(
           color: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.pending_actions_rounded, size: 18),
-                  label: Text('Ready for Payout (${widget.orders.where((o) => o.status == 'READY_FOR_PAYOUT').length})'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _tab == 'READY' ? AppTheme.primaryGreen : Colors.grey.shade100,
-                    foregroundColor: _tab == 'READY' ? Colors.white : AppTheme.textPrimary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => setState(() => _tab = 'READY'),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.currency_rupee_rounded, size: 16, color: AppTheme.primaryGreen),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Ready for Payout (${_payoutOrders.length})',
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.primaryGreen),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
-                  label: Text('Paid History (${widget.orders.where((o) => o.status == 'PAID' || o.status == 'COMPLETED').length})'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _tab == 'PAID' ? AppTheme.primaryGreen : Colors.grey.shade100,
-                    foregroundColor: _tab == 'PAID' ? Colors.white : AppTheme.textPrimary,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: () => setState(() => _tab = 'PAID'),
-                ),
+              const Spacer(),
+              Text(
+                'Instant Disbursement Queue',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -80,7 +70,7 @@ class _AdminPayoutDeskViewState extends State<AdminPayoutDeskView> {
                       Icon(Icons.payments_outlined, size: 48, color: Colors.grey.shade300),
                       const SizedBox(height: 10),
                       Text(
-                        _tab == 'READY' ? 'No orders awaiting payment!' : 'No payment history yet',
+                        'No orders awaiting payment!',
                         style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -140,32 +130,22 @@ class _AdminPayoutDeskViewState extends State<AdminPayoutDeskView> {
             ),
             const SizedBox(height: 14),
 
-            if (_tab == 'READY')
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.qr_code_rounded, size: 18),
-                  label: const Text('Authorize Payout & Enter UTR', style: TextStyle(fontWeight: FontWeight.w900)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryGreen,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  onPressed: () => _showPayoutActionModal(order, amount),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: Icon(order.beneficiaryType == 'CASH' ? Icons.payments_rounded : Icons.qr_code_rounded, size: 18),
+                label: Text(
+                  order.beneficiaryType == 'CASH' ? 'Verify Cash Handover OTP' : 'Authorize Payout & Enter UTR',
+                  style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(8)),
-                child: const Row(
-                  children: [
-                    Icon(Icons.check_circle, size: 14, color: AppTheme.darkGreen),
-                    SizedBox(width: 6),
-                    Text('Disbursed & Closed', style: TextStyle(color: AppTheme.darkGreen, fontWeight: FontWeight.bold, fontSize: 11)),
-                  ],
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
+                onPressed: () => _showPayoutActionModal(order, amount),
               ),
+            ),
           ],
         ),
       ),
@@ -174,6 +154,8 @@ class _AdminPayoutDeskViewState extends State<AdminPayoutDeskView> {
 
   void _showPayoutActionModal(SaleOrderModel order, double amount) {
     final utrController = TextEditingController();
+    final otpController = TextEditingController();
+    final isCash = order.beneficiaryType == 'CASH';
 
     showModalBottomSheet(
       context: context,
@@ -191,22 +173,55 @@ class _AdminPayoutDeskViewState extends State<AdminPayoutDeskView> {
             const SizedBox(height: 16),
             Text('Payout Desk · ${order.saleCode.isNotEmpty ? order.saleCode : '#${order.id}'}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
             const SizedBox(height: 4),
-            Text('Amount to Transfer: ₹${amount.toStringAsFixed(0)}', style: const TextStyle(color: AppTheme.darkGreen, fontWeight: FontWeight.bold, fontSize: 15)),
+            Text('Amount to ${isCash ? "Handover in Cash" : "Transfer"}: ₹${amount.toStringAsFixed(0)}', style: const TextStyle(color: AppTheme.darkGreen, fontWeight: FontWeight.bold, fontSize: 15)),
             const SizedBox(height: 16),
 
-            // UTR input
-            const Text('Bank 12-Digit Reference (UTR Number)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: utrController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                hintText: 'e.g. 432198765432',
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+            if (isCash) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Colors.amber.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.amber.shade300)),
+                child: const Row(
+                  children: [
+                    Icon(Icons.shield_outlined, color: Colors.amber, size: 20),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Cash on Pickup: Ask customer for the 4-digit verification OTP shown on their tracking screen after handing over the cash.',
+                        style: TextStyle(fontSize: 11, color: Colors.brown, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(height: 12),
+              const Text('Customer Cash Handover OTP *', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: otpController,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                decoration: InputDecoration(
+                  hintText: 'e.g. 7492',
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                ),
+              ),
+            ] else ...[
+              // UTR input
+              const Text('Bank 12-Digit Reference (UTR Number)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: utrController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: 'e.g. 432198765432',
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
 
             SizedBox(
@@ -219,12 +234,12 @@ class _AdminPayoutDeskViewState extends State<AdminPayoutDeskView> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 onPressed: () {
-                  final utr = utrController.text.trim();
-                  if (utr.isEmpty) return;
+                  final code = isCash ? otpController.text.trim() : utrController.text.trim();
+                  if (code.isEmpty) return;
                   Navigator.pop(ctx);
-                  widget.onConfirmPayout(order, utr);
+                  widget.onConfirmPayout(order, code);
                 },
-                child: const Text('Confirm Payment & Mark Paid', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                child: Text(isCash ? 'Verify OTP & Complete Payout' : 'Confirm Payment & Mark Paid', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
               ),
             ),
             const SizedBox(height: 20),

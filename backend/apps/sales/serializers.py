@@ -166,7 +166,7 @@ class PhoneSaleDetailSerializer(serializers.ModelSerializer):
             'assigned_agent', 'assigned_agent_name',
             'pickup_address', 'pickup_city', 'pickup_pincode', 'pickup_date', 'pickup_slot',
             'beneficiary_type', 'beneficiary_name', 'beneficiary_upi_id',
-            'beneficiary_account_no', 'beneficiary_ifsc',
+            'beneficiary_account_no', 'beneficiary_ifsc', 'cash_handover_otp',
             'imei_number', 'customer_handover_signed', 'admin_notes',
             'created_at', 'created_at_ist', 'updated_at',
             'is_overdue', 'schedule_status', 'schedule_alert_message',
@@ -237,7 +237,7 @@ class PhoneSaleListSerializer(serializers.ModelSerializer):
             'assigned_agent', 'assigned_agent_name',
             'pickup_address', 'pickup_city', 'pickup_pincode', 'pickup_date', 'pickup_slot',
             'beneficiary_type', 'beneficiary_name', 'beneficiary_upi_id',
-            'beneficiary_account_no', 'beneficiary_ifsc',
+            'beneficiary_account_no', 'beneficiary_ifsc', 'cash_handover_otp',
             'imei_number', 'customer_handover_signed', 'admin_notes',
             'answers',
             'has_inspection', 'has_payment', 'payment', 'created_at', 'created_at_ist', 'updated_at',
@@ -316,7 +316,7 @@ class PhoneSaleCreateSerializer(serializers.Serializer):
     pickup_pincode = serializers.CharField(max_length=10)
     pickup_date = serializers.DateField(required=False, allow_null=True)
     pickup_slot = serializers.CharField(max_length=50, default='Morning (10:00 AM - 1:00 PM)')
-    beneficiary_type = serializers.ChoiceField(choices=['UPI', 'BANK'], default='UPI')
+    beneficiary_type = serializers.ChoiceField(choices=['UPI', 'BANK', 'CASH'], default='UPI')
     beneficiary_name = serializers.CharField(max_length=150)
     beneficiary_upi_id = serializers.CharField(max_length=100, required=False, allow_blank=True)
     beneficiary_account_no = serializers.CharField(max_length=50, required=False, allow_blank=True)

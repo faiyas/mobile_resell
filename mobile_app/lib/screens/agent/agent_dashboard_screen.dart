@@ -234,6 +234,110 @@ class _AgentDashboardScreenState extends State<AgentDashboardScreen> with Single
   }
 
   Future<void> _handleMarkCollected(SaleOrderModel order) async {
+    final isCash = order.beneficiaryType == 'CASH';
+
+    if (isCash) {
+      // Prompt agent for Customer Cash Handover OTP
+      final otpCtrl = TextEditingController();
+      final finalAmount = order.finalPrice ?? order.estimatedPrice;
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: Colors.green.shade50, borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.payments_rounded, color: AppTheme.primaryGreen, size: 22),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text('Doorstep Cash Handover', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hand over ₹${finalAmount.toStringAsFixed(0)} in cash to customer.',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.darkGreen),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Ask the customer for the 4-digit Cash Handover OTP displayed on their Dolly tracking screen:',
+                style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: otpCtrl,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, letterSpacing: 6, color: AppTheme.primaryGreen),
+                decoration: InputDecoration(
+                  hintText: 'e.g. 7492',
+                  counterText: '',
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryGreen,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () {
+                if (otpCtrl.text.trim().length >= 4) {
+                  Navigator.pop(ctx, true);
+                }
+              },
+              child: const Text('Verify OTP & Pay Cash', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+
+      try {
+        final res = await _api.markDeviceCollected(order.id, cashOtp: otpCtrl.text.trim());
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['message'] ?? '✓ Cash handover verified! Order marked as PAID.'),
+            backgroundColor: AppTheme.darkGreen,
+            duration: const Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        _loadAgentData();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.redAccent,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Standard UPI/Bank order (device collected, unlocked for super admin)
     try {
       await _api.markDeviceCollected(order.id);
       if (!mounted) return;

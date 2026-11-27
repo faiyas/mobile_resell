@@ -19,9 +19,10 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
   
   // Form fields
   const [amount, setAmount] = useState(sale.final_price || sale.estimated_price);
-  const [paymentMethod, setPaymentMethod] = useState('GPAY');
+  const [paymentMethod, setPaymentMethod] = useState(sale.beneficiary_type === 'CASH' ? 'CASH' : 'GPAY');
   const [utrNumber, setUtrNumber] = useState('');
   const [proofBase64, setProofBase64] = useState('');
+  const [cashOtp, setCashOtp] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
   
   const [loading, setLoading] = useState(false);
@@ -36,6 +37,9 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
           setSaleDetail(full);
           if (full.final_price || full.estimated_price) {
             setAmount(full.final_price || full.estimated_price);
+          }
+          if (full.beneficiary_type === 'CASH') {
+            setPaymentMethod('CASH');
           }
         }
       } catch (e) {
@@ -88,14 +92,23 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!utrNumber.trim()) {
-      setErrorMsg('Please enter the 12-digit UTR / Bank Reference number.');
-      return;
-    }
+    const isCash = paymentMethod === 'CASH';
 
-    if (!proofBase64) {
-      setErrorMsg('Please upload the payment confirmation screenshot from your payment app.');
-      return;
+    if (isCash) {
+      if (!cashOtp.trim()) {
+        setErrorMsg('Please ask customer for the 4-digit Cash Handover OTP from their tracking screen.');
+        return;
+      }
+    } else {
+      if (!utrNumber.trim()) {
+        setErrorMsg('Please enter the 12-digit UTR / Bank Reference number.');
+        return;
+      }
+
+      if (!proofBase64) {
+        setErrorMsg('Please upload the payment confirmation screenshot from your payment app.');
+        return;
+      }
     }
 
     setLoading(true);
@@ -104,8 +117,9 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
         sale_id: sale.id,
         amount: amount,
         payment_method: paymentMethod,
-        utr_number: utrNumber.trim(),
-        payment_proof_base64: proofBase64,
+        utr_number: isCash ? `CASH-OTP-${sale.sale_code.replace('PHN-', '')}` : utrNumber.trim(),
+        payment_proof_base64: isCash ? 'CASH_HANDOVER_VERIFIED_VIA_CUSTOMER_OTP' : proofBase64,
+        cash_otp: cashOtp.trim(),
         admin_notes: adminNotes,
       };
 
@@ -336,7 +350,7 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 font-semibold"
                 >
                   <option value="GPAY">Google Pay (UPI)</option>
                   <option value="PHONEPE">PhonePe (UPI)</option>
@@ -347,58 +361,90 @@ export default function PayoutModal({ sale, onClose, onPayoutSuccess }) {
                 </select>
               </div>
 
+              {paymentMethod === 'CASH' ? (
+                <div>
+                  <label className="block text-xs font-bold text-emerald-800 mb-1">
+                    Customer Cash Handover OTP *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    value={cashOtp}
+                    onChange={(e) => setCashOtp(e.target.value)}
+                    placeholder="e.g. 7492"
+                    className="w-full px-3 py-2 border-2 border-emerald-500 rounded-xl text-base font-mono font-bold tracking-widest text-emerald-700 bg-emerald-50/50 focus:ring-2 focus:ring-emerald-500 text-center"
+                  />
+                  <span className="text-[10px] text-emerald-600 mt-0.5 block font-medium">
+                    Ask customer for the 4-digit code shown on their tracking screen.
+                  </span>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    12-Digit UPI Ref / UTR Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={utrNumber}
+                    onChange={(e) => setUtrNumber(e.target.value)}
+                    placeholder="e.g. 432109876543"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono uppercase focus:ring-2 focus:ring-emerald-500"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">
+                    Enforces uniqueness to prevent double payouts.
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Base64 Payment Screenshot Upload - Only shown for Bank/UPI transfers */}
+            {paymentMethod !== 'CASH' ? (
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  12-Digit UPI Ref / UTR Number *
+                  Upload Payment Screenshot (Converted to Base64) *
                 </label>
-                <input
-                  type="text"
-                  required
-                  value={utrNumber}
-                  onChange={(e) => setUtrNumber(e.target.value)}
-                  placeholder="e.g. 432109876543"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono uppercase focus:ring-2 focus:ring-emerald-500"
-                />
-                <span className="text-[10px] text-slate-400 mt-0.5 block">
-                  Enforces uniqueness to prevent double payouts.
-                </span>
+
+                <div className="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center hover:border-emerald-500 transition cursor-pointer relative bg-slate-50">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+
+                  {proofBase64 ? (
+                    <div className="flex flex-col items-center">
+                      <img 
+                        src={proofBase64} 
+                        alt="Proof Preview" 
+                        className="max-h-40 rounded-lg shadow-sm border border-slate-300 object-contain" 
+                      />
+                      <span className="text-emerald-700 font-bold text-xs mt-2 flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" /> Screenshot loaded and converted to Base64 (Click to replace)
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="py-4 space-y-1">
+                      <FileImage className="w-8 h-8 text-slate-400 mx-auto" />
+                      <p className="font-bold text-slate-700">Click to upload GPay / PhonePe / Bank transfer receipt</p>
+                      <p className="text-[11px] text-slate-400">PNG, JPG, or Screenshot · Automatically compressed & encoded to Base64</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-
-            {/* Base64 Payment Screenshot Upload */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Upload Payment Screenshot (Converted to Base64) *
-              </label>
-
-              <div className="border-2 border-dashed border-slate-300 rounded-2xl p-4 text-center hover:border-emerald-500 transition cursor-pointer relative bg-slate-50">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                />
-
-                {proofBase64 ? (
-                  <div className="flex flex-col items-center">
-                    <img 
-                      src={proofBase64} 
-                      alt="Proof Preview" 
-                      className="max-h-40 rounded-lg shadow-sm border border-slate-300 object-contain" 
-                    />
-                    <span className="text-emerald-700 font-bold text-xs mt-2 flex items-center gap-1">
-                      <Check className="w-3.5 h-3.5" /> Screenshot loaded and converted to Base64 (Click to replace)
-                    </span>
-                  </div>
-                ) : (
-                  <div className="py-4 space-y-1">
-                    <FileImage className="w-8 h-8 text-slate-400 mx-auto" />
-                    <p className="font-bold text-slate-700">Click to upload GPay / PhonePe / Bank transfer receipt</p>
-                    <p className="text-[11px] text-slate-400">PNG, JPG, or Screenshot · Automatically compressed & encoded to Base64</p>
-                  </div>
-                )}
+            ) : (
+              <div className="bg-emerald-50/70 border border-emerald-200 rounded-2xl p-3.5 flex items-start gap-2.5">
+                <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-emerald-800">
+                  <p className="font-bold">No receipt screenshot required for Cash Payouts</p>
+                  <p className="text-emerald-600 text-[11px] mt-0.5">
+                    Customer provides their in-app OTP once they verify the physical cash handover. Entering the matching OTP authenticates and completes the transaction instantly.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Admin Notes (Optional)</label>

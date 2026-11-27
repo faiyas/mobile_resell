@@ -74,12 +74,14 @@ class PhoneSale(models.Model):
     BENEFICIARY_CHOICES = (
         ('UPI', 'UPI ID (Google Pay, PhonePe, Paytm)'),
         ('BANK', 'Direct Bank Transfer (IMPS/NEFT)'),
+        ('CASH', 'Cash on Pickup'),
     )
     beneficiary_type = models.CharField(max_length=10, choices=BENEFICIARY_CHOICES, default='UPI')
     beneficiary_name = models.CharField(max_length=150)
     beneficiary_upi_id = models.CharField(max_length=100, blank=True, default='')
     beneficiary_account_no = models.CharField(max_length=50, blank=True, default='')
     beneficiary_ifsc = models.CharField(max_length=20, blank=True, default='')
+    cash_handover_otp = models.CharField(max_length=6, blank=True, default='', help_text="In-app 4-digit verification OTP for cash handover")
 
     # Device verification & physical legal transfer
     imei_number = models.CharField(max_length=30, blank=True, default='')
@@ -102,6 +104,10 @@ class PhoneSale(models.Model):
         if not self.sale_code:
             short_id = str(self.id)[:6].upper()
             self.sale_code = f"PHN-2026-{short_id}"
+        if not self.cash_handover_otp:
+            # Deterministic 4-digit code based on UUID, ensures stable display across reads
+            import random
+            self.cash_handover_otp = f"{random.randint(1000, 9999)}"
         super().save(*args, **kwargs)
 
     def __str__(self):

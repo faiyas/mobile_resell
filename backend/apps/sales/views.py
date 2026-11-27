@@ -354,7 +354,13 @@ def accept_final_offer_view(request, pk):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def mark_device_collected_view(request, pk):
-    """Agent records physical device collection after customer confirmed offer"""
+    """
+    Agent records physical device collection after customer confirmed offer.
+    If payment method is CASH:
+      - Validates customer cash handover OTP.
+      - Automatically marks payment completed on doorstep (NO payout needed to send to Admin).
+      - Creates Payment record under CASH with verified OTP reference.
+    """
     if not getattr(request.user, 'is_staff_role', False):
         return Response({'detail': 'Staff access required'}, status=status.HTTP_403_FORBIDDEN)
 
@@ -367,17 +373,63 @@ def mark_device_collected_view(request, pk):
 
     now_ist = timezone.now().astimezone(IST)
     agent_name = getattr(request.user, 'full_name', '') or request.user.username
-    sale.status = 'OWNERSHIP_TRANSFERRED'
-    sale.customer_handover_signed = True
-    audit = f"[{now_ist.strftime('%d %b, %I:%M %p')}] Physical device collected by agent {agent_name}. Device in company custody. Unlocked for Super Admin payout release."
-    sale.admin_notes = (sale.admin_notes + '\n' + audit).strip() if sale.admin_notes else audit
-    sale.save()
+    is_cash = sale.beneficiary_type == 'CASH'
 
-    return Response({
-        'message': 'Device successfully collected! Ready for Super Admin payout release.',
-        'status': sale.status,
-        'sale': PhoneSaleDetailSerializer(sale).data
-    })
+    if is_cash:
+        submitted_otp = (request.data.get('cash_otp') or '').strip()
+        expected_otp = (sale.cash_handover_otp or '').strip()
+        if not submitted_otp:
+            return Response({'detail': 'Customer Cash Handover OTP is required to verify doorstep cash handover.'}, status=status.HTTP_400_BAD_REQUEST)
+        if expected_otp and submitted_otp != expected_otp:
+            return Response({'detail': 'Invalid OTP. Ask customer for the 4-digit code shown on their tracking screen.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Mark cash payment completed and order closed on doorstep
+        from apps.payments.models import Payment
+        final_amt = sale.final_price or sale.estimated_price
+
+        with transaction.atomic():
+            payment, _ = Payment.objects.get_or_create(
+                sale=sale,
+                defaults={
+                    'amount': final_amt,
+                    'payment_method': 'CASH',
+                    'beneficiary_name': sale.beneficiary_name or sale.customer_name,
+                    'utr_number': f"CASH-AGENT-OTP-{sale.sale_code.replace('PHN-', '')}",
+                    'payment_proof_base64': 'DOORSTEP_CASH_PAID_VERIFIED_VIA_CUSTOMER_OTP',
+                    'admin_notes': f"Cash handed over at doorstep by field agent {agent_name} with customer OTP verification.",
+                    'paid_by': request.user,
+                    'is_verified': True,
+                }
+            )
+
+            sale.status = 'PAYMENT_COMPLETED'
+            sale.customer_handover_signed = True
+            if not sale.final_price:
+                sale.final_price = final_amt
+            audit = f"[{now_ist.strftime('%d %b, %I:%M %p')}] Physical device collected & cash paid ₹{final_amt} at doorstep by agent {agent_name} (OTP Verified: {submitted_otp}). Bypassed Super Admin payout desk."
+            sale.admin_notes = (sale.admin_notes + '\n' + audit).strip() if sale.admin_notes else audit
+            sale.save()
+
+        return Response({
+            'message': 'Cash handover verified! Order marked as PAID and COMPLETED.',
+            'status': sale.status,
+            'is_cash_settled': True,
+            'sale': PhoneSaleDetailSerializer(sale).data
+        })
+    else:
+        # Standard UPI / Bank Transfer handover -> Goes to Super Admin Payout Desk
+        sale.status = 'OWNERSHIP_TRANSFERRED'
+        sale.customer_handover_signed = True
+        audit = f"[{now_ist.strftime('%d %b, %I:%M %p')}] Physical device collected by agent {agent_name}. Device in company custody. Unlocked for Super Admin payout release."
+        sale.admin_notes = (sale.admin_notes + '\n' + audit).strip() if sale.admin_notes else audit
+        sale.save()
+
+        return Response({
+            'message': 'Device successfully collected! Unlocked for Super Admin online payout release.',
+            'status': sale.status,
+            'is_cash_settled': False,
+            'sale': PhoneSaleDetailSerializer(sale).data
+        })
 
 @api_view(['POST'])
 @permission_classes([AllowAny])

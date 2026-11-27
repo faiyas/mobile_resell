@@ -116,17 +116,28 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
     }
   }
 
-  Future<void> _handleConfirmPayout(SaleOrderModel order, String utr) async {
+  Future<void> _handleConfirmPayout(SaleOrderModel order, String codeOrUtr) async {
+    final isCash = order.beneficiaryType == 'CASH';
     try {
-      await _api.recordPayment(order.id, {
-        'utr': utr,
-        'method': 'UPI',
+      final payload = <String, dynamic>{
         'amount': order.finalPrice ?? order.estimatedPrice,
-      });
+        'payment_method': isCash ? 'CASH' : 'GPAY',
+      };
+      if (isCash) {
+        payload['cash_otp'] = codeOrUtr;
+      } else {
+        payload['utr_number'] = codeOrUtr;
+        payload['payment_proof_base64'] = 'ADMIN_APP_MANUAL_UTR_ENTRY';
+      }
+
+      await _api.recordPayment(order.id, payload);
       _loadAllAdminData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Order payout recorded with UTR $utr'), backgroundColor: AppTheme.darkGreen),
+          SnackBar(
+            content: Text(isCash ? 'Cash payout verified via Customer OTP!' : 'Order payout recorded with UTR $codeOrUtr'),
+            backgroundColor: AppTheme.darkGreen,
+          ),
         );
       }
     } catch (e) {

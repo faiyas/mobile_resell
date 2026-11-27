@@ -135,6 +135,8 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
   const [modelsPageSize, setModelsPageSize] = useState(24);
   const [modelsTotalCount, setModelsTotalCount] = useState(0);
   const [modelsTotalPages, setModelsTotalPages] = useState(1);
+  const [variantsPage, setVariantsPage] = useState(1);
+  const [variantsPageSize, setVariantsPageSize] = useState(25);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBrandId, setFilterBrandId] = useState('');
   const [filterSeriesId, setFilterSeriesId] = useState('');
@@ -2801,6 +2803,9 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             });
 
             const hasActiveFilters = Boolean(filterBrandId || filterSeriesId || filterModelId || variantSearch);
+            const totalVariantPages = Math.max(1, Math.ceil(filteredVariants.length / variantsPageSize));
+            const safeVariantPage = Math.min(variantsPage, totalVariantPages);
+            const paginatedVariants = filteredVariants.slice((safeVariantPage - 1) * variantsPageSize, safeVariantPage * variantsPageSize);
 
             return (
               <>
@@ -2885,7 +2890,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                             </td>
                           </tr>
                         ) : (
-                          filteredVariants.map((v) => (
+                          paginatedVariants.map((v) => (
                             <tr key={v.id} className={`hover:bg-slate-50 transition ${selectedIds.includes(v.id) ? 'bg-emerald-50/40' : ''}`}>
                               <td className="py-3 px-4">
                                 <input
@@ -2939,6 +2944,75 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Pagination Bar for Storage Variants */}
+                  {filteredVariants.length > 0 && (
+                    <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                      <div className="flex items-center gap-2 text-slate-500 font-medium">
+                        <span>Showing</span>
+                        <select
+                          value={variantsPageSize}
+                          onChange={(e) => {
+                            setVariantsPageSize(Number(e.target.value));
+                            setVariantsPage(1);
+                          }}
+                          className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 focus:ring-1 focus:ring-emerald-500"
+                        >
+                          <option value={15}>15</option>
+                          <option value={25}>25</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
+                        </select>
+                        <span>per page · {filteredVariants.length} total variants</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setVariantsPage(prev => Math.max(prev - 1, 1))}
+                          disabled={safeVariantPage <= 1}
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-bold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                        >
+                          ‹ Prev
+                        </button>
+
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: Math.min(5, totalVariantPages) }, (_, i) => {
+                            let pNum;
+                            if (totalVariantPages <= 5) {
+                              pNum = i + 1;
+                            } else if (safeVariantPage <= 3) {
+                              pNum = i + 1;
+                            } else if (safeVariantPage >= totalVariantPages - 2) {
+                              pNum = totalVariantPages - 4 + i;
+                            } else {
+                              pNum = safeVariantPage - 2 + i;
+                            }
+                            return (
+                              <button
+                                key={pNum}
+                                onClick={() => setVariantsPage(pNum)}
+                                className={`w-7 h-7 rounded-lg text-xs font-bold transition ${
+                                  safeVariantPage === pNum
+                                    ? 'bg-[#0BAA4B] text-white shadow-xs'
+                                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                                }`}
+                              >
+                                {pNum}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          onClick={() => setVariantsPage(prev => Math.min(prev + 1, totalVariantPages))}
+                          disabled={safeVariantPage >= totalVariantPages}
+                          className="px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 font-bold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                        >
+                          Next ›
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </>
             );

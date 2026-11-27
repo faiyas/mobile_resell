@@ -10,6 +10,31 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
+  /// User-friendly error message transformer
+  static String formatErrorMessage(dynamic error) {
+    final str = error.toString();
+    if (str.contains('FormatException') || 
+        str.contains('Unexpected character') ||
+        str.contains('sandbox service') ||
+        str.contains('SocketException') ||
+        str.contains('ClientException') ||
+        str.contains('Connection refused') ||
+        str.contains('502') ||
+        str.contains('503')) {
+      return 'Unable to reach the server. Please check your connection or contact the Admin.';
+    }
+    return str.replaceFirst(RegExp(r'^(Exception:\s*|Error:\s*)'), '');
+  }
+
+  /// Safe JSON decode that catches HTML/plain text server disconnect errors cleanly
+  static dynamic safeDecode(String body) {
+    try {
+      return jsonDecode(body);
+    } catch (_) {
+      throw Exception('Unable to reach the server. Please check your connection or contact the Admin.');
+    }
+  }
+
   String? _token;
   UserModel? _currentUser;
 
@@ -870,14 +895,26 @@ class ApiService {
     return null;
   }
 
-  Future<Map<String, dynamic>> markDeviceCollected(dynamic saleId) async {
+  Future<Map<String, dynamic>> markDeviceCollected(dynamic saleId, {String? cashOtp}) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/mark-collected/');
-    final res = await http.post(url, headers: _headers);
-    if (res.statusCode == 200) {
-      return jsonDecode(res.body);
-    } else {
-      final err = jsonDecode(res.body);
-      throw Exception(err['detail'] ?? 'Failed to mark device as collected');
+    final payload = <String, dynamic>{};
+    if (cashOtp != null && cashOtp.trim().isNotEmpty) {
+      payload['cash_otp'] = cashOtp.trim();
+    }
+    try {
+      final res = await http.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(payload),
+      );
+      final data = safeDecode(res.body);
+      if (res.statusCode == 200) {
+        return Map<String, dynamic>.from(data as Map);
+      } else {
+        throw Exception(data['detail'] ?? 'Failed to mark device as collected');
+      }
+    } catch (e) {
+      throw Exception(formatErrorMessage(e));
     }
   }
 
@@ -905,23 +942,31 @@ class ApiService {
 
   Future<Map<String, dynamic>> acceptFinalOffer(dynamic saleId) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/accept-offer/');
-    final res = await http.post(url, headers: _headers);
-    if (res.statusCode == 200) {
-      return jsonDecode(res.body);
-    } else {
-      final err = jsonDecode(res.body);
-      throw Exception(err['detail'] ?? 'Failed to accept offer');
+    try {
+      final res = await http.post(url, headers: _headers);
+      final data = safeDecode(res.body);
+      if (res.statusCode == 200) {
+        return Map<String, dynamic>.from(data as Map);
+      } else {
+        throw Exception(data['detail'] ?? 'Failed to accept offer');
+      }
+    } catch (e) {
+      throw Exception(formatErrorMessage(e));
     }
   }
 
   Future<Map<String, dynamic>> rejectFinalOffer(dynamic saleId) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/sales/$saleId/reject-offer/');
-    final res = await http.post(url, headers: _headers);
-    if (res.statusCode == 200) {
-      return jsonDecode(res.body);
-    } else {
-      final err = jsonDecode(res.body);
-      throw Exception(err['detail'] ?? 'Failed to reject offer');
+    try {
+      final res = await http.post(url, headers: _headers);
+      final data = safeDecode(res.body);
+      if (res.statusCode == 200) {
+        return Map<String, dynamic>.from(data as Map);
+      } else {
+        throw Exception(data['detail'] ?? 'Failed to reject offer');
+      }
+    } catch (e) {
+      throw Exception(formatErrorMessage(e));
     }
   }
 
@@ -965,17 +1010,21 @@ class ApiService {
 
   Future<Map<String, dynamic>> recordPayout(Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/payments/record-payout/');
-    final res = await http.post(
-      url,
-      headers: _headers,
-      body: jsonEncode(payload),
-    );
+    try {
+      final res = await http.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(payload),
+      );
 
-    if (res.statusCode == 201) {
-      return jsonDecode(res.body);
-    } else {
-      final err = jsonDecode(res.body);
-      throw Exception(err['detail'] ?? 'Failed to record payout');
+      final data = safeDecode(res.body);
+      if (res.statusCode == 201) {
+        return Map<String, dynamic>.from(data as Map);
+      } else {
+        throw Exception(data['detail'] ?? 'Failed to record payout');
+      }
+    } catch (e) {
+      throw Exception(formatErrorMessage(e));
     }
   }
 

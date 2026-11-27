@@ -1307,14 +1307,6 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                     fillColor: Colors.grey.shade50,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  onChanged: (val) {
-                    final bVal = double.tryParse(val) ?? 0.0;
-                    if (bVal > 0) {
-                      setModalState(() {
-                        mintController.text = (bVal * 1.15).toStringAsFixed(0);
-                      });
-                    }
-                  },
                 ),
                 const SizedBox(height: 16),
                 Row(

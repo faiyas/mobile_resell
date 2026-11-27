@@ -79,17 +79,39 @@ def record_payout_view(request):
     if hasattr(sale, 'payment'):
         return Response({'detail': f'Sale {sale.sale_code} has already been paid (UTR: {sale.payment.utr_number})!'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Cash on pickup OTP validation
+    is_cash = data.get('payment_method') == 'CASH'
+    utr_to_save = data.get('utr_number', '').strip()
+    proof_to_save = data.get('payment_proof_base64', '').strip()
+
+    if is_cash:
+        submitted_otp = data.get('cash_otp', '').strip()
+        expected_otp = (sale.cash_handover_otp or '').strip()
+        if not submitted_otp:
+            return Response({'detail': 'Customer Cash Handover OTP is required for cash payouts.'}, status=status.HTTP_400_BAD_REQUEST)
+        if expected_otp and submitted_otp != expected_otp:
+            return Response({'detail': 'Invalid Cash Handover OTP. Ask customer for the 4-digit code shown on their tracking screen.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not utr_to_save:
+            utr_to_save = f"CASH-OTP-{sale.sale_code.replace('PHN-', '')}"
+        if not proof_to_save:
+            proof_to_save = "CASH_HANDOVER_VERIFIED_VIA_CUSTOMER_OTP"
+    else:
+        if not utr_to_save:
+            return Response({'detail': '12-digit UTR number is required for bank/UPI payouts.'}, status=status.HTTP_400_BAD_REQUEST)
+        if not proof_to_save:
+            return Response({'detail': 'Payment screenshot proof is required for bank/UPI payouts.'}, status=status.HTTP_400_BAD_REQUEST)
+
     with transaction.atomic():
         payment = Payment.objects.create(
             sale=sale,
             amount=data['amount'],
             payment_method=data['payment_method'],
-            beneficiary_name=sale.beneficiary_name,
+            beneficiary_name=sale.beneficiary_name or sale.customer_name,
             beneficiary_upi_id=sale.beneficiary_upi_id,
             beneficiary_account_no=sale.beneficiary_account_no,
             beneficiary_ifsc=sale.beneficiary_ifsc,
-            utr_number=data['utr_number'],
-            payment_proof_base64=data['payment_proof_base64'],
+            utr_number=utr_to_save,
+            payment_proof_base64=proof_to_save,
             admin_notes=data.get('admin_notes', ''),
             paid_by=request.user,
             is_verified=True,
