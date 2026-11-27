@@ -196,6 +196,34 @@ def models_list_view(request):
         if series_id:
             queryset = queryset.filter(series_id=series_id)
 
+        search_query = request.GET.get('search')
+        if search_query:
+            queryset = queryset.filter(name__icontains=search_query)
+
+        # Pagination support (10 per page)
+        from django.core.paginator import Paginator, EmptyPage
+        page = request.GET.get('page')
+        page_size = int(request.GET.get('page_size', 10))
+        show_all = request.GET.get('all', 'false').lower() == 'true'
+
+        if not show_all and (page or not brand_id or is_admin_user(request.user)):
+            page_num = int(page) if page and str(page).isdigit() else 1
+            paginator = Paginator(queryset.order_by('name'), page_size)
+            try:
+                page_obj = paginator.page(page_num)
+            except EmptyPage:
+                page_obj = []
+            serializer = PhoneModelSerializer(page_obj, many=True)
+            return Response({
+                'count': paginator.count,
+                'total_pages': paginator.num_pages,
+                'current_page': page_num,
+                'page_size': page_size,
+                'has_next': page_obj.has_next() if hasattr(page_obj, 'has_next') else False,
+                'has_previous': page_obj.has_previous() if hasattr(page_obj, 'has_previous') else False,
+                'results': serializer.data
+            })
+
         serializer = PhoneModelSerializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -249,6 +277,26 @@ def variants_list_create_view(request):
 
         if model_id:
             queryset = queryset.filter(model_id=model_id)
+
+        page = request.GET.get('page')
+        page_size = int(request.GET.get('page_size', 10))
+        paginate = request.GET.get('paginate', 'false').lower() == 'true'
+
+        if paginate or (page and str(page).isdigit()):
+            from django.core.paginator import Paginator, EmptyPage
+            page_num = int(page) if page and str(page).isdigit() else 1
+            paginator = Paginator(queryset.order_by('id'), page_size)
+            try:
+                page_obj = paginator.page(page_num)
+            except EmptyPage:
+                page_obj = []
+            return Response({
+                'count': paginator.count,
+                'total_pages': paginator.num_pages,
+                'current_page': page_num,
+                'page_size': page_size,
+                'results': StorageVariantSerializer(page_obj, many=True).data
+            })
 
         serializer = StorageVariantSerializer(queryset, many=True)
         return Response(serializer.data)

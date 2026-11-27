@@ -82,11 +82,47 @@ def sales_list_create_view(request):
         if status_filter:
             queryset = queryset.filter(status=status_filter)
 
+        search_query = request.GET.get('search')
+        if search_query:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(sale_code__icontains=search_query) |
+                Q(customer_name__icontains=search_query) |
+                Q(customer_phone__icontains=search_query) |
+                Q(variant__model__name__icontains=search_query)
+            )
+
+        queryset = queryset.order_by('-created_at')
+
+        # Pagination support (10 per page default)
+        from django.core.paginator import Paginator, EmptyPage
+        page = request.GET.get('page')
+        page_size = int(request.GET.get('page_size', 10))
+        show_all = request.GET.get('all', 'false').lower() == 'true'
+
         is_full = request.GET.get('full', 'false').lower() == 'true'
-        if is_full:
-            serializer = PhoneSaleDetailSerializer(queryset, many=True, context={'request': request})
-        else:
-            serializer = PhoneSaleListSerializer(queryset, many=True, context={'request': request})
+        SerializerClass = PhoneSaleDetailSerializer if is_full else PhoneSaleListSerializer
+
+        if not show_all and (page or getattr(user, 'is_staff_role', False)):
+            page_num = int(page) if page and str(page).isdigit() else 1
+            paginator = Paginator(queryset, page_size)
+            try:
+                page_obj = paginator.page(page_num)
+            except EmptyPage:
+                page_obj = []
+
+            serializer = SerializerClass(page_obj, many=True, context={'request': request})
+            return Response({
+                'count': paginator.count,
+                'total_pages': paginator.num_pages,
+                'current_page': page_num,
+                'page_size': page_size,
+                'has_next': page_obj.has_next() if hasattr(page_obj, 'has_next') else False,
+                'has_previous': page_obj.has_previous() if hasattr(page_obj, 'has_previous') else False,
+                'results': serializer.data
+            })
+
+        serializer = SerializerClass(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
     elif request.method == 'POST':

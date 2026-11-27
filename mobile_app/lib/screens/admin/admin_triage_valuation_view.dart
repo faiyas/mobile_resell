@@ -732,160 +732,188 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
 
   // TAB 1: TRIAGE GATES
   Widget _buildTriageTab() {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppTheme.primaryGreen,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text('Add Gate Question', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        onPressed: () => _showTriageQuestionModal(),
-      ),
-      body: _triageQuestions.isEmpty
-          ? const Center(child: Text('No triage questions configured'))
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-              itemCount: _triageQuestions.length,
-              itemBuilder: (ctx, idx) {
-                final q = _triageQuestions[idx];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: GlassContainer(
-                    borderRadius: 18,
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: Colors.white,
+          child: Row(
+            children: [
+              const Text('Pre-Qualification Gates', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+              const Spacer(),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Gate Question', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                onPressed: () => _showTriageQuestionModal(),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: _triageQuestions.isEmpty
+              ? const Center(child: Text('No triage questions configured'))
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                  itemCount: _triageQuestions.length,
+                  itemBuilder: (ctx, idx) {
+                    final q = _triageQuestions[idx];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: GlassContainer(
+                        borderRadius: 18,
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(6)),
-                              child: Text('Gate #${q.displayOrder}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppTheme.darkGreen)),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(6)),
+                                  child: Text('Gate #${q.displayOrder}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppTheme.darkGreen)),
+                                ),
+                                if (q.isPowerOnGate) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(6)),
+                                    child: const Text('POWER-ON GATE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: Colors.red)),
+                                  ),
+                                ],
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: q.deductionValueOnNo > 30 ? Colors.red.shade50 : Colors.amber.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'No: -${q.deductionValueOnNo.toStringAsFixed(0)}%',
+                                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: q.deductionValueOnNo > 30 ? Colors.red.shade700 : Colors.amber.shade900),
+                                  ),
+                                ),
+                                IconButton(icon: const Icon(Icons.edit, size: 18, color: AppTheme.textSecondary), onPressed: () => _showTriageQuestionModal(q)),
+                                IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red), onPressed: () => _confirmDeleteTriage(q)),
+                              ],
                             ),
-                            if (q.isPowerOnGate) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(6)),
-                                child: const Text('POWER-ON GATE', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: Colors.red)),
+                            const SizedBox(height: 8),
+                            Text(q.questionText, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
+                            if (q.subtitle.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(q.subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                               ),
-                            ],
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: q.deductionValueOnNo > 30 ? Colors.red.shade50 : Colors.amber.shade50,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                'No: -${q.deductionValueOnNo.toStringAsFixed(0)}%',
-                                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: q.deductionValueOnNo > 30 ? Colors.red.shade700 : Colors.amber.shade900),
-                              ),
-                            ),
-                            IconButton(icon: const Icon(Icons.edit, size: 18, color: AppTheme.textSecondary), onPressed: () => _showTriageQuestionModal(q)),
-                            IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red), onPressed: () => _confirmDeleteTriage(q)),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(q.questionText, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14)),
-                        if (q.subtitle.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(q.subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
   // TAB 2: QUESTIONNAIRE STEPS
   Widget _buildStepsTab() {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'cloneBtn',
-            backgroundColor: Colors.purple,
-            foregroundColor: Colors.white,
-            tooltip: 'Clone from Brand',
-            onPressed: _showCloneModal,
-            child: const Icon(Icons.copy_rounded, size: 18),
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: Colors.white,
+          child: Row(
+            children: [
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: const Icon(Icons.copy_rounded, size: 14),
+                label: const Text('Clone Steps', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                onPressed: _showCloneModal,
+              ),
+              const Spacer(),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Add Step', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                onPressed: () => _showConditionStepModal(),
+              ),
+            ],
           ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            heroTag: 'addStepBtn',
-            backgroundColor: AppTheme.primaryGreen,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.add, size: 20),
-            label: const Text('Add Step', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-            onPressed: () => _showConditionStepModal(),
-          ),
-        ],
-      ),
-      body: _conditionSteps.isEmpty
-          ? const Center(child: Text('No questionnaire steps configured'))
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-              itemCount: _conditionSteps.length,
-              itemBuilder: (ctx, idx) {
-                final s = _conditionSteps[idx];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: GlassContainer(
-                    borderRadius: 18,
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+        ),
+        Expanded(
+          child: _conditionSteps.isEmpty
+              ? const Center(child: Text('No questionnaire steps configured'))
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                  itemCount: _conditionSteps.length,
+                  itemBuilder: (ctx, idx) {
+                    final s = _conditionSteps[idx];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      child: GlassContainer(
+                        borderRadius: 18,
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(6)),
-                              child: Text('Step #${s.stepNumber}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: Colors.blue)),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(6)),
+                                  child: Text('Step #${s.stepNumber}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: Colors.blue)),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
+                                  child: Text(s.selectionType, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: AppTheme.textSecondary)),
+                                ),
+                                if (s.brandName != null) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(6)),
+                                    child: Text(s.brandName!, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppTheme.darkGreen)),
+                                  ),
+                                ],
+                                const Spacer(),
+                                IconButton(icon: const Icon(Icons.edit, size: 18, color: AppTheme.textSecondary), onPressed: () => _showConditionStepModal(s)),
+                                IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red), onPressed: () => _confirmDeleteStep(s)),
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(6)),
-                              child: Text(s.selectionType, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: AppTheme.textSecondary)),
-                            ),
-                            if (s.brandName != null) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(color: AppTheme.lightGreen, borderRadius: BorderRadius.circular(6)),
-                                child: Text(s.brandName!, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 10, color: AppTheme.darkGreen)),
+                            const SizedBox(height: 8),
+                            Text(s.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                            if (s.subtitle.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(s.subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                               ),
-                            ],
-                            const Spacer(),
-                            IconButton(icon: const Icon(Icons.edit, size: 18, color: AppTheme.textSecondary), onPressed: () => _showConditionStepModal(s)),
-                            IconButton(icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red), onPressed: () => _confirmDeleteStep(s)),
+                            const SizedBox(height: 8),
+                            Text('${s.options.length} deduction rules linked', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        Text(s.name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-                        if (s.subtitle.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 2),
-                            child: Text(s.subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                          ),
-                        const SizedBox(height: 8),
-                        Text('${s.options.length} deduction rules linked', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 
@@ -894,7 +922,7 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
     return _conditionSteps.isEmpty
         ? const Center(child: Text('No steps configured'))
         : ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
             itemCount: _conditionSteps.length,
             itemBuilder: (ctx, idx) {
               final step = _conditionSteps[idx];

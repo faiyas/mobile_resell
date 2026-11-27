@@ -196,9 +196,14 @@ class ApiService {
     }
   }
 
-  Future<List<Map<String, dynamic>>> getCustomers([String search = '']) async {
-    final query = search.trim().isNotEmpty ? '?search=${Uri.encodeComponent(search.trim())}' : '';
-    final url = Uri.parse('${ApiConfig.baseUrl}/auth/customers/$query');
+  Future<List<Map<String, dynamic>>> getCustomers([String search = '', int? page, int? pageSize]) async {
+    final queryParams = <String, String>{};
+    if (search.trim().isNotEmpty) queryParams['search'] = search.trim();
+    if (page != null) queryParams['page'] = '$page';
+    if (pageSize != null) queryParams['page_size'] = '$pageSize';
+    final url = Uri.parse('${ApiConfig.baseUrl}/auth/customers/').replace(
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
     try {
       final res = await http.get(url, headers: _headers);
       if (res.statusCode == 200) {
@@ -448,40 +453,53 @@ class ApiService {
     return [];
   }
 
-  Future<List<PhoneModelItem>> getModels({int? brandId, int? seriesId, bool forceRefresh = false}) async {
-    if (!forceRefresh && _cachedModels != null && _cachedModels!.isNotEmpty) {
+  Future<List<PhoneModelItem>> getModels({int? brandId, int? seriesId, bool forceRefresh = false, int? page, int? pageSize, String? search}) async {
+    if (!forceRefresh && _cachedModels != null && _cachedModels!.isNotEmpty && page == null && search == null) {
       return _cachedModels!.where((m) {
         if (brandId != null && m.brandId != brandId) return false;
         if (seriesId != null && m.seriesId != seriesId) return false;
         return true;
       }).toList();
     }
-    var endpoint = '${ApiConfig.baseUrl}/catalog/models/?';
-    if (brandId != null) endpoint += 'brand=$brandId&';
-    if (seriesId != null) endpoint += 'series=$seriesId&';
-    final url = Uri.parse(endpoint);
+    final queryParams = <String, String>{};
+    if (brandId != null) queryParams['brand'] = '$brandId';
+    if (seriesId != null) queryParams['series'] = '$seriesId';
+    if (page != null) queryParams['page'] = '$page';
+    if (pageSize != null) queryParams['page_size'] = '$pageSize';
+    if (search != null && search.isNotEmpty) queryParams['search'] = search;
+
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/models/').replace(
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
-      final List list = jsonDecode(res.body);
+      final dynamic decoded = jsonDecode(res.body);
+      final List list = decoded is List ? decoded : (decoded is Map && decoded['results'] is List ? decoded['results'] : []);
       final items = list.map((item) => PhoneModelItem.fromJson(Map<String, dynamic>.from(item))).toList();
-      if (brandId == null && seriesId == null) _cachedModels = items;
+      if (brandId == null && seriesId == null && page == null && search == null) _cachedModels = items;
       return items;
     }
     return [];
   }
 
-  Future<List<StorageVariantModel>> getVariants(int modelId, {bool forceRefresh = false}) async {
-    if (!forceRefresh && _cachedModels != null && _cachedModels!.isNotEmpty) {
+  Future<List<StorageVariantModel>> getVariants(int modelId, {bool forceRefresh = false, int? page, int? pageSize}) async {
+    if (!forceRefresh && _cachedModels != null && _cachedModels!.isNotEmpty && page == null) {
       for (final m in _cachedModels!) {
         if (m.id == modelId && m.variants.isNotEmpty) {
           return m.variants;
         }
       }
     }
-    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/variants/?model=$modelId');
+    final queryParams = <String, String>{'model': '$modelId'};
+    if (page != null) queryParams['page'] = '$page';
+    if (pageSize != null) queryParams['page_size'] = '$pageSize';
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/variants/').replace(
+      queryParameters: queryParams,
+    );
     final res = await http.get(url, headers: _headers);
     if (res.statusCode == 200) {
-      final List list = jsonDecode(res.body);
+      final dynamic decoded = jsonDecode(res.body);
+      final List list = decoded is List ? decoded : (decoded is Map && decoded['results'] is List ? decoded['results'] : []);
       return list.map((item) => StorageVariantModel.fromJson(Map<String, dynamic>.from(item))).toList();
     }
     return [];
@@ -640,11 +658,13 @@ class ApiService {
     }
   }
 
-  Future<List<SaleOrderModel>> getSales({String? status, bool? pool, String? search}) async {
+  Future<List<SaleOrderModel>> getSales({String? status, bool? pool, String? search, int? page, int? pageSize}) async {
     final queryParams = <String, String>{};
     if (status != null && status.isNotEmpty) queryParams['status'] = status;
     if (pool == true) queryParams['pool'] = 'true';
     if (search != null && search.isNotEmpty) queryParams['search'] = search;
+    if (page != null) queryParams['page'] = '$page';
+    if (pageSize != null) queryParams['page_size'] = '$pageSize';
 
     final uri = Uri.parse('${ApiConfig.baseUrl}/sales/').replace(
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
@@ -652,19 +672,18 @@ class ApiService {
     final res = await http.get(uri, headers: _headers);
     if (res.statusCode == 200) {
       final dynamic raw = jsonDecode(res.body);
-      if (raw is List) {
-        final items = <SaleOrderModel>[];
-        for (final item in raw) {
-          try {
-            if (item is Map) {
-              items.add(SaleOrderModel.fromJson(Map<String, dynamic>.from(item)));
-            }
-          } catch (e) {
-            debugPrint('Error parsing sale order: $e');
+      final List list = raw is List ? raw : (raw is Map && raw['results'] is List ? raw['results'] : []);
+      final items = <SaleOrderModel>[];
+      for (final item in list) {
+        try {
+          if (item is Map) {
+            items.add(SaleOrderModel.fromJson(Map<String, dynamic>.from(item)));
           }
+        } catch (e) {
+          debugPrint('Error parsing sale order: $e');
         }
-        return items;
       }
+      return items;
     }
     return [];
   }

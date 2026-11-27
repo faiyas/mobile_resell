@@ -121,7 +121,7 @@ export const api = {
   adminResetAgentPassword: (id, newPassword) => request(`/auth/agents/${id}/reset-password/`, { method: 'POST', body: JSON.stringify({ new_password: newPassword }) }),
   deleteAgent: (id) => request(`/auth/agents/${id}/`, { method: 'DELETE' }),
   changePassword: (data) => request('/auth/change-password/', { method: 'POST', body: JSON.stringify(data) }),
-  getCustomers: (search = '') => request(`/auth/customers/${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  getCustomers: (search = '') => request(`/auth/customers/${search ? `?search=${encodeURIComponent(search)}` : ''}`).then(res => (res && Array.isArray(res.results)) ? res.results : res),
   createCustomer: (data) => request('/auth/customers/', { method: 'POST', body: JSON.stringify(data) }),
   updateCustomer: (id, data) => request(`/auth/customers/${id}/`, { method: 'PATCH', body: JSON.stringify(data) }),
   adminResetCustomerPassword: (id, newPassword) => request(`/auth/customers/${id}/reset-password/`, { method: 'POST', body: JSON.stringify({ new_password: newPassword }) }),
@@ -150,7 +150,7 @@ export const api = {
   deleteSeries: (id) => { clearCatalogCache(); return request(`/catalog/series/${id}/`, { method: 'DELETE' }); },
 
   getModels: (brandId, all = false, seriesId = null) => 
-    request(`/catalog/models/?${brandId ? `brand=${brandId}&` : ''}${seriesId ? `series=${seriesId}&` : ''}all=${all}`),
+    request(`/catalog/models/?${brandId ? `brand=${brandId}&` : ''}${seriesId ? `series=${seriesId}&` : ''}all=${all}`).then(res => (res && Array.isArray(res.results)) ? res.results : res),
   getModelDetail: (id) => request(`/catalog/models/${id}/`),
   createModel: (data) => { clearCatalogCache(); return request('/catalog/models/', { method: 'POST', body: JSON.stringify(data) }); },
   updateModel: (id, data) => { clearCatalogCache(); return request(`/catalog/models/${id}/`, { method: 'PUT', body: JSON.stringify(data) }); },
@@ -161,7 +161,7 @@ export const api = {
   getSystemSettings: () => request('/catalog/settings/'),
   updateSystemSettings: (data) => request('/catalog/settings/', { method: 'POST', body: JSON.stringify(data) }),
 
-  getVariants: (modelId, all = false) => request(`/catalog/variants/?${modelId ? `model=${modelId}&` : ''}all=${all}`),
+  getVariants: (modelId, all = false) => request(`/catalog/variants/?${modelId ? `model=${modelId}&` : ''}all=${all}`).then(res => (res && Array.isArray(res.results)) ? res.results : res),
   createVariant: (data) => request('/catalog/variants/', { method: 'POST', body: JSON.stringify(data) }),
   updateVariant: (id, data) => request(`/catalog/variants/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteVariant: (id) => request(`/catalog/variants/${id}/`, { method: 'DELETE' }),
@@ -210,7 +210,7 @@ export const api = {
   submitSale: (payload) => request('/sales/', { method: 'POST', body: JSON.stringify(payload) }),
   getSales: (params = {}) => {
     const query = new URLSearchParams(params).toString();
-    return request(`/sales/${query ? `?${query}` : ''}`);
+    return request(`/sales/${query ? `?${query}` : ''}`).then(res => (res && Array.isArray(res.results)) ? res.results : res);
   },
   getSaleDetail: (idOrCode) => request(`/sales/${idOrCode}/`),
   getSaleByCode: (code) => request(`/sales/${code}/`),

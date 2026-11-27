@@ -223,6 +223,30 @@ def customers_view(request):
             Q(city__icontains=search)
         )
     customers = customers.order_by('-created_at')
+
+    # Pagination support (10 per page default)
+    from django.core.paginator import Paginator, EmptyPage
+    page = request.GET.get('page')
+    page_size = int(request.GET.get('page_size', 10))
+    show_all = request.GET.get('all', 'false').lower() == 'true'
+
+    if not show_all and (page or is_admin_user(request.user)):
+        page_num = int(page) if page and str(page).isdigit() else 1
+        paginator = Paginator(customers, page_size)
+        try:
+            page_obj = paginator.page(page_num)
+        except EmptyPage:
+            page_obj = []
+        return Response({
+            'count': paginator.count,
+            'total_pages': paginator.num_pages,
+            'current_page': page_num,
+            'page_size': page_size,
+            'has_next': page_obj.has_next() if hasattr(page_obj, 'has_next') else False,
+            'has_previous': page_obj.has_previous() if hasattr(page_obj, 'has_previous') else False,
+            'results': UserSerializer(page_obj, many=True).data
+        })
+
     return Response(UserSerializer(customers, many=True).data)
 
 @api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
