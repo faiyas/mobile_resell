@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -30,28 +31,59 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
   bool _isLoadingModels = false;
   String _searchQuery = '';
 
+  int _currentPage = 1;
+  int _totalPages = 1;
+  int _totalCount = 0;
+  bool _hasNext = false;
+  bool _hasPrevious = false;
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchCtrl = TextEditingController();
+  Timer? _debounceTimer;
+
   @override
   void initState() {
     super.initState();
     if (widget.brands.isNotEmpty) {
       _selectedBrand = widget.brands.first;
-      _loadModels(widget.brands.first);
+      _loadModels(widget.brands.first, page: 1);
     }
   }
 
-  Future<void> _loadModels(BrandModel brand) async {
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _scrollController.dispose();
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadModels(BrandModel brand, {int page = 1, String? search}) async {
     setState(() {
       _selectedBrand = brand;
       _isLoadingModels = true;
-      _models = [];
+      _currentPage = page;
     });
     try {
-      final res = await _api.getModels(brandId: brand.id, forceRefresh: true);
+      final q = search ?? (_searchQuery.trim().isNotEmpty ? _searchQuery.trim() : null);
+      final res = await _api.getModelsPaginated(
+        brandId: brand.id,
+        page: page,
+        pageSize: 10,
+        search: q,
+      );
       if (mounted) {
         setState(() {
-          _models = res;
+          _models = res['items'] as List<PhoneModelItem>;
+          _totalCount = res['total_count'] as int;
+          _totalPages = res['total_pages'] as int;
+          _currentPage = res['current_page'] as int;
+          _hasNext = res['has_next'] as bool;
+          _hasPrevious = res['has_previous'] as bool;
           _isLoadingModels = false;
         });
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(0, duration: const Duration(milliseconds: 200), curve: Curves.easeOut);
+        }
       }
     } catch (_) {
       if (mounted) setState(() => _isLoadingModels = false);
@@ -322,7 +354,7 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                               'brand': _selectedBrand!.id,
                             });
                             if (ctx.mounted) Navigator.pop(ctx);
-                            _loadModels(_selectedBrand!);
+                            if (_selectedBrand != null) _loadModels(_selectedBrand!, page: _currentPage);
                           } catch (e) {
                             setM(() => isSaving = false);
                             if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -451,7 +483,7 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                               });
                             }
                             if (ctx.mounted) Navigator.pop(ctx);
-                            _loadModels(_selectedBrand!);
+                            if (_selectedBrand != null) _loadModels(_selectedBrand!, page: _currentPage);
                           } catch (e) {
                             setM(() => isSaving = false);
                             if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -598,7 +630,7 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                               'min_price': (base * 0.40).round(),
                             });
                             if (ctx.mounted) Navigator.pop(ctx);
-                            if (_selectedBrand != null) _loadModels(_selectedBrand!);
+                            if (_selectedBrand != null) _loadModels(_selectedBrand!, page: _currentPage);
                           } catch (e) {
                             setM(() => isSaving = false);
                             if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -727,7 +759,7 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                           try {
                             await _api.updateStorageVariant(variant.id, basePrice: newBase, mintPrice: newMint);
                             if (mounted && _selectedBrand != null) {
-                              _loadModels(_selectedBrand!);
+                              _loadModels(_selectedBrand!, page: _currentPage);
                             }
                             if (ctx.mounted) Navigator.pop(ctx);
                           } catch (e) {
@@ -832,7 +864,11 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                     fontWeight: isSel ? FontWeight.w900 : FontWeight.w600,
                     color: isSel ? AppTheme.darkGreen : AppTheme.textSecondary,
                   ),
-                  onSelected: (_) => _loadModels(b),
+                  onSelected: (_) {
+                    _searchCtrl.clear();
+                    _searchQuery = '';
+                    _loadModels(b, page: 1);
+                  },
                 ),
               );
             },
@@ -845,10 +881,31 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             color: Colors.white,
             child: TextField(
-              onChanged: (val) => setState(() => _searchQuery = val),
+              controller: _searchCtrl,
+              onChanged: (val) {
+                setState(() => _searchQuery = val);
+                _debounceTimer?.cancel();
+                _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+                  if (_selectedBrand != null) {
+                    _loadModels(_selectedBrand!, page: 1, search: val);
+                  }
+                });
+              },
               decoration: InputDecoration(
                 hintText: 'Search ${_selectedBrand!.name} models...',
                 prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          _searchCtrl.clear();
+                          setState(() => _searchQuery = '');
+                          if (_selectedBrand != null) {
+                            _loadModels(_selectedBrand!, page: 1, search: '');
+                          }
+                        },
+                      )
+                    : null,
                 filled: true,
                 fillColor: Colors.grey.shade100,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -879,16 +936,107 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-                          itemCount: _models.where((m) => m.name.toLowerCase().contains(_searchQuery.toLowerCase())).length,
+                          controller: _scrollController,
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
+                          itemCount: _models.length + (_totalPages > 1 ? 1 : 0),
                           itemBuilder: (ctx, idx) {
-                            final filtered = _models.where((m) => m.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
-                            final m = filtered[idx];
+                            if (idx == _models.length) {
+                              return _buildPaginationBar();
+                            }
+                            final m = _models[idx];
                             return _buildModelItem(m);
                           },
                         ),
         ),
+
+        // Sticky bottom pagination bar for instant 1-tap navigation
+        if (_selectedBrand != null && _totalPages > 1)
+          _buildPaginationBar(isBottomSticky: true),
       ],
+    );
+  }
+
+  Widget _buildPaginationBar({bool isBottomSticky = false}) {
+    if (_totalPages <= 1) return const SizedBox.shrink();
+
+    return Container(
+      margin: isBottomSticky ? EdgeInsets.zero : const EdgeInsets.only(top: 8, bottom: 24),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: isBottomSticky ? 8 : 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: isBottomSticky ? null : BorderRadius.circular(16),
+        border: isBottomSticky
+            ? Border(top: BorderSide(color: AppTheme.border.withOpacity(0.5)))
+            : Border.all(color: AppTheme.border),
+        boxShadow: isBottomSticky
+            ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, -3),
+                ),
+              ]
+            : null,
+      ),
+      child: SafeArea(
+        top: false,
+        bottom: isBottomSticky,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Previous Button
+            ElevatedButton.icon(
+              onPressed: (_hasPrevious && !_isLoadingModels && _selectedBrand != null)
+                  ? () => _loadModels(_selectedBrand!, page: _currentPage - 1)
+                  : null,
+              icon: const Icon(Icons.arrow_back_ios_rounded, size: 12),
+              label: const Text('Previous', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.lightGreen,
+                foregroundColor: AppTheme.darkGreen,
+                disabledBackgroundColor: Colors.grey.shade100,
+                disabledForegroundColor: Colors.grey.shade400,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+
+            // Page info
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Page $_currentPage of $_totalPages',
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, color: AppTheme.textPrimary),
+                ),
+                Text(
+                  '$_totalCount Models Total',
+                  style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+
+            // Next Button
+            ElevatedButton.icon(
+              onPressed: (_hasNext && !_isLoadingModels && _selectedBrand != null)
+                  ? () => _loadModels(_selectedBrand!, page: _currentPage + 1)
+                  : null,
+              icon: const Icon(Icons.arrow_forward_ios_rounded, size: 12),
+              label: const Text('Next', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryGreen,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: Colors.grey.shade100,
+                disabledForegroundColor: Colors.grey.shade400,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

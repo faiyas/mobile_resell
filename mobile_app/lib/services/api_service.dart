@@ -481,8 +481,8 @@ class ApiService {
     return [];
   }
 
-  Future<List<PhoneModelItem>> getModels({int? brandId, int? seriesId, bool forceRefresh = false, int? page, int? pageSize, String? search}) async {
-    if (!forceRefresh && _cachedModels != null && _cachedModels!.isNotEmpty && page == null && search == null) {
+  Future<List<PhoneModelItem>> getModels({int? brandId, int? seriesId, bool forceRefresh = false, int? page, int? pageSize, String? search, bool all = false}) async {
+    if (!forceRefresh && _cachedModels != null && _cachedModels!.isNotEmpty && page == null && search == null && !all) {
       return _cachedModels!.where((m) {
         if (brandId != null && m.brandId != brandId) return false;
         if (seriesId != null && m.seriesId != seriesId) return false;
@@ -495,6 +495,7 @@ class ApiService {
     if (page != null) queryParams['page'] = '$page';
     if (pageSize != null) queryParams['page_size'] = '$pageSize';
     if (search != null && search.isNotEmpty) queryParams['search'] = search;
+    if (all) queryParams['all'] = 'true';
 
     final url = Uri.parse('${ApiConfig.baseUrl}/catalog/models/').replace(
       queryParameters: queryParams.isNotEmpty ? queryParams : null,
@@ -508,6 +509,62 @@ class ApiService {
       return items;
     }
     return [];
+  }
+
+  Future<Map<String, dynamic>> getModelsPaginated({
+    int? brandId,
+    int? seriesId,
+    int page = 1,
+    int pageSize = 10,
+    String? search,
+  }) async {
+    final queryParams = <String, String>{};
+    if (brandId != null) queryParams['brand'] = '$brandId';
+    if (seriesId != null) queryParams['series'] = '$seriesId';
+    queryParams['page'] = '$page';
+    queryParams['page_size'] = '$pageSize';
+    if (search != null && search.trim().isNotEmpty) queryParams['search'] = search.trim();
+
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/models/').replace(
+      queryParameters: queryParams,
+    );
+    final res = await http.get(url, headers: _headers);
+    if (res.statusCode == 200) {
+      final dynamic decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic> && decoded.containsKey('results')) {
+        final List list = decoded['results'] as List;
+        final items = list.map((item) => PhoneModelItem.fromJson(Map<String, dynamic>.from(item))).toList();
+        final totalCount = int.tryParse(decoded['count']?.toString() ?? '') ?? items.length;
+        final totalPages = int.tryParse(decoded['total_pages']?.toString() ?? '') ?? ((totalCount / pageSize).ceil().clamp(1, 9999));
+        final currentPage = int.tryParse(decoded['current_page']?.toString() ?? '') ?? page;
+        return {
+          'items': items,
+          'total_count': totalCount,
+          'total_pages': totalPages,
+          'current_page': currentPage,
+          'has_next': decoded['next'] != null || currentPage < totalPages,
+          'has_previous': decoded['previous'] != null || currentPage > 1,
+        };
+      } else if (decoded is List) {
+        final items = decoded.map((item) => PhoneModelItem.fromJson(Map<String, dynamic>.from(item))).toList();
+        return {
+          'items': items,
+          'total_count': items.length,
+          'total_pages': 1,
+          'current_page': 1,
+          'has_next': false,
+          'has_previous': false,
+        };
+      }
+    }
+    return {
+      'items': <PhoneModelItem>[],
+      'total_count': 0,
+      'total_pages': 1,
+      'current_page': 1,
+      'has_next': false,
+      'has_previous': false,
+    };
   }
 
   Future<List<StorageVariantModel>> getVariants(int modelId, {bool forceRefresh = false, int? page, int? pageSize}) async {
