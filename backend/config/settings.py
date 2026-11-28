@@ -42,7 +42,13 @@ SECRET_KEY = _get_or_generate_secret_key()
 
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['*'] if DEBUG else [
+    '50-6-206-122.sslip.io',
+    '50.6.206.122',
+    'mobile-resell.vercel.app',
+    '127.0.0.1',
+    'localhost',
+]
 
 INSTALLED_APPS = [
     'django.contrib.admin',

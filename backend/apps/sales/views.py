@@ -463,6 +463,25 @@ def mark_device_collected_view(request, pk):
             'sale': PhoneSaleDetailSerializer(sale).data
         })
 
+def _verify_sale_actor(request, sale):
+    """Ensure only an Admin/Agent, the authenticated order owner, or a caller with matching phone can mutate an order."""
+    user = request.user
+    if user and user.is_authenticated:
+        role = str(getattr(user, 'role', '') or '').upper()
+        if role in ['ADMIN', 'SUPER_ADMIN', 'COLLECTION_AGENT', 'AGENT', 'FIELD_AGENT'] or getattr(user, 'is_staff', False):
+            return True
+        if sale.customer_id == user.id:
+            return True
+        if user.phone and sale.customer_phone and user.phone.strip() == sale.customer_phone.strip():
+            return True
+        if user.email and sale.customer_email and user.email.strip().lower() == sale.customer_email.strip().lower():
+            return True
+        return False
+    req_phone = str(request.data.get('customer_phone', '') or '').strip()
+    if req_phone and sale.customer_phone and req_phone == sale.customer_phone.strip():
+        return True
+    return False
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reject_final_offer_view(request, pk):
@@ -470,6 +489,8 @@ def reject_final_offer_view(request, pk):
     sale = _get_sale_instance(pk)
     if not sale:
         return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
+    if not _verify_sale_actor(request, sale):
+        return Response({'detail': 'Authentication or matching phone required.'}, status=status.HTTP_403_FORBIDDEN)
 
     sale.status = 'CUSTOMER_REJECTED'
     sale.save()
@@ -482,6 +503,8 @@ def cancel_order_view(request, pk):
     sale = _get_sale_instance(pk)
     if not sale:
         return Response({'detail': f'Sale order not found for identifier: {pk}'}, status=status.HTTP_404_NOT_FOUND)
+    if not _verify_sale_actor(request, sale):
+        return Response({'detail': 'You do not have permission to cancel this order.'}, status=status.HTTP_403_FORBIDDEN)
 
     non_cancellable = ['CANCELLED', 'PICKED_UP', 'OWNERSHIP_TRANSFERRED', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED']
     if sale.status in non_cancellable:
@@ -788,23 +811,15 @@ def notification_dismiss_view(request, pk):
         return Response({'detail': 'Notification not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def notification_mark_all_read_view(request):
-    user = request.user if request.user.is_authenticated else None
-    if user:
-        UserNotification.objects.filter(recipient=user, is_read=False).update(is_read=True)
-    else:
-        UserNotification.objects.filter(is_read=False).update(is_read=True)
+    UserNotification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
     return Response({'success': True, 'message': 'All notifications marked as read'})
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAuthenticated])
 def notification_clear_all_view(request):
-    user = request.user if request.user.is_authenticated else None
-    if user:
-        UserNotification.objects.filter(recipient=user).update(is_dismissed=True)
-    else:
-        UserNotification.objects.all().update(is_dismissed=True)
+    UserNotification.objects.filter(recipient=request.user).update(is_dismissed=True)
     return Response({'success': True, 'message': 'Notifications cleared'})
 
 @api_view(['POST'])

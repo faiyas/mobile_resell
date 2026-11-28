@@ -1,7 +1,11 @@
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.response import Response
+
+class AuthRateThrottle(AnonRateThrottle):
+    rate = '20/min'
 from django.contrib.auth import authenticate
 from .models import User
 from .serializers import UserSerializer, RegisterSerializer, LoginSerializer
@@ -15,6 +19,7 @@ def is_admin_user(user):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([AuthRateThrottle])
 def register_view(request):
     data = request.data.copy() if hasattr(request.data, 'copy') else dict(request.data)
     is_admin = is_admin_user(request.user)
@@ -34,6 +39,7 @@ def register_view(request):
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@throttle_classes([AuthRateThrottle])
 def login_view(request):
     serializer = LoginSerializer(data=request.data)
     if not serializer.is_valid():
