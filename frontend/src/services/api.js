@@ -48,6 +48,7 @@ async function request(endpoint, options = {}) {
     let response;
     try {
       response = await fetch(`${API_BASE}${endpoint}`, {
+        cache: 'no-store',
         ...options,
         headers,
       });
@@ -98,35 +99,9 @@ async function request(endpoint, options = {}) {
   return exec;
 }
 
-// Lightweight SWR (Stale-While-Revalidate) Cache for read-only catalog endpoints
-const SWR_TTL_MS = 5 * 60 * 1000; // 5 minutes cache
-
-async function cachedRequest(endpoint, options = {}, ttlMs = SWR_TTL_MS) {
-  const cacheKey = `dolly_swr_${endpoint}`;
-  try {
-    const cachedItem = sessionStorage.getItem(cacheKey);
-    if (cachedItem) {
-      const { data, timestamp } = JSON.parse(cachedItem);
-      const isFresh = (Date.now() - timestamp) < ttlMs;
-      // If stale, revalidate in background without blocking caller
-      if (!isFresh) {
-        request(endpoint, options).then((freshData) => {
-          try {
-            sessionStorage.setItem(cacheKey, JSON.stringify({ data: freshData, timestamp: Date.now() }));
-          } catch (e) {}
-        }).catch(() => {});
-      }
-      return data;
-    }
-  } catch (e) {
-    // sessionStorage disabled or unavailable
-  }
-
-  const freshData = await request(endpoint, options);
-  try {
-    sessionStorage.setItem(cacheKey, JSON.stringify({ data: freshData, timestamp: Date.now() }));
-  } catch (e) {}
-  return freshData;
+// Web always fetches live from server (no sessionStorage SWR cache)
+async function cachedRequest(endpoint, options = {}) {
+  return request(endpoint, options);
 }
 
 export const clearCatalogCache = () => {
@@ -198,14 +173,8 @@ export const api = {
   updateCMSSection: (data) => { clearCatalogCache(); return request('/catalog/cms/sections/', { method: 'POST', body: JSON.stringify(data) }); },
   getSystemSettings: () => request('/catalog/settings/'),
   updateSystemSettings: (data) => request('/catalog/settings/', { method: 'POST', body: JSON.stringify(data) }),
-  getBusinessSettings: () => request('/catalog/business-settings/').then((data) => {
-    try { localStorage.setItem('dolly_cached_business_settings', JSON.stringify(data)); } catch {}
-    return data;
-  }),
-  updateBusinessSettings: (data) => request('/catalog/business-settings/', { method: 'POST', body: JSON.stringify(data) }).then((res) => {
-    try { localStorage.setItem('dolly_cached_business_settings', JSON.stringify(res)); } catch {}
-    return res;
-  }),
+  getBusinessSettings: () => request('/catalog/business-settings/'),
+  updateBusinessSettings: (data) => request('/catalog/business-settings/', { method: 'POST', body: JSON.stringify(data) }),
 
   getVariants: (modelId, all = false, brandId = null, seriesId = null) => 
     request(`/catalog/variants/?${modelId ? `model=${modelId}&` : ''}${brandId ? `brand=${brandId}&` : ''}${seriesId ? `series=${seriesId}&` : ''}all=${all}`).then(res => (res && Array.isArray(res.results)) ? res.results : res),
