@@ -270,6 +270,10 @@ class AppNotificationService extends ChangeNotifier {
 
   /// Syncs notifications broadcasted from the server/admin
   Future<void> syncRemoteNotifications() async {
+    if (!_initialized) {
+      await init();
+      return;
+    }
     try {
       final res = await ApiService().getNotifications();
       final results = res['results'];

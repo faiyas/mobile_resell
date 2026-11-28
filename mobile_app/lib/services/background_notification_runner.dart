@@ -16,12 +16,13 @@ class BackgroundNotificationRunner {
   void start() {
     if (_isRunning) return;
     _isRunning = true;
+    AppNotificationService().init();
 
-    // Run first check after 3 seconds
-    Future.delayed(const Duration(seconds: 3), () => _runCheck());
+    // Run first check after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () => _runCheck());
 
-    // Periodic check every 25 seconds
-    _pollingTimer = Timer.periodic(const Duration(seconds: 25), (_) => _runCheck());
+    // Periodic check every 15 seconds for near-real-time web-to-mobile sync
+    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) => _runCheck());
   }
 
   void stop() {

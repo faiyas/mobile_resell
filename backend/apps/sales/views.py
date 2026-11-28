@@ -717,8 +717,9 @@ def notifications_list_view(request):
         if phone:
             q_filter |= Q(related_order__customer_phone=phone)
 
-        notifs = UserNotification.objects.filter(q_filter, is_dismissed=False).order_by('-created_at')[:50]
-        unread_count = notifs.filter(is_read=False).count()
+        base_qs = UserNotification.objects.filter(q_filter, is_dismissed=False).order_by('-created_at')
+        unread_count = base_qs.filter(is_read=False).count()
+        notifs = base_qs[:50]
 
         return Response({
             'unread_count': unread_count,

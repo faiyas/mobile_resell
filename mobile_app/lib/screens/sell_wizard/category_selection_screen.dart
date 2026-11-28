@@ -103,7 +103,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
 
     try {
       final s = await _api.getSeries(brandId: brand.id);
-      final m = await _api.getModels(brandId: brand.id);
+      final m = await _api.getModels(brandId: brand.id, forceRefresh: true);
 
       // Sort series chips so the latest generations appear first
       final maxYearBySeries = <int, int>{};
@@ -152,6 +152,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       final m = await _api.getModels(
         brandId: _brand!.id,
         seriesId: series?.id,
+        forceRefresh: true,
       );
       setState(() {
         _models = m;
@@ -174,9 +175,9 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     });
 
     try {
-      var v = model.variants;
+      var v = await _api.getVariants(model.id, forceRefresh: true);
       if (v.isEmpty) {
-        v = await _api.getVariants(model.id);
+        v = model.variants;
       }
       if (!mounted) return;
       setState(() {
@@ -1023,7 +1024,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                             Row(
                               children: [
                                 Text(
-                                  'Base: ₹${v.basePrice.toStringAsFixed(0)}',
+                                  'Mint: ₹${v.basePrice.toStringAsFixed(0)}',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w800,
@@ -1038,7 +1039,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
-                                    'Mint: ₹${v.mintPrice.toStringAsFixed(0)}',
+                                    'Min: ₹${v.minPrice.toStringAsFixed(0)}',
                                     style: const TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w900,
@@ -1228,7 +1229,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
 
   void _showEditPriceBottomSheet(StorageVariantModel variant) {
     final baseController = TextEditingController(text: variant.basePrice.toStringAsFixed(0));
-    final mintController = TextEditingController(text: variant.mintPrice.toStringAsFixed(0));
+    final mintController = TextEditingController(text: variant.minPrice.toStringAsFixed(0));
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -1294,7 +1295,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                 ),
                 const SizedBox(height: 20),
                 const Text(
-                  'Base Buyback Price (₹)',
+                  'Mint Price (Top Flawless Offer) (₹)',
                   style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 6),
@@ -1302,40 +1303,23 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                   controller: baseController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.currency_rupee, color: AppTheme.primaryGreen),
+                    prefixIcon: const Icon(Icons.star_rounded, color: AppTheme.primaryGreen),
                     filled: true,
                     fillColor: Colors.grey.shade50,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Mint Price (Top "Up To" Offer) (₹)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
-                    ),
-                    TextButton(
-                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                      onPressed: () {
-                        final bVal = double.tryParse(baseController.text) ?? 0.0;
-                        if (bVal > 0) {
-                          setModalState(() {
-                            mintController.text = (bVal * 1.15).toStringAsFixed(0);
-                          });
-                        }
-                      },
-                      child: const Text('+15% Auto', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11)),
-                    ),
-                  ],
+                const Text(
+                  'Min Price (Floor Offer) (₹)',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
                 ),
                 const SizedBox(height: 6),
                 TextField(
                   controller: mintController,
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.star_rounded, color: Colors.amber),
+                    prefixIcon: const Icon(Icons.currency_rupee, color: Colors.orange),
                     filled: true,
                     fillColor: Colors.grey.shade50,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
@@ -1355,16 +1339,22 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                     onPressed: isSaving
                         ? null
                         : () async {
-                            final newBase = double.tryParse(baseController.text) ?? 0.0;
-                            final newMint = double.tryParse(mintController.text) ?? 0.0;
-                            if (newBase <= 0) return;
+                            final newMint = double.tryParse(baseController.text.trim()) ?? 0.0;
+                            final newMin = double.tryParse(mintController.text.trim()) ?? 0.0;
+                            if (newMint <= 0) return;
+                            if (newMin > newMint) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(content: Text('Min Price cannot exceed Mint Price'), backgroundColor: Colors.red),
+                              );
+                              return;
+                            }
 
                             setModalState(() => isSaving = true);
                             try {
                               final updated = await _api.updateStorageVariant(
                                 variant.id,
-                                basePrice: newBase,
-                                mintPrice: newMint > 0 ? newMint : (newBase * 1.15),
+                                basePrice: newMint,
+                                minPrice: newMin,
                               );
 
                               if (!mounted) return;
@@ -1381,7 +1371,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                               if (ctx.mounted) Navigator.pop(ctx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('Updated pricing for ${variant.storage} to ₹${newBase.toStringAsFixed(0)}'),
+                                  content: Text('Updated ${variant.storage}: Mint ₹${newMint.toStringAsFixed(0)} · Min ₹${newMin.toStringAsFixed(0)}'),
                                   backgroundColor: AppTheme.darkGreen,
                                   behavior: SnackBarBehavior.floating,
                                 ),

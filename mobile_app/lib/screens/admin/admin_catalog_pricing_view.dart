@@ -536,8 +536,8 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
   void _showAddVariantModal(PhoneModelItem model) {
     final storageCtrl = TextEditingController(text: '128GB');
     final ramCtrl = TextEditingController(text: '8GB');
-    final baseCtrl = TextEditingController(text: '15000');
-    final mintCtrl = TextEditingController(text: '17250');
+    final mintCtrl = TextEditingController(text: '15000');
+    final minCtrl = TextEditingController(text: '500');
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -584,37 +584,23 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: baseCtrl,
+                controller: mintCtrl,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Base Buyback Price (₹)',
-                  prefixIcon: const Icon(Icons.currency_rupee, color: AppTheme.primaryGreen),
+                  labelText: 'Mint Price (Top Flawless Offer) (₹)',
+                  prefixIcon: const Icon(Icons.star_rounded, color: AppTheme.primaryGreen),
                   filled: true,
                   fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
               const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Mint Price (Flawless) (₹)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-                  TextButton(
-                    onPressed: () {
-                      final b = double.tryParse(baseCtrl.text) ?? 0.0;
-                      if (b > 0) setM(() => mintCtrl.text = (b * 1.15).toStringAsFixed(0));
-                    },
-                    child: const Text('+15% Auto', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
               TextField(
-                controller: mintCtrl,
+                controller: minCtrl,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  labelText: 'Mint Price (Flawless) (₹)',
-                  prefixIcon: const Icon(Icons.star, color: Colors.amber),
+                  labelText: 'Min Price (Floor Offer) (₹)',
+                  prefixIcon: const Icon(Icons.currency_rupee, color: Colors.orange),
                   filled: true,
                   fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -630,24 +616,29 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                       ? null
                       : () async {
                           final storage = storageCtrl.text.trim();
-                          final base = double.tryParse(baseCtrl.text) ?? 0.0;
-                          final mint = double.tryParse(mintCtrl.text) ?? (base * 1.15);
-                          if (storage.isEmpty || base <= 0) return;
+                          final mint = double.tryParse(mintCtrl.text.trim()) ?? 0.0;
+                          final minP = double.tryParse(minCtrl.text.trim()) ?? 500.0;
+                          if (storage.isEmpty || mint <= 0) return;
+                          if (minP > mint) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('Min Price cannot exceed Mint Price'), backgroundColor: Colors.red),
+                            );
+                            return;
+                          }
                           setM(() => isSaving = true);
                           try {
                             await _api.createVariant({
                               'model': model.id,
                               'storage': storage,
                               'ram': ramCtrl.text.trim(),
-                              'base_price': base,
-                              'mint_price': mint,
-                              'min_price': (base * 0.40).round(),
+                              'base_price': mint,
+                              'min_price': minP,
                             });
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (_selectedBrand != null) _loadModels(_selectedBrand!, page: _currentPage);
                           } catch (e) {
                             setM(() => isSaving = false);
-                            if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
+                            if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
                           }
                         },
                   child: isSaving
@@ -664,8 +655,8 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
   }
 
   void _showVariantPriceModal(PhoneModelItem model, StorageVariantModel variant) {
-    final baseController = TextEditingController(text: variant.basePrice.toStringAsFixed(0));
-    final mintController = TextEditingController(text: variant.mintPrice.toStringAsFixed(0));
+    final mintController = TextEditingController(text: variant.basePrice.toStringAsFixed(0));
+    final minController = TextEditingController(text: variant.minPrice.toStringAsFixed(0));
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -709,38 +700,26 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                 ],
               ),
               const SizedBox(height: 16),
-              const Text('Base Buyback Price (₹)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              const Text('Mint Price (Top Flawless Offer) (₹)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
               const SizedBox(height: 6),
               TextField(
-                controller: baseController,
+                controller: mintController,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.currency_rupee, color: AppTheme.primaryGreen, size: 20),
+                  prefixIcon: const Icon(Icons.star_rounded, color: AppTheme.primaryGreen, size: 20),
                   filled: true,
                   fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                 ),
               ),
               const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Mint Price (Top Flawless Offer) (₹)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-                  TextButton(
-                    onPressed: () {
-                      final b = double.tryParse(baseController.text) ?? 0.0;
-                      if (b > 0) setMState(() => mintController.text = (b * 1.15).toStringAsFixed(0));
-                    },
-                    child: const Text('+15% Auto', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 11)),
-                  ),
-                ],
-              ),
+              const Text('Min Price (Floor Offer) (₹)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
               const SizedBox(height: 6),
               TextField(
-                controller: mintController,
+                controller: minController,
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                  prefixIcon: const Icon(Icons.currency_rupee, color: Colors.orange, size: 20),
                   filled: true,
                   fillColor: Colors.grey.shade100,
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
@@ -759,19 +738,43 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                   onPressed: isSaving
                       ? null
                       : () async {
-                          final newBase = double.tryParse(baseController.text) ?? 0.0;
-                          final newMint = double.tryParse(mintController.text) ?? 0.0;
-                          if (newBase <= 0) return;
+                          final newMint = double.tryParse(mintController.text.trim()) ?? 0.0;
+                          final newMin = double.tryParse(minController.text.trim()) ?? 0.0;
+                          if (newMint <= 0) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('Enter a valid Mint Price'), backgroundColor: Colors.red),
+                            );
+                            return;
+                          }
+                          if (newMin > newMint) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('Min Price cannot exceed Mint Price'), backgroundColor: Colors.red),
+                            );
+                            return;
+                          }
 
                           setMState(() => isSaving = true);
                           try {
-                            await _api.updateStorageVariant(variant.id, basePrice: newBase, mintPrice: newMint);
+                            await _api.updateStorageVariant(variant.id, basePrice: newMint, minPrice: newMin);
                             if (mounted && _selectedBrand != null) {
                               _loadModels(_selectedBrand!, page: _currentPage);
                             }
                             if (ctx.mounted) Navigator.pop(ctx);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Updated ${variant.storage}: Mint ₹${newMint.toStringAsFixed(0)} · Min ₹${newMin.toStringAsFixed(0)}'),
+                                  backgroundColor: AppTheme.darkGreen,
+                                ),
+                              );
+                            }
                           } catch (e) {
                             setMState(() => isSaving = false);
+                            if (ctx.mounted) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                SnackBar(content: Text('Error updating price: $e'), backgroundColor: Colors.red),
+                              );
+                            }
                           }
                         },
                   child: isSaving
@@ -1071,7 +1074,7 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
             ...model.variants.map((v) => ListTile(
                   dense: true,
                   title: Text(v.storage, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
-                  subtitle: Text('Base: ₹${v.basePrice.toStringAsFixed(0)} · Mint: ₹${v.mintPrice.toStringAsFixed(0)}', style: const TextStyle(color: AppTheme.darkGreen, fontWeight: FontWeight.w700)),
+                  subtitle: Text('Mint: ₹${v.basePrice.toStringAsFixed(0)} · Min: ₹${v.minPrice.toStringAsFixed(0)}', style: const TextStyle(color: AppTheme.darkGreen, fontWeight: FontWeight.w700)),
                   trailing: IconButton(
                     icon: const Icon(Icons.edit_note, color: AppTheme.primaryGreen, size: 22),
                     tooltip: 'Edit Price',

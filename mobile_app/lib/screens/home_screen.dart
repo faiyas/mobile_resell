@@ -64,10 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _checkAppUpdates() async {
     try {
-      final info = await AppUpdateService().checkForUpdate();
-      if (mounted && info.isUpdateAvailable) {
-        AppUpdateService.showUpdateDialog(context, info);
-      }
+      await AppUpdateService().checkForUpdate();
     } catch (_) {}
   }
 

@@ -227,7 +227,7 @@ class StorageVariantModel {
     required this.basePrice,
     required this.minPrice,
     double? mintPrice,
-  }) : mintPrice = mintPrice ?? (basePrice * 1.15);
+  }) : mintPrice = mintPrice ?? basePrice;
 
   factory StorageVariantModel.fromJson(Map<String, dynamic> json) {
     final base = double.tryParse(json['base_price']?.toString() ?? '') ?? 0.0;
@@ -238,7 +238,7 @@ class StorageVariantModel {
       ram: json['ram']?.toString(),
       basePrice: base,
       minPrice: double.tryParse(json['min_price']?.toString() ?? '') ?? 0.0,
-      mintPrice: parsedMint ?? (base * 1.15),
+      mintPrice: parsedMint ?? base,
     );
   }
 

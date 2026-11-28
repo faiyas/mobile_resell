@@ -471,6 +471,11 @@ def system_settings_view(request):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
 
     data = request.data if isinstance(request.data, dict) else {}
+    existing = CMSHomeSection.objects.filter(section_type='SYSTEM_SETTINGS').first()
+    old_version = ''
+    if existing and isinstance(existing.data_json, dict):
+        old_version = str(existing.data_json.get('latest_version', '') or '').strip()
+
     section, _ = CMSHomeSection.objects.update_or_create(
         section_type='SYSTEM_SETTINGS',
         defaults={
@@ -478,6 +483,27 @@ def system_settings_view(request):
             'data_json': data
         }
     )
+
+    new_version = str(data.get('latest_version', '') or '').strip()
+    if new_version and new_version != old_version:
+        try:
+            from apps.sales.views import create_system_notification
+            release_notes = str(data.get('release_notes', '') or '').strip()
+            apk_url = str(data.get('apk_download_url', '') or '').strip()
+            msg = f"A new version (v{new_version.lstrip('vV')}) of Dolly is available. Tap to update now."
+            if release_notes:
+                msg = f"{msg}\n{release_notes}"
+            create_system_notification(
+                title=f"🚀 Dolly Update Available (v{new_version.lstrip('vV')})",
+                message=msg,
+                category='SYSTEM',
+                target_audience='ALL',
+                redirect_route=apk_url,
+                action_type='APP_UPDATE',
+            )
+        except Exception as e:
+            print(f"Failed to broadcast app update notification: {e}")
+
     return Response(section.data_json)
 
 # ================= 7.1 BUSINESS SETTINGS (ZERO HARDCODING) =================

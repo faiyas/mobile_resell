@@ -25,6 +25,8 @@ class AppUpdateInfo {
 class AppUpdateService {
   static const String currentVersion = '2.4.0';
   static const String defaultApkUrl = 'https://8010-agq5qlr2uletnjyzudtddvxrdq.instabox.tech/downloads/dolly-latest.apk';
+  static final ValueNotifier<AppUpdateInfo?> availableUpdateNotifier = ValueNotifier<AppUpdateInfo?>(null);
+  static String? _promptedVersionInSession;
 
   final ApiService _api = ApiService();
 
@@ -40,53 +42,66 @@ class AppUpdateService {
       // Query system settings from backend
       final settings = await _api.getSystemSettings();
       if (settings.isNotEmpty) {
-        remoteVersion = settings['latest_version'] ?? currentVersion;
-        minVersion = settings['min_version'] ?? currentVersion;
-        forceUpdate = settings['force_update'] == true;
-        if (settings['apk_download_url'] != null && settings['apk_download_url'].toString().isNotEmpty) {
-          downloadUrl = settings['apk_download_url'].toString();
+        final rawLatest = settings['latest_version']?.toString().trim() ?? '';
+        if (rawLatest.isNotEmpty) remoteVersion = rawLatest;
+        final rawMin = settings['min_version']?.toString().trim() ?? '';
+        if (rawMin.isNotEmpty) minVersion = rawMin;
+        final rawForce = settings['force_update'];
+        forceUpdate = rawForce == true || rawForce?.toString().toLowerCase() == 'true';
+        if (settings['apk_download_url'] != null && settings['apk_download_url'].toString().trim().isNotEmpty) {
+          downloadUrl = settings['apk_download_url'].toString().trim();
         }
-        if (settings['release_notes'] != null && settings['release_notes'].toString().isNotEmpty) {
-          notes = settings['release_notes'].toString();
+        if (settings['release_notes'] != null && settings['release_notes'].toString().trim().isNotEmpty) {
+          notes = settings['release_notes'].toString().trim();
         }
       }
     } catch (_) {
       // In case of offline or unreachable, default to current version
     }
 
-    final isNewer = _compareVersions(remoteVersion, currentVersion) > 0;
-    final isBelowMin = _compareVersions(currentVersion, minVersion) < 0;
+    final cleanRemote = _cleanVersion(remoteVersion);
+    final isNewer = _compareVersions(cleanRemote, currentVersion) > 0;
+    final isBelowMin = _compareVersions(currentVersion, _cleanVersion(minVersion)) < 0;
 
     final info = AppUpdateInfo(
-      latestVersion: remoteVersion,
-      minSupportedVersion: minVersion,
+      latestVersion: cleanRemote,
+      minSupportedVersion: _cleanVersion(minVersion),
       isUpdateAvailable: isNewer,
       isForceUpdate: forceUpdate || isBelowMin,
       apkDownloadUrl: downloadUrl,
       releaseNotes: notes,
     );
 
-    // If an update is available, register it in the in-app notification center!
+    // If an update is available, register it in the in-app notification center & trigger system popup!
     if (info.isUpdateAvailable) {
       await AppNotificationService().addNotification(
-        id: 'app_update_$remoteVersion',
-        title: '🚀 Dolly Update Available (v$remoteVersion)',
+        id: 'app_update_$cleanRemote',
+        title: '🚀 Dolly Update Available (v$cleanRemote)',
         body: 'A new version of Dolly Buyback is ready to install! Tap to update now.\n$notes',
         category: 'SYSTEM',
         actionUrl: downloadUrl,
         actionType: 'APP_UPDATE',
+        showSystemNotification: true,
       );
+      if (_promptedVersionInSession != cleanRemote || info.isForceUpdate) {
+        _promptedVersionInSession = cleanRemote;
+        availableUpdateNotifier.value = info;
+      }
     }
 
     return info;
+  }
+
+  static String _cleanVersion(String v) {
+    return v.trim().replaceFirst(RegExp(r'^[vV]+'), '');
   }
 
   /// Compares two semver strings (e.g. "2.5.0" vs "2.4.0").
   /// Returns > 0 if v1 > v2, < 0 if v1 < v2, and 0 if equal.
   static int _compareVersions(String v1, String v2) {
     try {
-      final p1 = v1.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-      final p2 = v2.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final p1 = _cleanVersion(v1).split('.').map((e) => int.tryParse(e.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0).toList();
+      final p2 = _cleanVersion(v2).split('.').map((e) => int.tryParse(e.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0).toList();
       for (int i = 0; i < 3; i++) {
         final num1 = i < p1.length ? p1[i] : 0;
         final num2 = i < p2.length ? p2[i] : 0;
