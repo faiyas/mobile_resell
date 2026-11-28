@@ -145,73 +145,29 @@ def sales_list_create_view(request):
                 if not is_custom:
                     return Response({'detail': 'Variant not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        from apps.valuation.views import get_operational_pricing_rules
-        config_floor, doorstep_fee = get_operational_pricing_rules()
-
+        from apps.valuation.views import evaluate_device_quote
         if variant:
             base_price = variant.base_price
             min_price = variant.min_price
-            phone_model = variant.model
             overrides = {
                 mo.option_id: mo.override_deduction_value
-                for mo in ModelPricingOverride.objects.filter(phone_model=phone_model)
+                for mo in ModelPricingOverride.objects.filter(phone_model=variant.model)
             }
         else:
             is_custom = True
             base_price = data.get('custom_expected_price') or Decimal('8000.00')
-            min_price = config_floor
+            min_price = Decimal('500.00')
             overrides = {}
 
-        # Calculate exact price per valuation engine rules
-        options = ConditionOption.objects.filter(code__in=selected_codes, is_active=True)
-        total_deduction = Decimal('0.00')
-        answers_to_create = []
-
-        # 1. Triage Health Check Deductions
         triage_answers = data.get('triage_answers', {})
-        from apps.valuation.models import EvaluationTriageQuestion
-        triage_questions = list(EvaluationTriageQuestion.objects.filter(is_active=True).order_by('display_order'))
-        is_dead_device = False
-        disabled_codes = set()
-
-        for tq in triage_questions:
-            if tq.code in disabled_codes:
-                continue
-            ans = str(triage_answers.get(tq.code, '')).strip().upper()
-            if ans == 'NO':
-                if tq.disables_question_codes and isinstance(tq.disables_question_codes, list):
-                    for dc in tq.disables_question_codes:
-                        disabled_codes.add(str(dc).strip())
-
-                if tq.deduction_type == 'PERCENTAGE':
-                    amt = (base_price * tq.deduction_value_on_no) / Decimal('100.00')
-                else:
-                    amt = tq.deduction_value_on_no
-                total_deduction += amt
-                answers_to_create.append((None, amt, f"{tq.question_text}: NO"))
-
-        # 2. Condition Options Deductions (if phone turns on)
-        if not is_dead_device:
-            for opt in options:
-                if not opt.is_defect:
-                    continue
-                if opt.id in overrides:
-                    override_val = overrides[opt.id]
-                    if opt.deduction_type == 'PERCENTAGE':
-                        amt = (base_price * override_val) / Decimal('100.00')
-                    else:
-                        amt = override_val
-                else:
-                    if opt.deduction_type == 'PERCENTAGE':
-                        amt = (base_price * opt.default_deduction_value) / Decimal('100.00')
-                    else:
-                        amt = opt.default_deduction_value
-                total_deduction += amt
-                answers_to_create.append((opt, amt, ''))
-
-        min_floor = max(min_price or Decimal('0.00'), config_floor)
-        gross_offer = max(base_price - total_deduction, min_floor)
-        estimated_price = max(gross_offer - doorstep_fee, Decimal('0.00'))
+        quote = evaluate_device_quote(base_price, min_price, selected_codes, triage_answers, overrides)
+        if quote['is_rejected']:
+            return Response(
+                {'detail': 'Device cannot be accepted for buyback due to safety hazards or ownership lock.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        answers_to_create = quote['answer_records']
+        estimated_price = quote['estimated_price']
 
         # Pickup lead-time & cutoff enforcement:
         # Same-day pickup is never permitted.

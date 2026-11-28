@@ -232,16 +232,170 @@ def get_operational_pricing_rules():
     return min_floor, doorstep_fee
 
 
+def evaluate_device_quote(base_price: Decimal, min_price: Decimal, selected_codes: list, triage_answers: dict, overrides: dict):
+    """
+    Shared DB-driven valuation engine used by both estimate preview and order creation:
+    - Cascading triage dynamic gating (disables_question_codes)
+    - Component-based exclusive_group deduplication (max deduction per group)
+    - ModelPricingOverride priority over default option deductions
+    - Accessory bonuses (is_accessory_bonus=True, never exceeding base_price)
+    - Operational minPayoutFloor & doorstepFee from SYSTEM_SETTINGS
+    """
+    config_floor, doorstep_fee = get_operational_pricing_rules()
+    options = list(ConditionOption.objects.filter(code__in=selected_codes, is_active=True).select_related('category'))
+
+    rejection_reasons = [opt.title for opt in options if opt.is_rejection]
+    if rejection_reasons:
+        return {
+            'is_rejected': True,
+            'rejection_reasons': rejection_reasons,
+            'min_floor': Decimal('0.00'),
+            'doorstep_fee': doorstep_fee,
+            'total_deduction': base_price,
+            'total_bonus': Decimal('0.00'),
+            'gross_offer': Decimal('0.00'),
+            'estimated_price': Decimal('0.00'),
+            'deductions': [],
+            'answer_records': [],
+        }
+
+    grouped_items = {}
+    standalone_items = []
+    deductions_breakdown = []
+    answer_records = []
+    total_deduction = Decimal('0.00')
+
+    # 1. Triage Questions (in display order, respecting cascading disables_question_codes)
+    triage_questions = list(EvaluationTriageQuestion.objects.filter(is_active=True).order_by('display_order'))
+    disabled_codes = set()
+
+    for tq in triage_questions:
+        if tq.code in disabled_codes:
+            continue
+        ans = str((triage_answers or {}).get(tq.code, '')).strip().upper()
+        if ans == 'NO':
+            if tq.disables_question_codes and isinstance(tq.disables_question_codes, list):
+                for dc in tq.disables_question_codes:
+                    disabled_codes.add(str(dc).strip())
+
+            if tq.deduction_type == 'PERCENTAGE':
+                amt = (base_price * tq.deduction_value_on_no) / Decimal('100.00')
+                rtype = f"{tq.deduction_value_on_no}% of Base"
+            else:
+                amt = tq.deduction_value_on_no
+                rtype = f"Flat ₹{tq.deduction_value_on_no}"
+
+            standalone_items.append({
+                'opt': None,
+                'code': tq.code,
+                'title': f"{tq.question_text} (Answered No)",
+                'category': "Initial Health Check",
+                'amt': amt,
+                'rule_type': rtype,
+                'note': f"{tq.question_text}: NO",
+            })
+
+    # 2. Condition Options (Defects + Accessory Bonuses)
+    bonus_options = []
+    for opt in options:
+        if opt.is_accessory_bonus:
+            bonus_options.append(opt)
+            continue
+        if not opt.is_defect:
+            continue
+
+        if opt.id in overrides:
+            override_val = overrides[opt.id]
+            if opt.deduction_type == 'PERCENTAGE':
+                amt = (base_price * override_val) / Decimal('100.00')
+                rule_type = f"Model Override ({override_val}% of Base)"
+            else:
+                amt = override_val
+                rule_type = f"Model Override (Flat ₹{override_val})"
+        else:
+            if opt.deduction_type == 'PERCENTAGE':
+                amt = (base_price * opt.default_deduction_value) / Decimal('100.00')
+                rule_type = f"{opt.default_deduction_value}% of Base"
+            else:
+                amt = opt.default_deduction_value
+                rule_type = f"Standard Flat ₹{opt.default_deduction_value}"
+
+        item = {
+            'opt': opt,
+            'code': opt.code,
+            'title': opt.title,
+            'category': opt.category.name,
+            'amt': amt,
+            'rule_type': rule_type,
+            'note': '',
+        }
+        if opt.exclusive_group and opt.exclusive_group.strip():
+            grp = opt.exclusive_group.strip().lower()
+            grouped_items.setdefault(grp, []).append(item)
+        else:
+            standalone_items.append(item)
+
+    for item in standalone_items:
+        total_deduction += item['amt']
+        deductions_breakdown.append({
+            'code': item['code'],
+            'title': item['title'],
+            'category': item['category'],
+            'deduction_amount': float(item['amt']),
+            'rule_type': item['rule_type'],
+        })
+        answer_records.append((item['opt'], item['amt'], item['note']))
+
+    for grp_name, grp_items in grouped_items.items():
+        chosen = max(grp_items, key=lambda x: x['amt'])
+        total_deduction += chosen['amt']
+        deductions_breakdown.append({
+            'code': chosen['code'],
+            'title': f"{chosen['title']} ({grp_name.replace('_', ' ').title()})",
+            'category': chosen['category'],
+            'deduction_amount': float(chosen['amt']),
+            'rule_type': f"{chosen['rule_type']} [Max group rule applied]",
+        })
+        answer_records.append((chosen['opt'], chosen['amt'], chosen['note']))
+
+    # 3. Accessory Bonuses (read from ConditionOption DB values)
+    total_bonus = Decimal('0.00')
+    for bopt in bonus_options:
+        if bopt.deduction_type == 'PERCENTAGE':
+            b_amt = (base_price * bopt.default_deduction_value) / Decimal('100.00')
+        else:
+            b_amt = bopt.default_deduction_value
+        total_bonus += b_amt
+        answer_records.append((bopt, Decimal('0.00'), f"Accessory Bonus: +₹{b_amt:.0f}"))
+
+    min_floor = max(min_price or Decimal('0.00'), config_floor)
+    base_offer = max(base_price - total_deduction, min_floor)
+    gross_offer = min(base_offer + total_bonus, base_price)
+    estimated_price = max(gross_offer - doorstep_fee, Decimal('0.00'))
+
+    return {
+        'is_rejected': False,
+        'rejection_reasons': [],
+        'min_floor': min_floor,
+        'doorstep_fee': doorstep_fee,
+        'total_deduction': total_deduction,
+        'total_bonus': total_bonus,
+        'gross_offer': gross_offer,
+        'estimated_price': estimated_price,
+        'deductions': deductions_breakdown,
+        'answer_records': answer_records,
+    }
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def calculate_estimate_view(request):
     """
-    Robust dynamic valuation engine.
-    Calculates estimated buyback price with:
-    - Base price
-    - Flat and percentage deductions
-    - Mutually exclusive conflict guards
-    - Safety/rejection locks
+    Calculates dynamic valuation quote based on:
+    - Base variant price & min floor
+    - Cascading triage health-check questions
+    - Price-tier percentages & component-grouped deductions
+    - Capped accessory bonuses & doorstep fee
     """
     serializer = EstimateCalculationSerializer(data=request.data)
     if not serializer.is_valid():
@@ -256,20 +410,15 @@ def calculate_estimate_view(request):
         return Response({'detail': 'Storage variant not found or inactive'}, status=status.HTTP_404_NOT_FOUND)
 
     base_price = variant.base_price
-    min_price = variant.min_price
     phone_model = variant.model
-    config_floor, doorstep_fee = get_operational_pricing_rules()
+    overrides = {
+        mo.option_id: mo.override_deduction_value
+        for mo in ModelPricingOverride.objects.filter(phone_model=phone_model)
+    }
+    triage_answers = serializer.validated_data.get('triage_answers', {})
+    result = evaluate_device_quote(base_price, variant.min_price, selected_codes, triage_answers, overrides)
 
-    # Fetch selected condition options
-    options = list(ConditionOption.objects.filter(code__in=selected_codes, is_active=True))
-    
-    # Check for safety / ownership rejections (e.g. Swollen battery, iCloud lock)
-    rejection_reasons = []
-    for opt in options:
-        if opt.is_rejection:
-            rejection_reasons.append(opt.title)
-
-    if rejection_reasons:
+    if result['is_rejected']:
         return Response({
             'brand': phone_model.brand.name,
             'model': phone_model.name,
@@ -279,140 +428,11 @@ def calculate_estimate_view(request):
             'total_deduction': float(base_price),
             'estimated_price': 0.0,
             'is_rejected': True,
-            'rejection_reasons': rejection_reasons,
+            'rejection_reasons': result['rejection_reasons'],
             'message': 'Device cannot be accepted for buyback due to safety hazards or ownership lock.',
             'currency': 'INR',
             'deductions': [],
         })
-
-    # Fetch overrides if any for this model
-    overrides = {
-        mo.option_id: mo.override_deduction_value
-        for mo in ModelPricingOverride.objects.filter(phone_model=phone_model)
-    }
-
-    # Group options by exclusive_group
-    exclusive_groups = {}
-    standalone_options = []
-
-    for opt in options:
-        if not opt.is_defect:
-            continue
-        if opt.exclusive_group and opt.exclusive_group.strip():
-            grp = opt.exclusive_group.strip().lower()
-            if grp not in exclusive_groups:
-                exclusive_groups[grp] = []
-            exclusive_groups[grp].append(opt)
-        else:
-            standalone_options.append(opt)
-
-    deductions_breakdown = []
-    total_deduction = Decimal('0.00')
-
-    # 1. Process Initial Health Check Triage Answers
-    triage_answers = serializer.validated_data.get('triage_answers', {})
-    triage_questions = list(EvaluationTriageQuestion.objects.filter(is_active=True).order_by('display_order'))
-    is_dead_device = False
-
-    # Track disabled question codes dynamically (e.g. if Q1 answered NO, disables Q2, Q3, Q4)
-    disabled_codes = set()
-    for tq in triage_questions:
-        if tq.code in disabled_codes:
-            continue
-        ans = str(triage_answers.get(tq.code, '')).strip().upper()
-        if ans == 'NO':
-            if tq.disables_question_codes and isinstance(tq.disables_question_codes, list):
-                for dc in tq.disables_question_codes:
-                    disabled_codes.add(str(dc).strip())
-
-            if tq.deduction_type == 'PERCENTAGE':
-                amt = (base_price * tq.deduction_value_on_no) / Decimal('100.00')
-                rtype = f"{tq.deduction_value_on_no}% of Base"
-            else:
-                amt = tq.deduction_value_on_no
-                rtype = f"Flat ₹{tq.deduction_value_on_no}"
-            total_deduction += amt
-            deductions_breakdown.append({
-                'code': tq.code,
-                'title': f"{tq.question_text} (Answered No)",
-                'category': "Initial Health Check",
-                'deduction_amount': float(amt),
-                'rule_type': rtype
-            })
-
-    # 2. Process Standalone deductions (if device turns on)
-    if not is_dead_device:
-        for opt in standalone_options:
-            if opt.id in overrides:
-                override_val = overrides[opt.id]
-                if opt.deduction_type == 'PERCENTAGE':
-                    amt = (base_price * override_val) / Decimal('100.00')
-                    rule_type = f"Model Override ({override_val}% of Base)"
-                else:
-                    amt = override_val
-                    rule_type = f"Model Override (Flat ₹{override_val})"
-            else:
-                if opt.deduction_type == 'PERCENTAGE':
-                    amt = (base_price * opt.default_deduction_value) / Decimal('100.00')
-                    rule_type = f"{opt.default_deduction_value}% of Base"
-                else:
-                    amt = opt.default_deduction_value
-                    rule_type = f"Standard Flat ₹{opt.default_deduction_value}"
-
-            total_deduction += amt
-            deductions_breakdown.append({
-                'code': opt.code,
-                'title': opt.title,
-                'category': opt.category.name,
-                'deduction_amount': float(amt),
-                'rule_type': rule_type
-            })
-
-    # 3. Process Exclusive Groups (if device turns on)
-    if not is_dead_device:
-        for grp_name, grp_opts in exclusive_groups.items():
-            highest_amt = Decimal('0.00')
-            chosen_opt = None
-            chosen_rule_type = ""
-
-            for opt in grp_opts:
-                if opt.id in overrides:
-                    override_val = overrides[opt.id]
-                    if opt.deduction_type == 'PERCENTAGE':
-                        amt = (base_price * override_val) / Decimal('100.00')
-                        rtype = f"Model Override ({override_val}% of Base)"
-                    else:
-                        amt = override_val
-                        rtype = f"Model Override (Flat ₹{override_val})"
-                else:
-                    if opt.deduction_type == 'PERCENTAGE':
-                        amt = (base_price * opt.default_deduction_value) / Decimal('100.00')
-                        rtype = f"{opt.default_deduction_value}% of Base"
-                    else:
-                        amt = opt.default_deduction_value
-                        rtype = f"Standard Flat ₹{opt.default_deduction_value}"
-
-                if amt > highest_amt or chosen_opt is None:
-                    highest_amt = amt
-                    chosen_opt = opt
-                    chosen_rule_type = rtype
-
-            total_deduction += highest_amt
-            deductions_breakdown.append({
-                'code': chosen_opt.code,
-                'title': f"{chosen_opt.title} (Exclusive Group: {grp_name})",
-                'category': chosen_opt.category.name,
-                'deduction_amount': float(highest_amt),
-                'rule_type': f"{chosen_rule_type} [Max group rule applied]"
-            })
-
-    min_floor = max(min_price or Decimal('0.00'), config_floor)
-    gross_offer = max(base_price - total_deduction, min_floor)
-    estimated_price = max(gross_offer - doorstep_fee, Decimal('0.00'))
-
-    # In our business hierarchy: Mint (Flawless) is variant.base_price.
-    # Base price must always be >= min_floor. If deductions == 0, offer is mint.
-    mint_price = base_price
 
     return Response({
         'brand': phone_model.brand.name,
@@ -420,16 +440,17 @@ def calculate_estimate_view(request):
         'variant': f"{variant.ram} / {variant.storage}" if variant.ram else variant.storage,
         'variant_id': variant.id,
         'base_price': float(base_price),
-        'mint_price': float(mint_price),
-        'min_price': float(min_floor),
-        'doorstep_fee': float(doorstep_fee),
-        'gross_estimated_price': float(gross_offer),
-        'total_deduction': float(total_deduction),
-        'estimated_price': float(estimated_price),
+        'mint_price': float(base_price),
+        'min_price': float(result['min_floor']),
+        'doorstep_fee': float(result['doorstep_fee']),
+        'accessory_bonus': float(result['total_bonus']),
+        'gross_estimated_price': float(result['gross_offer']),
+        'total_deduction': float(result['total_deduction']),
+        'estimated_price': float(result['estimated_price']),
         'is_rejected': False,
-        'is_dead_device': is_dead_device,
+        'is_dead_device': False,
         'currency': 'INR',
-        'deductions': deductions_breakdown,
+        'deductions': result['deductions'],
     })
 
 # ================= 6. INITIAL HEALTH CHECK TRIAGE QUESTIONS =================
