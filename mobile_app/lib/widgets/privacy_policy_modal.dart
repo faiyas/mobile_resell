@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/theme.dart';
+import '../config/api_config.dart';
 import '../services/api_service.dart';
 
 class PrivacyPolicyModal extends StatefulWidget {

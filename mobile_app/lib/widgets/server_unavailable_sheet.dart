@@ -210,7 +210,7 @@ class _ServerUnavailableSheetState extends State<ServerUnavailableSheet> {
           const SizedBox(height: 8),
           ListTile(
             dense: true,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.emerald.shade200)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.green.shade200)),
             tileColor: Colors.green.shade50,
             leading: const Icon(Icons.chat_rounded, color: AppTheme.primaryGreen),
             title: Text('WhatsApp Admin ($helpline)', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),

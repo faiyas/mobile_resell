@@ -47,6 +47,7 @@ class ApiService {
   List<SeriesModel>? _cachedSeries;
   List<PhoneModelItem>? _cachedModels;
   List<ConditionCategoryModel>? _cachedConditions;
+  Map<String, dynamic>? _cachedBusinessSettings;
 
   void hydrateOfflineBundle({
     List<SeriesModel>? series,
@@ -1459,6 +1460,40 @@ class ApiService {
       if (res.statusCode == 200) {
         final decoded = jsonDecode(res.body);
         if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  Future<Map<String, dynamic>> getBusinessSettings({bool forceRefresh = false}) async {
+    if (!forceRefresh && _cachedBusinessSettings != null && _cachedBusinessSettings!.isNotEmpty) {
+      return _cachedBusinessSettings!;
+    }
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/catalog/business-settings/');
+      final res = await http.get(url, headers: _headers).timeout(const Duration(seconds: 6));
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map) {
+          final map = Map<String, dynamic>.from(decoded);
+          _cachedBusinessSettings = map;
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('dolly_cached_business_settings', jsonEncode(map));
+          } catch (_) {}
+          return map;
+        }
+      }
+    } catch (_) {}
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('dolly_cached_business_settings');
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          _cachedBusinessSettings = Map<String, dynamic>.from(decoded);
+          return _cachedBusinessSettings!;
+        }
       }
     } catch (_) {}
     return {};
