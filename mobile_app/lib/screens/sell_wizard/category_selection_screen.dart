@@ -1238,6 +1238,7 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     final baseController = TextEditingController(text: variant.basePrice.toStringAsFixed(0));
     final mintController = TextEditingController(text: variant.minPrice.toStringAsFixed(0));
     bool isSaving = false;
+    String? modalError;
 
     showModalBottomSheet(
       context: context,
@@ -1332,7 +1333,23 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
+                if (modalError != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade300),
+                    ),
+                    child: Text(
+                      modalError!,
+                      style: TextStyle(color: Colors.red.shade800, fontSize: 12, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
                 SizedBox(
                   width: double.infinity,
                   height: 52,
@@ -1348,15 +1365,19 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
                         : () async {
                             final newMint = double.tryParse(baseController.text.trim()) ?? 0.0;
                             final newMin = double.tryParse(mintController.text.trim()) ?? 0.0;
-                            if (newMint <= 0) return;
+                            if (newMint <= 0) {
+                              setModalState(() => modalError = 'Please enter a valid Mint Price.');
+                              return;
+                            }
                             if (newMin > newMint) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                const SnackBar(content: Text('Min Price cannot exceed Mint Price'), backgroundColor: Colors.red),
-                              );
+                              setModalState(() => modalError = 'Min Price cannot exceed Mint Price.');
                               return;
                             }
 
-                            setModalState(() => isSaving = true);
+                            setModalState(() {
+                              modalError = null;
+                              isSaving = true;
+                            });
                             try {
                               final updated = await _api.updateStorageVariant(
                                 variant.id,

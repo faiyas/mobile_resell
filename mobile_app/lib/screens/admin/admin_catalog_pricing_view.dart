@@ -539,6 +539,7 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
     final mintCtrl = TextEditingController();
     final minCtrl = TextEditingController();
     bool isSaving = false;
+    String? modalError;
 
     showModalBottomSheet(
       context: context,
@@ -606,7 +607,23 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
+              if (modalError != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.red.shade300),
+                  ),
+                  child: Text(
+                    modalError!,
+                    style: TextStyle(color: Colors.red.shade800, fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -618,14 +635,18 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                           final storage = storageCtrl.text.trim();
                           final mint = double.tryParse(mintCtrl.text.trim()) ?? 0.0;
                           final minP = double.tryParse(minCtrl.text.trim()) ?? 500.0;
-                          if (storage.isEmpty || mint <= 0) return;
-                          if (minP > mint) {
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              const SnackBar(content: Text('Min Price cannot exceed Mint Price'), backgroundColor: Colors.red),
-                            );
+                          if (storage.isEmpty || mint <= 0) {
+                            setM(() => modalError = 'Please enter a valid Storage and Mint Price.');
                             return;
                           }
-                          setM(() => isSaving = true);
+                          if (minP > mint) {
+                            setM(() => modalError = 'Min Price cannot exceed Mint Price.');
+                            return;
+                          }
+                          setM(() {
+                            modalError = null;
+                            isSaving = true;
+                          });
                           try {
                             await _api.createVariant({
                               'model': model.id,
@@ -637,8 +658,10 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (_selectedBrand != null) _loadModels(_selectedBrand!, page: _currentPage);
                           } catch (e) {
-                            setM(() => isSaving = false);
-                            if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                            setM(() {
+                              isSaving = false;
+                              modalError = 'Error: $e';
+                            });
                           }
                         },
                   child: isSaving
@@ -658,6 +681,7 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
     final mintController = TextEditingController(text: variant.basePrice.toStringAsFixed(0));
     final minController = TextEditingController(text: variant.minPrice.toStringAsFixed(0));
     bool isSaving = false;
+    String? modalError;
 
     showModalBottomSheet(
       context: context,
@@ -725,7 +749,23 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 14),
+              if (modalError != null) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.red.shade300),
+                  ),
+                  child: Text(
+                    modalError!,
+                    style: TextStyle(color: Colors.red.shade800, fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ],
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -741,19 +781,18 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                           final newMint = double.tryParse(mintController.text.trim()) ?? 0.0;
                           final newMin = double.tryParse(minController.text.trim()) ?? 0.0;
                           if (newMint <= 0) {
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              const SnackBar(content: Text('Enter a valid Mint Price'), backgroundColor: Colors.red),
-                            );
+                            setMState(() => modalError = 'Please enter a valid Mint Price.');
                             return;
                           }
                           if (newMin > newMint) {
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              const SnackBar(content: Text('Min Price cannot exceed Mint Price'), backgroundColor: Colors.red),
-                            );
+                            setMState(() => modalError = 'Min Price cannot exceed Mint Price.');
                             return;
                           }
 
-                          setMState(() => isSaving = true);
+                          setMState(() {
+                            modalError = null;
+                            isSaving = true;
+                          });
                           try {
                             await _api.updateStorageVariant(variant.id, basePrice: newMint, minPrice: newMin);
                             if (mounted && _selectedBrand != null) {
@@ -769,12 +808,10 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
                               );
                             }
                           } catch (e) {
-                            setMState(() => isSaving = false);
-                            if (ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                SnackBar(content: Text('Error updating price: $e'), backgroundColor: Colors.red),
-                              );
-                            }
+                            setMState(() {
+                              isSaving = false;
+                              modalError = 'Error updating price: $e';
+                            });
                           }
                         },
                   child: isSaving

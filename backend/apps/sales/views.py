@@ -224,6 +224,13 @@ def sales_list_create_view(request):
         else:
             final_pickup_date = req_pickup_date
 
+        pin_check = resolve_pincode(data.get('pickup_pincode', ''))
+        if not pin_check.get('valid') or not pin_check.get('serviceable', True):
+            return Response(
+                {'detail': pin_check.get('message', 'Not deliverable: Doorstep pickup is not available in this pincode.')},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         with transaction.atomic():
             customer_user = request.user if request.user.is_authenticated and request.user.role == 'CUSTOMER' else None
             if not customer_user:

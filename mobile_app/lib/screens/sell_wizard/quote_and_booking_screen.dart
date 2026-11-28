@@ -224,12 +224,31 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
       return;
     }
 
-    if (_pincodeController.text.trim().isEmpty) {
+    final cleanPin = _pincodeController.text.trim().replaceAll(RegExp(r'\D'), '');
+    if (cleanPin.length != 6) {
       setState(() => _isEditingAddress = true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter your 6-digit doorstep pincode.'),
+          content: Text('Please enter a valid 6-digit doorstep pincode.'),
           backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (_pincodeInfo == null) {
+      final pinRes = await _api.lookupPincode(cleanPin);
+      if (!mounted) return;
+      setState(() => _pincodeInfo = pinRes);
+    }
+
+    if (_pincodeInfo != null && (_pincodeInfo!['valid'] == false || _pincodeInfo!['serviceable'] == false)) {
+      setState(() => _isEditingAddress = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_pincodeInfo!['message']?.toString() ?? 'Not deliverable: Doorstep pickup is not available for pincode $cleanPin.'),
+          backgroundColor: Colors.red.shade700,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -519,10 +538,67 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
                                     controller: _pincodeController,
                                     keyboardType: TextInputType.number,
                                     maxLength: 6,
+                                    onChanged: (val) => _verifyPincode(val),
                                     decoration: const InputDecoration(labelText: 'Pincode *', counterText: '', isDense: true),
                                   ),
                                 ),
                               ],
+                            ),
+                          ],
+                          if (_pincodeLoading) ...[
+                            const SizedBox(height: 8),
+                            const Row(
+                              children: [
+                                SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryGreen)),
+                                SizedBox(width: 8),
+                                Text('Checking pincode serviceability...', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                              ],
+                            ),
+                          ] else if (_pincodeInfo != null) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                              decoration: BoxDecoration(
+                                color: (_pincodeInfo!['serviceable'] == true && _pincodeInfo!['valid'] == true)
+                                    ? Colors.green.shade50
+                                    : Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: (_pincodeInfo!['serviceable'] == true && _pincodeInfo!['valid'] == true)
+                                      ? Colors.green.shade200
+                                      : Colors.red.shade300,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    (_pincodeInfo!['serviceable'] == true && _pincodeInfo!['valid'] == true)
+                                        ? Icons.check_circle_rounded
+                                        : Icons.cancel_rounded,
+                                    size: 15,
+                                    color: (_pincodeInfo!['serviceable'] == true && _pincodeInfo!['valid'] == true)
+                                        ? AppTheme.darkGreen
+                                        : Colors.red.shade700,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      _pincodeInfo!['message']?.toString() ??
+                                          (_pincodeInfo!['serviceable'] == true
+                                              ? 'Doorstep pickup available'
+                                              : 'Not deliverable in this pincode'),
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: (_pincodeInfo!['serviceable'] == true && _pincodeInfo!['valid'] == true)
+                                            ? AppTheme.darkGreen
+                                            : Colors.red.shade800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ],

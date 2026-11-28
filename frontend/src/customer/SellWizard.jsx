@@ -285,7 +285,10 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
       if (!customerEmail) setCustomerEmail(currentUser.email || '');
       if (!pickupAddress) setPickupAddress(currentUser.default_address || '');
       if (!pickupCity) setPickupCity(currentUser.city || '');
-      if (!pickupPincode) setPickupPincode(currentUser.pincode || '');
+      if (!pickupPincode && currentUser.pincode) {
+        setPickupPincode(currentUser.pincode);
+        verifyPincode(currentUser.pincode);
+      }
       if (!beneficiaryName) setBeneficiaryName(currentUser.full_name || '');
       if (!beneficiaryUpiId && currentUser.default_upi_id) setBeneficiaryUpiId(currentUser.default_upi_id);
     }
@@ -470,6 +473,27 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
     if (!addr || !addr.trim()) {
       setIsEditingAddress(true);
       alert("Please provide your doorstep pickup address.");
+      return;
+    }
+
+    const cleanPin = String(pickupPincode || currentUser.pincode || '').replace(/\D/g, '');
+    if (cleanPin.length !== 6) {
+      setIsEditingAddress(true);
+      alert("Please enter a valid 6-digit doorstep pincode.");
+      return;
+    }
+
+    let currentPinInfo = pincodeInfo;
+    if (!currentPinInfo || currentPinInfo.pincode !== cleanPin) {
+      try {
+        currentPinInfo = await api.lookupPincode(cleanPin);
+        setPincodeInfo(currentPinInfo);
+      } catch {}
+    }
+
+    if (currentPinInfo && (currentPinInfo.valid === false || currentPinInfo.serviceable === false)) {
+      setIsEditingAddress(true);
+      alert(currentPinInfo.message || `Not deliverable: Doorstep pickup is not available for pincode ${cleanPin}.`);
       return;
     }
 
@@ -1285,11 +1309,27 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                         const val = e.target.value.replace(/\D/g, '').slice(0, 6);
                         setPickupPincode(val);
                         if (val.length === 6) verifyPincode(val);
+                        else setPincodeInfo(null);
                       }}
                       placeholder="PIN Code (e.g. 605008)"
                       className="p-2 text-xs rounded-xl border border-slate-200 font-mono font-bold"
                     />
                   </div>
+                  {pincodeLoading && (
+                    <p className="text-[11px] text-slate-500 font-semibold">Checking pincode serviceability...</p>
+                  )}
+                  {!pincodeLoading && pincodeInfo && (
+                    <div
+                      className={`p-2 rounded-xl text-[11px] font-bold border ${
+                        pincodeInfo.valid && pincodeInfo.serviceable !== false
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : 'bg-rose-50 border-rose-200 text-rose-700'
+                      }`}
+                    >
+                      {pincodeInfo.valid && pincodeInfo.serviceable !== false ? '✓ ' : '✗ '}
+                      {pincodeInfo.message || (pincodeInfo.serviceable !== false ? 'Doorstep pickup available' : 'Not deliverable in this pincode')}
+                    </div>
+                  )}
                   {/* Payment / Payout Preference Selector */}
                   <div className="pt-1 space-y-1.5">
                     <label className="block text-[11px] font-black text-slate-700">Payout Preference:</label>

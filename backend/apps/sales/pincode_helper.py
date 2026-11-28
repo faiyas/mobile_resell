@@ -172,37 +172,72 @@ STATE_CODE_MAP = {
     '80': 'Bihar', '81': 'Bihar', '82': 'Bihar', '83': 'Jharkhand', '84': 'Bihar', '85': 'Jharkhand',
 }
 
+def _is_pincode_in_served_list(clean_pin: str) -> bool:
+    """Checks admin-configured pincodesServed in SYSTEM_SETTINGS. Returns True if empty/unconfigured or matched."""
+    try:
+        from apps.catalog.models import CMSHomeSection
+        sec = CMSHomeSection.objects.filter(section_type='SYSTEM_SETTINGS').first()
+        if not sec or not isinstance(sec.data_json, dict):
+            return True
+        raw = str(sec.data_json.get('pincodesServed', '') or '').strip()
+        if not raw:
+            return True
+        tokens = [t.strip() for t in raw.replace('\n', ',').split(',') if t.strip()]
+        if not tokens:
+            return True
+        for tok in tokens:
+            if tok == clean_pin:
+                return True
+            if tok.endswith('*') and clean_pin.startswith(tok[:-1]):
+                return True
+            if '-' in tok:
+                parts = tok.split('-', 1)
+                if len(parts) == 2 and parts[0].strip().isdigit() and parts[1].strip().isdigit():
+                    if int(parts[0].strip()) <= int(clean_pin) <= int(parts[1].strip()):
+                        return True
+        return False
+    except Exception:
+        return True
+
+
 def resolve_pincode(pincode: str) -> dict:
     clean = str(pincode).strip().replace(' ', '')
     if not clean.isdigit() or len(clean) != 6:
         return {
             'valid': False,
+            'serviceable': False,
             'pincode': clean,
             'message': 'Please enter a valid 6-digit Indian PIN code'
         }
 
     prefix_3 = clean[:3]
     prefix_2 = clean[:2]
+    is_serviceable = _is_pincode_in_served_list(clean)
 
     if prefix_3 in PIN_PREFIX_CITY_MAP:
         city, district, state = PIN_PREFIX_CITY_MAP[prefix_3]
+    else:
+        state = STATE_CODE_MAP.get(prefix_2, 'India')
+        city = f'{state} Region'
+        district = state
+
+    if not is_serviceable:
         return {
             'valid': True,
             'pincode': clean,
             'city': city,
             'district': district,
             'state': state,
-            'serviceable': True,
-            'message': f'Doorstep pickup available in {city}'
+            'serviceable': False,
+            'message': f'Not deliverable: Doorstep pickup is not available for pincode {clean}.'
         }
 
-    state = STATE_CODE_MAP.get(prefix_2, 'India')
     return {
         'valid': True,
         'pincode': clean,
-        'city': f'{state} Region',
-        'district': state,
+        'city': city,
+        'district': district,
         'state': state,
         'serviceable': True,
-        'message': f'Doorstep service active in {state}'
+        'message': f'Doorstep pickup available in {city}'
     }
