@@ -457,7 +457,21 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
 
   const getVisibleTriageQuestions = () => {
     const disabled = getDisabledTriageCodes();
-    return triageQuestions.filter(q => !disabled.has(q.code));
+    const enabled = triageQuestions.filter(q => !disabled.has(q.code));
+    const visible = [];
+    for (let i = 0; i < enabled.length; i++) {
+      if (i === 0 || triageAnswers[enabled[i - 1].code]) {
+        visible.push(enabled[i]);
+      } else {
+        break;
+      }
+    }
+    return visible;
+  };
+
+  const canProceedTriage = () => {
+    const visible = getVisibleTriageQuestions();
+    return visible.length > 0 && visible.every(q => Boolean(triageAnswers[q.code]));
   };
 
   const handleSubmitBooking = async (e) => {
@@ -916,10 +930,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                         const safeTqs = Array.isArray(tqs) ? tqs : (tqs?.results || []);
                         if (safeTqs.length > 0) {
                           setTriageQuestions(safeTqs);
-                          // Initialize default answers to 'YES'
-                          const initAnswers = {};
-                          safeTqs.forEach(q => { initAnswers[q.code] = 'YES'; });
-                          setTriageAnswers(initAnswers);
+                          setTriageAnswers({});
                           setCurrentScreen(3.5); // Open Triage Health Check Screen
                           return;
                         }
@@ -968,7 +979,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
             {/* Questions List */}
             <div className="space-y-5">
               {getVisibleTriageQuestions().map((q, idx) => {
-                const currentVal = triageAnswers[q.code] || 'YES';
+                const currentVal = triageAnswers[q.code] || '';
                 const isNo = currentVal === 'NO';
                 const isYes = currentVal === 'YES';
 
@@ -1015,16 +1026,6 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                         No
                       </button>
                     </div>
-
-                    {/* Info note if answered NO */}
-                    {isNo && (
-                      <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/60 text-[11px] text-amber-800 flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                        <span>
-                          {`Condition deduction will be applied (${q.deduction_type === 'PERCENTAGE' ? `${q.deduction_value_on_no}%` : `₹${q.deduction_value_on_no}`} deduction).`}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -1042,12 +1043,13 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
 
               <button
                 type="button"
+                disabled={!canProceedTriage()}
                 onClick={() => {
                   // Proceed to cosmetic defect questionnaire
                   setQuestionStepIndex(0);
                   setCurrentScreen(4);
                 }}
-                className="flex items-center gap-1.5 text-xs font-black text-white bg-[#0BAA4B] hover:bg-[#087C38] px-6 py-2.5 rounded-xl shadow-md shadow-[#0BAA4B]/20 transition"
+                className="flex items-center gap-1.5 text-xs font-black text-white bg-[#0BAA4B] hover:bg-[#087C38] disabled:opacity-40 disabled:cursor-not-allowed px-6 py-2.5 rounded-xl shadow-md shadow-[#0BAA4B]/20 transition"
               >
                 Continue Evaluation <ArrowRight className="w-3.5 h-3.5" />
               </button>
