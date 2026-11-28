@@ -52,6 +52,8 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
   bool _submitting = false;
 
   double _estimatedPrice = 0.0;
+  double _doorstepFee = 0.0;
+  double _totalDeduction = 0.0;
   List<Map<String, dynamic>> _breakdown = [];
   bool _isRejection = false;
   String _rejectionReason = '';
@@ -166,18 +168,19 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
         return;
       }
 
-      final minFloor = double.tryParse(res['min_price']?.toString() ?? '') ?? widget.variant.minPrice;
-      final effectiveMin = minFloor > 0 ? minFloor : 500.0;
       final rawEst = double.tryParse(res['estimated_price']?.toString() ?? '') ?? widget.variant.basePrice;
-      final est = rawEst > effectiveMin ? rawEst : effectiveMin;
+      final fee = double.tryParse(res['doorstep_fee']?.toString() ?? '') ?? 0.0;
+      final ded = double.tryParse(res['total_deduction']?.toString() ?? '') ?? (widget.variant.basePrice - rawEst);
       final List bList = res['breakdown'] ?? res['deductions'] ?? [];
 
       setState(() {
-        _estimatedPrice = est;
+        _estimatedPrice = rawEst;
+        _doorstepFee = fee;
+        _totalDeduction = ded > 0 ? ded : 0.0;
         _breakdown = bList.cast<Map<String, dynamic>>();
         _calculating = false;
       });
-      _saveDraft(est);
+      _saveDraft(rawEst);
     } catch (e) {
       // Fallback
       setState(() {
@@ -1224,10 +1227,15 @@ class _QuoteAndBookingScreenState extends State<QuoteAndBookingScreen> {
             _buildPriceRow('Base Catalog Value (Mint)', '₹${widget.variant.basePrice.toStringAsFixed(0)}'),
             _buildPriceRow(
               'Condition Deductions',
-              (widget.variant.basePrice - _estimatedPrice) > 0
-                  ? '-₹${(widget.variant.basePrice - _estimatedPrice).toStringAsFixed(0)}'
+              _totalDeduction > 0
+                  ? '-₹${_totalDeduction.toStringAsFixed(0)}'
                   : '₹0 (Flawless)',
-              isNegative: (widget.variant.basePrice - _estimatedPrice) > 0,
+              isNegative: _totalDeduction > 0,
+            ),
+            _buildPriceRow(
+              'Doorstep Pickup Fee',
+              _doorstepFee > 0 ? '-₹${_doorstepFee.toStringAsFixed(0)}' : 'FREE',
+              isNegative: _doorstepFee > 0,
             ),
             const Divider(height: 20),
             _buildPriceRow('Calculated Net Offer', '₹${_estimatedPrice.toStringAsFixed(0)}', isBold: true),

@@ -1670,6 +1670,14 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                         : '₹0 (Mint condition)'}
                     </strong>
                   </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-600">Doorstep Pickup Fee:</span>
+                    {Number(valuationResult.doorstep_fee || 0) > 0 ? (
+                      <strong className="text-rose-600 font-bold">-₹{Number(valuationResult.doorstep_fee).toLocaleString('en-IN')}</strong>
+                    ) : (
+                      <strong className="text-[#0BAA4B] font-bold">FREE</strong>
+                    )}
+                  </div>
                   <div className="flex justify-between items-center pt-2 border-t border-slate-200 text-sm">
                     <span className="font-black text-slate-900">Calculated Offer:</span>
                     <span className="font-black text-[#0BAA4B]">₹{Number(valuationResult.estimated_price).toLocaleString('en-IN')}</span>

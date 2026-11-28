@@ -213,6 +213,25 @@ def condition_option_detail_view(request, pk):
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+def get_operational_pricing_rules():
+    """Reads minPayoutFloor and doorstepFee from SYSTEM_SETTINGS CMS section."""
+    min_floor = Decimal('500.00')
+    doorstep_fee = Decimal('0.00')
+    try:
+        from apps.catalog.models import CmsSection
+        sec = CmsSection.objects.filter(section_type='SYSTEM_SETTINGS', is_active=True).first()
+        if sec and isinstance(sec.data_json, dict):
+            raw_floor = sec.data_json.get('minPayoutFloor')
+            if raw_floor is not None and str(raw_floor).strip() != '':
+                min_floor = max(Decimal(str(raw_floor)), Decimal('0.00'))
+            raw_fee = sec.data_json.get('doorstepFee')
+            if raw_fee is not None and str(raw_fee).strip() != '':
+                doorstep_fee = max(Decimal(str(raw_fee)), Decimal('0.00'))
+    except Exception:
+        pass
+    return min_floor, doorstep_fee
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def calculate_estimate_view(request):
@@ -239,6 +258,7 @@ def calculate_estimate_view(request):
     base_price = variant.base_price
     min_price = variant.min_price
     phone_model = variant.model
+    config_floor, doorstep_fee = get_operational_pricing_rules()
 
     # Fetch selected condition options
     options = list(ConditionOption.objects.filter(code__in=selected_codes, is_active=True))
@@ -307,7 +327,7 @@ def calculate_estimate_view(request):
 
             if tq.is_power_on_gate:
                 is_dead_device = True
-                floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
+                floor = max(min_price or Decimal('0.00'), config_floor)
                 amt = max(base_price - floor, Decimal('0.00'))
                 total_deduction += amt
                 deductions_breakdown.append({
@@ -400,8 +420,9 @@ def calculate_estimate_view(request):
                 'rule_type': f"{chosen_rule_type} [Max group rule applied]"
             })
 
-    min_floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
-    estimated_price = max(base_price - total_deduction, min_floor)
+    min_floor = max(min_price or Decimal('0.00'), config_floor)
+    gross_offer = max(base_price - total_deduction, min_floor)
+    estimated_price = max(gross_offer - doorstep_fee, Decimal('0.00'))
 
     # In our business hierarchy: Mint (Flawless) is variant.base_price.
     # Base price must always be >= min_floor. If deductions == 0, offer is mint.
@@ -415,6 +436,8 @@ def calculate_estimate_view(request):
         'base_price': float(base_price),
         'mint_price': float(mint_price),
         'min_price': float(min_floor),
+        'doorstep_fee': float(doorstep_fee),
+        'gross_estimated_price': float(gross_offer),
         'total_deduction': float(total_deduction),
         'estimated_price': float(estimated_price),
         'is_rejected': False,

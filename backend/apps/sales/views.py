@@ -145,6 +145,9 @@ def sales_list_create_view(request):
                 if not is_custom:
                     return Response({'detail': 'Variant not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        from apps.valuation.views import get_operational_pricing_rules
+        config_floor, doorstep_fee = get_operational_pricing_rules()
+
         if variant:
             base_price = variant.base_price
             min_price = variant.min_price
@@ -156,7 +159,7 @@ def sales_list_create_view(request):
         else:
             is_custom = True
             base_price = data.get('custom_expected_price') or Decimal('8000.00')
-            min_price = Decimal('500.00')
+            min_price = config_floor
             overrides = {}
 
         # Calculate exact price per valuation engine rules
@@ -175,7 +178,7 @@ def sales_list_create_view(request):
             if ans == 'NO':
                 if tq.is_power_on_gate:
                     is_dead_device = True
-                    floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
+                    floor = max(min_price or Decimal('0.00'), config_floor)
                     amt = max(base_price - floor, Decimal('0.00'))
                     total_deduction += amt
                     answers_to_create.append((None, amt, f"{tq.question_text}: NO (Dead Device)"))
@@ -207,8 +210,9 @@ def sales_list_create_view(request):
                 total_deduction += amt
                 answers_to_create.append((opt, amt, ''))
 
-        min_floor = min_price if (min_price and min_price > 0) else Decimal('500.00')
-        estimated_price = max(base_price - total_deduction, min_floor)
+        min_floor = max(min_price or Decimal('0.00'), config_floor)
+        gross_offer = max(base_price - total_deduction, min_floor)
+        estimated_price = max(gross_offer - doorstep_fee, Decimal('0.00'))
 
         # Pickup lead-time & cutoff enforcement:
         # Same-day pickup is never permitted.
