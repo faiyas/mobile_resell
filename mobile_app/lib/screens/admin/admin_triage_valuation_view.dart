@@ -1121,10 +1121,10 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
                                       : '₹${opt.defaultDeductionValue.toStringAsFixed(0)}';
                                   final badgeText = opt.isAccessoryBonus
                                       ? '+$valLabel Bonus'
-                                      : (opt.isDefect ? '-$valLabel' : '₹0');
+                                      : (opt.defaultDeductionValue > 0 ? '-$valLabel' : '₹0');
                                   final badgeColor = opt.isAccessoryBonus
                                       ? AppTheme.primaryGreen
-                                      : (opt.isDefect ? Colors.red.shade700 : Colors.grey.shade600);
+                                      : (opt.defaultDeductionValue > 0 ? Colors.red.shade700 : Colors.grey.shade600);
                                   return Container(
                                     margin: const EdgeInsets.only(bottom: 6),
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
