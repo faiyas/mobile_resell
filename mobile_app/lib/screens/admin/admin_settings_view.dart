@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/api_service.dart';
+import '../../services/server_keep_alive_service.dart';
 import '../../widgets/glass_container.dart';
 
 class AdminSettingsView extends StatefulWidget {
@@ -32,11 +33,52 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
   bool _forceUpdate = false;
   bool _isSavingOta = false;
   Map<String, dynamic> _loadedSettings = {};
+  bool _keepAliveEnabled = false;
+  bool _keepAliveBusy = false;
 
   @override
   void initState() {
     super.initState();
     _loadSystemSettings();
+    _loadKeepAliveState();
+  }
+
+  Future<void> _loadKeepAliveState() async {
+    final enabled = await ServerKeepAliveService().isEnabled();
+    final running = await ServerKeepAliveService().isRunning();
+    if (mounted) {
+      setState(() => _keepAliveEnabled = enabled || running);
+    }
+  }
+
+  Future<void> _toggleKeepAlive(bool value) async {
+    setState(() => _keepAliveBusy = true);
+    try {
+      if (value) {
+        final started = await ServerKeepAliveService().start();
+        if (mounted) {
+          setState(() => _keepAliveEnabled = started);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(started
+                  ? '✓ 1-Minute Server Keep-Alive started in background!'
+                  : 'Keep-Alive is supported on Android devices.'),
+              backgroundColor: started ? AppTheme.darkGreen : Colors.orange,
+            ),
+          );
+        }
+      } else {
+        await ServerKeepAliveService().stop();
+        if (mounted) {
+          setState(() => _keepAliveEnabled = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Server Keep-Alive stopped.')),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _keepAliveBusy = false);
+    }
   }
 
   Future<void> _loadSystemSettings() async {
@@ -194,6 +236,42 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
               ),
             ),
           ],
+        ),
+
+        const SizedBox(height: 14),
+
+        // Server Keep-Alive (1-Minute Background Ping)
+        GlassContainer(
+          borderRadius: 18,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.bolt_rounded, color: AppTheme.primaryGreen, size: 20),
+                  SizedBox(width: 8),
+                  Text('Server Keep-Alive (1-Min Background Ping)', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Pings the backend every 60 seconds whenever your device has internet so InstaBox never auto-pauses. Requests background battery exemption on Android.',
+                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _keepAliveEnabled,
+                activeTrackColor: AppTheme.primaryGreen,
+                title: Text(
+                  _keepAliveEnabled ? 'Active · Pinging every 1 minute' : 'Disabled · Enable to keep server awake',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                ),
+                onChanged: _keepAliveBusy ? null : _toggleKeepAlive,
+              ),
+            ],
+          ),
         ),
 
         const SizedBox(height: 14),
