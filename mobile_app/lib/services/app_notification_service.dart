@@ -240,6 +240,12 @@ class AppNotificationService extends ChangeNotifier {
     }
     await _save();
     notifyListeners();
+    if (id.startsWith('remote_')) {
+      final remoteId = int.tryParse(id.substring(7));
+      if (remoteId != null) {
+        ApiService().markNotificationRead(remoteId);
+      }
+    }
   }
 
   Future<void> markAllAsRead() async {
@@ -248,6 +254,7 @@ class AppNotificationService extends ChangeNotifier {
     }
     await _save();
     notifyListeners();
+    ApiService().markAllNotificationsRead();
   }
 
   Future<void> _recordDismissedId(String id) async {
@@ -267,6 +274,12 @@ class AppNotificationService extends ChangeNotifier {
     await _recordDismissedId(id);
     await _save();
     notifyListeners();
+    if (id.startsWith('remote_')) {
+      final remoteId = int.tryParse(id.substring(7));
+      if (remoteId != null) {
+        ApiService().dismissNotification(remoteId);
+      }
+    }
   }
 
   Future<void> restoreNotification(AppNotificationItem item, int index) async {
@@ -286,9 +299,10 @@ class AppNotificationService extends ChangeNotifier {
     _notifications.clear();
     await _save();
     notifyListeners();
+    ApiService().clearAllNotifications();
   }
 
-  /// Syncs notifications from server into device storage, then acks delivery
+  /// Syncs notifications from server into device storage and reconciles deletions/reads across devices
   Future<void> syncRemoteNotifications() async {
     if (!_initialized) {
       await init();
@@ -300,20 +314,42 @@ class AppNotificationService extends ChangeNotifier {
       final dismissedSet = dismissedList.toSet();
       final res = await ApiService().getNotifications();
       final results = res['results'];
-      if (results is List && results.isNotEmpty) {
-        bool hasNew = false;
+      if (results is List) {
+        bool changed = false;
         final List<int> ackIds = [];
+        final Map<String, Map> remoteMap = {};
+
         for (var item in results) {
           if (item is! Map) continue;
           final idNum = item['id'];
           final parsedInt = int.tryParse(idNum?.toString() ?? '');
           if (parsedInt != null) ackIds.add(parsedInt);
-          final notifId = 'remote_$idNum';
+          remoteMap['remote_$idNum'] = item;
+        }
+
+        // Reconcile deletions & read-states performed on other devices
+        final beforeCount = _notifications.length;
+        _notifications.removeWhere((n) => n.id.startsWith('remote_') && !remoteMap.containsKey(n.id));
+        if (_notifications.length != beforeCount) {
+          changed = true;
+        }
+        for (var n in _notifications) {
+          if (n.id.startsWith('remote_') && remoteMap.containsKey(n.id)) {
+            if (remoteMap[n.id]!['is_read'] == true && !n.isRead) {
+              n.isRead = true;
+              changed = true;
+            }
+          }
+        }
+
+        for (var entry in remoteMap.entries) {
+          final notifId = entry.key;
+          final item = entry.value;
           if (dismissedSet.contains(notifId)) continue;
           final exists = _notifications.any((n) => n.id == notifId);
           if (!exists) {
-            final parsedTime = item['created_at'] != null 
-                ? (DateTime.tryParse(item['created_at'].toString()) ?? DateTime.now()) 
+            final parsedTime = item['created_at'] != null
+                ? (DateTime.tryParse(item['created_at'].toString()) ?? DateTime.now())
                 : DateTime.now();
             final newItem = AppNotificationItem(
               id: notifId,
@@ -326,7 +362,7 @@ class AppNotificationService extends ChangeNotifier {
               actionType: item['action_type']?.toString(),
             );
             _notifications.insert(0, newItem);
-            hasNew = true;
+            changed = true;
             if (!newItem.isRead) {
               _showNativePopup(newItem);
             }
@@ -335,7 +371,7 @@ class AppNotificationService extends ChangeNotifier {
         if (ackIds.isNotEmpty) {
           ApiService().ackNotifications(ackIds);
         }
-        if (hasNew) {
+        if (changed) {
           _notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));
           if (_notifications.length > 100) {
             _notifications = _notifications.sublist(0, 100);

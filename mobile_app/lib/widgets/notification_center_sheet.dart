@@ -101,11 +101,27 @@ class _NotificationCenterSheetState extends State<NotificationCenterSheet> {
                     ],
                   ),
                 ),
-                if (allList.isNotEmpty)
+                if (allList.isNotEmpty) ...[
                   TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                     onPressed: () => _service.markAllAsRead(),
                     child: const Text('Read All', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
                   ),
+                  const SizedBox(width: 2),
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () => _service.clearAll(),
+                    child: Text('Delete All', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red.shade600)),
+                  ),
+                ],
                 IconButton(
                   icon: const Icon(Icons.close_rounded, color: AppTheme.textSecondary),
                   onPressed: () => Navigator.pop(context),

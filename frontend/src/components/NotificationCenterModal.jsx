@@ -56,16 +56,14 @@ export default function NotificationCenterModal({ isOpen, onClose, onSelectOrder
       const res = await api.getNotifications(currentUser?.phone || '');
       const incoming = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? res : []);
       const dismissed = getDismissedIds();
-      const map = new Map();
-      cached.forEach(n => map.set(n.id, n));
       const ackIds = [];
+      const synced = [];
       incoming.forEach(n => {
         if (dismissed.has(n.id)) return;
         ackIds.push(n.id);
-        const existing = map.get(n.id);
-        map.set(n.id, existing ? { ...n, is_read: existing.is_read || n.is_read } : n);
+        synced.push(n);
       });
-      const merged = Array.from(map.values()).sort(
+      const merged = synced.sort(
         (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
       );
       saveLocalNotifs(merged);
@@ -86,6 +84,7 @@ export default function NotificationCenterModal({ isOpen, onClose, onSelectOrder
     saveLocalNotifs(updated);
     setNotifications(updated);
     setUnreadCount(updated.filter(n => !n.is_read).length);
+    api.markNotificationRead(id).catch(() => {});
   };
 
   const handleDismiss = async (id, e) => {
@@ -97,6 +96,7 @@ export default function NotificationCenterModal({ isOpen, onClose, onSelectOrder
     saveLocalNotifs(updated);
     setNotifications(updated);
     setUnreadCount(updated.filter(n => !n.is_read).length);
+    api.dismissNotification(id).catch(() => {});
   };
 
   const handleMarkAllRead = async () => {
@@ -104,6 +104,7 @@ export default function NotificationCenterModal({ isOpen, onClose, onSelectOrder
     saveLocalNotifs(updated);
     setNotifications(updated);
     setUnreadCount(0);
+    api.markAllNotificationsRead().catch(() => {});
   };
 
   const handleClearAll = async () => {
@@ -113,6 +114,7 @@ export default function NotificationCenterModal({ isOpen, onClose, onSelectOrder
     saveLocalNotifs([]);
     setNotifications([]);
     setUnreadCount(0);
+    api.clearAllNotifications().catch(() => {});
   };
 
   if (!isOpen) return null;
@@ -143,13 +145,23 @@ export default function NotificationCenterModal({ isOpen, onClose, onSelectOrder
           </div>
           <div className="flex items-center gap-1.5">
             {notifications.length > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                className="text-[11px] font-bold text-slate-600 hover:text-[#0BAA4B] px-2 py-1 rounded-lg hover:bg-slate-200 transition"
-              >
-                Mark Read
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="text-[11px] font-bold text-slate-600 hover:text-[#0BAA4B] px-2 py-1 rounded-lg hover:bg-slate-200 transition"
+                >
+                  Mark Read
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  className="text-[11px] font-bold text-red-600 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50 transition flex items-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Delete All
+                </button>
+              </>
             )}
             <button
               type="button"

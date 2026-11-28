@@ -720,6 +720,48 @@ def create_system_notification(title, message, category='ORDERS', recipient=None
         print(f"Failed to create notification: {e}")
         return None
 
+def _get_visible_notifications(user, phone=''):
+    from django.db.models import Q
+    role = getattr(user, 'role', '') if user else ''
+    q_filter = Q(target_audience='ALL')
+
+    if user and getattr(user, 'is_authenticated', False):
+        q_filter |= Q(recipient=user)
+        user_phone = getattr(user, 'phone', '') or ''
+        if user_phone:
+            q_filter |= Q(related_order__customer_phone=user_phone)
+        if role in ['ADMIN', 'SUPER_ADMIN']:
+            q_filter |= Q(target_audience__in=['CUSTOMERS', 'AGENTS'])
+        elif role == 'COLLECTION_AGENT':
+            q_filter |= Q(target_audience='AGENTS')
+        else:
+            q_filter |= Q(target_audience='CUSTOMERS')
+    else:
+        # Guest customers browsing mobile app or web should see customer-facing alerts
+        q_filter |= Q(target_audience='CUSTOMERS')
+
+    if phone:
+        q_filter |= Q(related_order__customer_phone=phone)
+
+    qs = UserNotification.objects.filter(q_filter, is_dismissed=False).order_by('-created_at')
+    if user and getattr(user, 'is_authenticated', False):
+        uid = user.id
+        return [n for n in qs[:100] if uid not in (n.dismissed_by_user_ids or [])]
+    return list(qs[:100])
+
+
+def _is_personal_notification(notif):
+    return bool(notif.recipient_id or notif.related_order_id)
+
+
+def _is_notif_read_for_user(notif, user):
+    if notif.is_read:
+        return True
+    if user and getattr(user, 'is_authenticated', False):
+        return user.id in (notif.read_by_user_ids or [])
+    return False
+
+
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def notifications_list_view(request):
@@ -727,33 +769,14 @@ def notifications_list_view(request):
     if request.method == 'GET':
         user = request.user if request.user.is_authenticated else None
         phone = request.GET.get('phone', '').strip()
-        role = getattr(user, 'role', '') if user else ''
 
-        from django.db.models import Q
-        q_filter = Q(target_audience='ALL')
-
-        if user:
-            q_filter |= Q(recipient=user)
-            if role in ['ADMIN', 'SUPER_ADMIN']:
-                q_filter |= Q(target_audience__in=['CUSTOMERS', 'AGENTS'])
-            elif role == 'COLLECTION_AGENT':
-                q_filter |= Q(target_audience='AGENTS')
-            else:
-                q_filter |= Q(target_audience='CUSTOMERS')
-        else:
-            # Guest customers browsing mobile app or web should see customer-facing alerts
-            q_filter |= Q(target_audience='CUSTOMERS')
-
-        if phone:
-            q_filter |= Q(related_order__customer_phone=phone)
-
-        base_qs = UserNotification.objects.filter(q_filter, is_dismissed=False).order_by('-created_at')
-        unread_count = base_qs.filter(is_read=False).count()
-        notifs = base_qs[:50]
+        active_notifs = _get_visible_notifications(user, phone)
+        unread_count = sum(1 for n in active_notifs if not _is_notif_read_for_user(n, user))
+        notifs = active_notifs[:50]
 
         return Response({
             'unread_count': unread_count,
-            'results': UserNotificationSerializer(notifs, many=True).data
+            'results': UserNotificationSerializer(notifs, many=True, context={'request': request}).data
         })
 
     elif request.method == 'POST':
@@ -786,15 +809,24 @@ def notifications_list_view(request):
         if not notif:
             return Response({'detail': 'Failed to create notification. Please ensure database migrations are applied.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response(UserNotificationSerializer(notif).data, status=status.HTTP_201_CREATED)
+        return Response(UserNotificationSerializer(notif, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def notification_mark_read_view(request, pk):
     try:
         notif = UserNotification.objects.get(pk=pk)
-        notif.is_read = True
-        notif.save(update_fields=['is_read'])
+        user = request.user if request.user.is_authenticated else None
+        if _is_personal_notification(notif) or not user:
+            if not notif.is_read:
+                notif.is_read = True
+                notif.save(update_fields=['is_read'])
+        else:
+            read_ids = list(notif.read_by_user_ids or [])
+            if user.id not in read_ids:
+                read_ids.append(user.id)
+                notif.read_by_user_ids = read_ids
+                notif.save(update_fields=['read_by_user_ids'])
         return Response({'success': True, 'id': notif.id})
     except UserNotification.DoesNotExist:
         return Response({'detail': 'Notification not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -804,51 +836,86 @@ def notification_mark_read_view(request, pk):
 def notification_dismiss_view(request, pk):
     try:
         notif = UserNotification.objects.get(pk=pk)
-        notif.is_dismissed = True
-        notif.save(update_fields=['is_dismissed'])
+        user = request.user if request.user.is_authenticated else None
+        if _is_personal_notification(notif) or not user:
+            if not notif.is_dismissed:
+                notif.is_dismissed = True
+                notif.save(update_fields=['is_dismissed'])
+        else:
+            dismissed_ids = list(notif.dismissed_by_user_ids or [])
+            if user.id not in dismissed_ids:
+                dismissed_ids.append(user.id)
+                notif.dismissed_by_user_ids = dismissed_ids
+                notif.save(update_fields=['dismissed_by_user_ids'])
         return Response({'success': True, 'id': notif.id})
     except UserNotification.DoesNotExist:
         return Response({'detail': 'Notification not found'}, status=status.HTTP_404_NOT_FOUND)
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def notification_mark_all_read_view(request):
-    UserNotification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    user = request.user if request.user.is_authenticated else None
+    phone = (request.data.get('phone') or request.GET.get('phone') or '').strip() if isinstance(request.data, dict) else ''
+
+    if user:
+        active_notifs = _get_visible_notifications(user, phone)
+        personal_ids = [n.id for n in active_notifs if _is_personal_notification(n) and not n.is_read]
+        if personal_ids:
+            UserNotification.objects.filter(id__in=personal_ids).update(is_read=True)
+        for n in active_notifs:
+            if not _is_personal_notification(n):
+                read_ids = list(n.read_by_user_ids or [])
+                if user.id not in read_ids:
+                    read_ids.append(user.id)
+                    n.read_by_user_ids = read_ids
+                    n.save(update_fields=['read_by_user_ids'])
+    elif phone:
+        UserNotification.objects.filter(
+            related_order__customer_phone=phone,
+            is_read=False
+        ).update(is_read=True)
+
     return Response({'success': True, 'message': 'All notifications marked as read'})
 
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def notification_clear_all_view(request):
-    UserNotification.objects.filter(recipient=request.user).update(is_dismissed=True)
+    user = request.user if request.user.is_authenticated else None
+    phone = (request.data.get('phone') or request.GET.get('phone') or '').strip() if isinstance(request.data, dict) else ''
+
+    if user:
+        active_notifs = _get_visible_notifications(user, phone)
+        personal_ids = [n.id for n in active_notifs if _is_personal_notification(n)]
+        if personal_ids:
+            UserNotification.objects.filter(id__in=personal_ids).update(is_dismissed=True)
+        for n in active_notifs:
+            if not _is_personal_notification(n):
+                dismissed_ids = list(n.dismissed_by_user_ids or [])
+                if user.id not in dismissed_ids:
+                    dismissed_ids.append(user.id)
+                    n.dismissed_by_user_ids = dismissed_ids
+                    n.save(update_fields=['dismissed_by_user_ids'])
+    elif phone:
+        UserNotification.objects.filter(
+            related_order__customer_phone=phone,
+            is_dismissed=False
+        ).update(is_dismissed=True)
+
     return Response({'success': True, 'message': 'Notifications cleared'})
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def notification_ack_view(request):
     """
-    Device-first notification cleanup:
-    - Personal/order-specific notifications acknowledged by the device are deleted from the server DB.
-    - Public broadcasts older than 48 hours are pruned to keep server storage minimal.
+    Lightweight retention pruning:
+    - Personal/order notifications stay on server for multi-device sync until dismissed or >14 days old.
+    - Public broadcasts older than 14 days are pruned to keep server storage minimal.
     """
-    ids = request.data.get('ids', []) if isinstance(request.data, dict) else []
-    deleted_count = 0
-    if isinstance(ids, list) and ids:
-        from django.db.models import Q
-        clean_ids = [int(i) for i in ids if str(i).isdigit()]
-        if clean_ids:
-            deleted_count, _ = UserNotification.objects.filter(
-                id__in=clean_ids
-            ).filter(
-                Q(recipient__isnull=False) | Q(related_order__isnull=False)
-            ).delete()
-
     from datetime import timedelta
-    cutoff = timezone.now() - timedelta(hours=48)
-    UserNotification.objects.filter(
-        recipient__isnull=True,
-        related_order__isnull=True,
-        created_at__lt=cutoff
-    ).delete()
+    cutoff_old = timezone.now() - timedelta(days=14)
+    cutoff_dismissed = timezone.now() - timedelta(days=3)
+    UserNotification.objects.filter(created_at__lt=cutoff_old).delete()
+    UserNotification.objects.filter(is_dismissed=True, created_at__lt=cutoff_dismissed).delete()
 
-    return Response({'success': True, 'deleted': deleted_count})
+    return Response({'success': True, 'deleted': 0})
 

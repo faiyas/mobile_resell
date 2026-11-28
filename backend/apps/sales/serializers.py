@@ -324,6 +324,7 @@ class PhoneSaleCreateSerializer(serializers.Serializer):
 
 class UserNotificationSerializer(serializers.ModelSerializer):
     sale_code = serializers.ReadOnlyField(source='related_order.sale_code')
+    is_read = serializers.SerializerMethodField()
 
     class Meta:
         model = UserNotification
@@ -332,3 +333,12 @@ class UserNotificationSerializer(serializers.ModelSerializer):
             'category', 'related_order', 'sale_code', 'redirect_route',
             'action_type', 'is_read', 'is_dismissed', 'created_at'
         ]
+
+    def get_is_read(self, obj):
+        if obj.is_read:
+            return True
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        if user and getattr(user, 'is_authenticated', False):
+            return user.id in (obj.read_by_user_ids or [])
+        return False

@@ -166,6 +166,8 @@ class UserNotification(models.Model):
     action_type = models.CharField(max_length=50, blank=True, default='')
     is_read = models.BooleanField(default=False)
     is_dismissed = models.BooleanField(default=False)
+    read_by_user_ids = models.JSONField(default=list, blank=True)
+    dismissed_by_user_ids = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
