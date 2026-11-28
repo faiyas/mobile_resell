@@ -1,7 +1,9 @@
-// Auto-normalize API URL: Ensure /api/v1 is appended whether the user entered it or not
+// Auto-normalize API URL: Production always uses same-origin /api/v1 proxy; DEV uses local backend
 const getApiBase = () => {
-  const defaultProd = '/api/v1';
-  let base = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000/api/v1' : defaultProd)).trim();
+  if (!import.meta.env.DEV) {
+    return '/api/v1';
+  }
+  let base = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1').trim();
   base = base.replace(/\/+$/, '');
   if (!base.endsWith('/api/v1')) {
     base = `${base}/api/v1`;
