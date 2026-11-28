@@ -88,7 +88,7 @@ class PhoneSale(models.Model):
     customer_handover_signed = models.BooleanField(default=False)
     admin_notes = models.TextField(blank=True, default='')
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -151,7 +151,7 @@ class UserNotification(models.Model):
         blank=True,
         related_name='notifications'
     )
-    target_audience = models.CharField(max_length=20, choices=AUDIENCE_CHOICES, default='ORDER')
+    target_audience = models.CharField(max_length=20, choices=AUDIENCE_CHOICES, default='ORDER', db_index=True)
     title = models.CharField(max_length=200)
     message = models.TextField()
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='ORDERS')
@@ -166,7 +166,7 @@ class UserNotification(models.Model):
     action_type = models.CharField(max_length=50, blank=True, default='')
     is_read = models.BooleanField(default=False)
     is_dismissed = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
         ordering = ['-created_at']

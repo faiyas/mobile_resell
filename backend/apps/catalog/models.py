@@ -8,7 +8,7 @@ class DeviceCategory(models.Model):
     icon_name = models.CharField(max_length=50, default='Smartphone')
     image_base64 = models.TextField(blank=True, default='')
     display_order = models.PositiveIntegerField(default=0)
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -62,7 +62,7 @@ class PhoneModel(models.Model):
     image_base64 = models.TextField(blank=True, default='', help_text="Base64 encoded phone picture")
     release_year = models.PositiveIntegerField(null=True, blank=True)
     has_warranty = models.BooleanField(default=True, help_text="Set to False for older models out of warranty period so warranty question is skipped")
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -83,7 +83,7 @@ class StorageVariant(models.Model):
     storage = models.CharField(max_length=50, help_text="e.g. 64GB, 128GB, 256GB")
     base_price = models.DecimalField(max_digits=10, decimal_places=2, help_text="Base buyback price for mint condition")
     min_price = models.DecimalField(max_digits=10, decimal_places=2, default=500.00, help_text="Floor price regardless of damage")
-    is_active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

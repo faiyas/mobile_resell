@@ -1453,16 +1453,22 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> getCatalogVersions() async {
-    try {
-      final url = Uri.parse('${ApiConfig.baseUrl}/catalog/versions/');
-      final res = await http.get(url, headers: _headers).timeout(const Duration(seconds: 5));
-      if (res.statusCode == 200) {
-        final decoded = jsonDecode(res.body);
-        if (decoded is Map) return Map<String, dynamic>.from(decoded);
-      }
-    } catch (_) {}
-    return {};
+  Future<Map<String, dynamic>>? _inflightVersions;
+
+  Future<Map<String, dynamic>> getCatalogVersions() {
+    if (_inflightVersions != null) return _inflightVersions!;
+    _inflightVersions = () async {
+      try {
+        final url = Uri.parse('${ApiConfig.baseUrl}/catalog/versions/');
+        final res = await http.get(url, headers: _headers).timeout(const Duration(seconds: 5));
+        if (res.statusCode == 200) {
+          final decoded = jsonDecode(res.body);
+          if (decoded is Map) return Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+      return <String, dynamic>{};
+    }();
+    return _inflightVersions!.whenComplete(() => _inflightVersions = null);
   }
 
   Future<Map<String, dynamic>> getBusinessSettings({bool forceRefresh = false}) async {

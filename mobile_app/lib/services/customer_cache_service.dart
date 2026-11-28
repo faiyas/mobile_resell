@@ -14,6 +14,11 @@ class CustomerCacheService {
   static const String _keyBrands = 'customer_cache_brands_v2';
   static const String _keySyncBundle = 'customer_cache_sync_bundle_v1';
   static const String _keyLastSync = 'customer_cache_last_sync_timestamp';
+  static const String _keyVersions = 'dolly_local_versions_v1';
+  static final Set<int> _staleBrandIds = <int>{};
+
+  static bool isBrandStale(int brandId) => _staleBrandIds.contains(brandId);
+  static void markBrandFresh(int brandId) => _staleBrandIds.remove(brandId);
 
   /// Hydrates ApiService memory with cached Series, Models, Variants & Questionnaires
   static Future<void> hydrateApiFromLocalCache(ApiService api) async {
@@ -81,24 +86,54 @@ class CustomerCacheService {
     }
   }
 
-  /// Silently background syncs fresh customer-facing data from the backend.
+  /// Silently background syncs ONLY changed customer-facing data using /catalog/versions/.
   /// Returns `true` if any data changed and was updated in local storage.
   static Future<bool> syncCustomerDataSilently(ApiService api) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final remoteVersions = await api.getCatalogVersions();
+      Map<String, dynamic> localVersions = {};
+      final rawLocalV = prefs.getString(_keyVersions);
+      if (rawLocalV != null && rawLocalV.isNotEmpty) {
+        try {
+          localVersions = Map<String, dynamic>.from(jsonDecode(rawLocalV));
+        } catch (_) {}
+      }
 
-      // Parallel fetch from API with forceRefresh to always capture admin CMS & catalog edits
-      final results = await Future.wait<dynamic>([
-        api.getCMSSections(forceRefresh: true),
-        api.getDeviceCategories(forceRefresh: true),
-        api.getBrands(forceRefresh: true),
-        api.fetchSyncBundleRaw(),
-      ]);
+      // Check which brands had variant/price edits
+      if (remoteVersions['brand_variants'] is Map) {
+        final remoteBV = Map<String, dynamic>.from(remoteVersions['brand_variants']);
+        final localBV = localVersions['brand_variants'] is Map
+            ? Map<String, dynamic>.from(localVersions['brand_variants'])
+            : <String, dynamic>{};
+        remoteBV.forEach((bKey, rVer) {
+          if (localBV[bKey] != rVer) {
+            final bid = int.tryParse(bKey);
+            if (bid != null) _staleBrandIds.add(bid);
+          }
+        });
+      }
 
-      final freshCms = results[0] as List<CMSSectionModel>;
-      final freshCats = results[1] as List<DeviceCategoryModel>;
-      final freshBrands = results[2] as List<BrandModel>;
-      final rawBundle = results[3] as String?;
+      final bool needCms = (prefs.getString(_keyCms) ?? '').isEmpty ||
+          remoteVersions.isEmpty ||
+          remoteVersions['banners'] != localVersions['banners'];
+      final bool needCats = (prefs.getString(_keyCategories) ?? '').isEmpty;
+      final bool needBrands = (prefs.getString(_keyBrands) ?? '').isEmpty ||
+          remoteVersions.isEmpty ||
+          remoteVersions['brands'] != localVersions['brands'];
+      final bool needBundle = (prefs.getString(_keySyncBundle) ?? '').isEmpty ||
+          remoteVersions['triage'] != localVersions['triage'] ||
+          remoteVersions['deductions'] != localVersions['deductions'] ||
+          _staleBrandIds.isNotEmpty;
+
+      final List<CMSSectionModel> freshCms = needCms ? await api.getCMSSections(forceRefresh: true) : [];
+      final List<DeviceCategoryModel> freshCats = needCats ? await api.getDeviceCategories(forceRefresh: true) : [];
+      final List<BrandModel> freshBrands = needBrands ? await api.getBrands(forceRefresh: true) : [];
+      final String? rawBundle = needBundle ? await api.fetchSyncBundleRaw() : null;
+
+      if (remoteVersions.isNotEmpty) {
+        await prefs.setString(_keyVersions, jsonEncode(remoteVersions));
+      }
 
       bool hasChanges = false;
 

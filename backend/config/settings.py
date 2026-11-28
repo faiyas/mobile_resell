@@ -243,6 +243,16 @@ CORS_ALLOW_HEADERS = [
 DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024
 
+# In-Memory Cache (Fast 0ms hot reads on 8 GiB RAM machine)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'dolly-locmem-cache',
+        'TIMEOUT': 300,
+        'OPTIONS': {'MAX_ENTRIES': 2000},
+    }
+}
+
 # Production Logging Configuration
 LOGS_DIR = BASE_DIR / 'logs'
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -269,14 +279,14 @@ LOGGING = {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': LOGS_DIR / 'django_error.log',
             'maxBytes': 10 * 1024 * 1024,  # 10 MB
-            'backupCount': 5,
+            'backupCount': 3,
             'formatter': 'verbose',
         },
         'audit_file': {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': LOGS_DIR / 'audit.log',
-            'maxBytes': 15 * 1024 * 1024,  # 15 MB
-            'backupCount': 10,
+            'maxBytes': 10 * 1024 * 1024,  # 10 MB
+            'backupCount': 3,
             'formatter': 'simple',
         },
     },

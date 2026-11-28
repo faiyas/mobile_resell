@@ -529,7 +529,13 @@ def business_settings_view(request):
         setting = BusinessSetting.objects.create()
 
     if request.method == 'GET':
-        return Response(BusinessSettingSerializer(setting).data)
+        from django.core.cache import cache
+        cached = cache.get('dolly_business_settings')
+        if cached is not None:
+            return Response(cached)
+        data = BusinessSettingSerializer(setting).data
+        cache.set('dolly_business_settings', data, 300)
+        return Response(data)
 
     if not is_admin_user(request.user):
         return Response({'detail': 'Admin access required'}, status=status.HTTP_403_FORBIDDEN)
@@ -537,6 +543,8 @@ def business_settings_view(request):
     serializer = BusinessSettingSerializer(setting, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
+        from django.core.cache import cache
+        cache.delete('dolly_business_settings')
         bump_catalog_version('settings')
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -711,6 +719,8 @@ def bump_catalog_version(key, brand_id=None):
             data[key] = int(data.get(key, 0)) + 1
         section.data_json = data
         section.save(update_fields=['data_json'])
+        from django.core.cache import cache
+        cache.set('dolly_catalog_versions', data, 300)
     except Exception:
         pass
 
@@ -718,6 +728,11 @@ def bump_catalog_version(key, brand_id=None):
 @permission_classes([AllowAny])
 def catalog_versions_view(request):
     """Tiny <300-byte manifest so clients only reload sections/brands that actually changed."""
+    from django.core.cache import cache
+    cached = cache.get('dolly_catalog_versions')
+    if cached is not None:
+        return Response(cached)
     _, data = _get_versions_dict()
+    cache.set('dolly_catalog_versions', data, 300)
     return Response(data)
 

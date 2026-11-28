@@ -5,6 +5,7 @@ import '../../config/theme.dart';
 import '../../models/models.dart';
 import '../../services/api_service.dart';
 import '../../widgets/glass_container.dart';
+import '../../services/customer_cache_service.dart';
 import '../../widgets/brand_logo.dart';
 import '../../utils/image_helper.dart';
 import 'device_health_check_screen.dart';
@@ -102,8 +103,10 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     });
 
     try {
+      final isStale = CustomerCacheService.isBrandStale(brand.id);
       final s = await _api.getSeries(brandId: brand.id);
-      final m = await _api.getModels(brandId: brand.id, forceRefresh: true);
+      final m = await _api.getModels(brandId: brand.id, forceRefresh: isStale);
+      if (isStale) CustomerCacheService.markBrandFresh(brand.id);
 
       // Sort series chips so the latest generations appear first
       final maxYearBySeries = <int, int>{};
@@ -149,11 +152,13 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
       _loading = true;
     });
     try {
+      final isStale = CustomerCacheService.isBrandStale(_brand!.id);
       final m = await _api.getModels(
         brandId: _brand!.id,
         seriesId: series?.id,
-        forceRefresh: true,
+        forceRefresh: isStale,
       );
+      if (isStale) CustomerCacheService.markBrandFresh(_brand!.id);
       setState(() {
         _models = m;
         _model = null;
@@ -175,7 +180,9 @@ class _CategorySelectionScreenState extends State<CategorySelectionScreen> {
     });
 
     try {
-      var v = await _api.getVariants(model.id, forceRefresh: true);
+      final isStale = _brand != null && CustomerCacheService.isBrandStale(_brand!.id);
+      var v = await _api.getVariants(model.id, forceRefresh: isStale);
+      if (isStale && _brand != null) CustomerCacheService.markBrandFresh(_brand!.id);
       if (v.isEmpty) {
         v = model.variants;
       }

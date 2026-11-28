@@ -6,6 +6,8 @@ import '../config/theme.dart';
 
 class ImageHelper {
   static final ImagePicker _picker = ImagePicker();
+  static final Map<int, Uint8List> _decodedCache = <int, Uint8List>{};
+  static const int _maxCacheEntries = 150;
 
   /// Prompts user to pick an image from Gallery or Camera, converts to Base64 data URL
   static Future<String?> pickImageAsBase64({
@@ -41,15 +43,23 @@ class ImageHelper {
     }
   }
 
-  /// Extracts pure Base64 bytes from a raw Base64 string or data URL
+  /// Extracts pure Base64 bytes from a raw Base64 string or data URL (LRU cached in RAM)
   static Uint8List? decodeBase64(String? base64String) {
     if (base64String == null || base64String.trim().isEmpty) return null;
+    final key = base64String.hashCode;
+    final cached = _decodedCache[key];
+    if (cached != null) return cached;
     try {
       String cleanStr = base64String.trim();
       if (cleanStr.contains(',')) {
         cleanStr = cleanStr.split(',').last;
       }
-      return base64Decode(cleanStr);
+      final bytes = base64Decode(cleanStr);
+      if (_decodedCache.length >= _maxCacheEntries) {
+        _decodedCache.remove(_decodedCache.keys.first);
+      }
+      _decodedCache[key] = bytes;
+      return bytes;
     } catch (_) {
       return null;
     }
