@@ -25,6 +25,7 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
   List<ConditionCategoryModel> _conditionSteps = [];
   List<BrandModel> _brands = [];
   BrandModel? _selectedBrandFilter;
+  final Set<int> _expandedStepIds = {};
   bool _isLoading = true;
 
   @override
@@ -307,9 +308,18 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final subCtrl = TextEditingController(text: existing?.subtitle ?? '');
     final stepCtrl = TextEditingController(text: (existing?.stepNumber ?? (_conditionSteps.length + 1)).toString());
-    String selType = existing?.selectionType ?? 'MULTIPLE';
+    const allowedTypes = ['SINGLE', 'MULTIPLE', 'RADIO', 'ACCESSORY', 'WARRANTY'];
+    String selType = (existing?.selectionType != null && allowedTypes.contains(existing!.selectionType))
+        ? existing.selectionType
+        : 'MULTIPLE';
     int? brandId = existing?.brand ?? _selectedBrandFilter?.id;
-    String? base64Img = existing?.imageBase64;
+    if (brandId != null && !_brands.any((b) => b.id == brandId)) {
+      brandId = null;
+    }
+    bool isMandatory = existing?.isMandatory ?? true;
+    String? base64Img = (existing?.imageBase64 != null && existing!.imageBase64!.trim().isNotEmpty)
+        ? existing.imageBase64
+        : null;
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -317,171 +327,187 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setM) => Padding(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
-              const SizedBox(height: 14),
-              Text(existing == null ? 'Add Questionnaire Step' : 'Edit Step: ${existing.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
-              const Text('Questionnaire evaluation section for device defects/accessories', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-              const SizedBox(height: 16),
-              const Text('Step Name', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: nameCtrl,
-                decoration: InputDecoration(
-                  hintText: 'e.g. Screen Condition, Body / Frame, Functional Tests',
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text('Subtitle / Guidance', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: subCtrl,
-                decoration: InputDecoration(
-                  hintText: 'e.g. Select all physical cracks and dead pixels',
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
+        builder: (ctx, setM) {
+          final decodedImg = base64Img != null ? ImageHelper.decodeBase64(base64Img!) : null;
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: selType,
-                      decoration: InputDecoration(
-                        labelText: 'Selection Type',
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+                  const SizedBox(height: 14),
+                  Text(existing == null ? 'Add Questionnaire Step' : 'Edit Step: ${existing.name}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                  const Text('Questionnaire evaluation section for device defects/accessories', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                  const SizedBox(height: 16),
+                  const Text('Step Name', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Screen Condition, Body / Frame, Functional Tests',
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Subtitle / Guidance', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: subCtrl,
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Select all physical cracks and dead pixels',
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: selType,
+                          decoration: InputDecoration(
+                            labelText: 'Selection Type',
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: 'SINGLE', child: Text('Single Choice')),
+                            DropdownMenuItem(value: 'MULTIPLE', child: Text('Multi-Select')),
+                            DropdownMenuItem(value: 'RADIO', child: Text('Radio List')),
+                            DropdownMenuItem(value: 'ACCESSORY', child: Text('Accessories')),
+                            DropdownMenuItem(value: 'WARRANTY', child: Text('Warranty Gate')),
+                          ],
+                          onChanged: (val) => setM(() => selType = val ?? 'MULTIPLE'),
+                        ),
                       ),
-                      items: const [
-                        DropdownMenuItem(value: 'SINGLE', child: Text('Single Choice')),
-                        DropdownMenuItem(value: 'MULTIPLE', child: Text('Multi-Select')),
-                        DropdownMenuItem(value: 'ACCESSORY', child: Text('Accessories')),
-                        DropdownMenuItem(value: 'WARRANTY', child: Text('Warranty Gate')),
-                      ],
-                      onChanged: (val) => setM(() => selType = val ?? 'MULTIPLE'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: stepCtrl,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Step #',
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: stepCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Step #',
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          ),
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int?>(
+                    value: brandId,
+                    decoration: InputDecoration(
+                      labelText: 'Brand Specific (Optional)',
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                     ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Universal (All Brands)')),
+                      ..._brands.map((b) => DropdownMenuItem(value: b.id, child: Text(b.name))),
+                    ],
+                    onChanged: (val) => setM(() => brandId = val),
                   ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<int?>(
-                value: brandId,
-                decoration: InputDecoration(
-                  labelText: 'Brand Specific (Optional)',
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-                items: [
-                  const DropdownMenuItem(value: null, child: Text('Universal (All Brands)')),
-                  ..._brands.map((b) => DropdownMenuItem(value: b.id, child: Text(b.name))),
-                ],
-                onChanged: (val) => setM(() => brandId = val),
-              ),
-              const SizedBox(height: 14),
-              const Text('Step Icon / Illustration', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.border)),
-                    child: base64Img != null
-                        ? ClipRRect(borderRadius: BorderRadius.circular(11), child: Image.memory(ImageHelper.decodeBase64(base64Img)!, fit: BoxFit.contain))
-                        : const Icon(Icons.category_rounded, color: AppTheme.textSecondary),
+                  const SizedBox(height: 8),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Mandatory Step', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    subtitle: const Text('Customer must choose an option before proceeding', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                    value: isMandatory,
+                    activeColor: AppTheme.primaryGreen,
+                    onChanged: (val) => setM(() => isMandatory = val),
                   ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade200, foregroundColor: Colors.black87),
-                    icon: const Icon(Icons.upload, size: 16),
-                    label: Text(base64Img != null ? 'Change Icon' : 'Pick Icon', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    onPressed: () async {
-                      final xfile = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 400);
-                      if (xfile != null) {
-                        final bytes = await xfile.readAsBytes();
-                        setM(() => base64Img = base64Encode(bytes));
-                      }
-                    },
-                  ),
-                  if (base64Img != null) ...[
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
-                      tooltip: 'Remove Icon',
-                      onPressed: () => setM(() => base64Img = null),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          final name = nameCtrl.text.trim();
-                          if (name.isEmpty) return;
-                          final sNum = int.tryParse(stepCtrl.text) ?? 1;
-                          setM(() => isSaving = true);
-                          try {
-                            final payload = {
-                              'name': name,
-                              'subtitle': subCtrl.text.trim(),
-                              'step_number': sNum,
-                              'selection_type': selType,
-                              'brand': brandId,
-                              if (base64Img != null) 'image_base64': base64Img,
-                              'is_active': true,
-                            };
-                            if (existing == null) {
-                              await _api.createConditionCategory(payload);
-                            } else {
-                              await _api.updateConditionCategory(existing.id, payload);
-                            }
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            _loadAllValuationData();
-                          } catch (e) {
-                            setM(() => isSaving = false);
-                            if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
+                  const SizedBox(height: 8),
+                  const Text('Step Icon / Illustration', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.border)),
+                        child: decodedImg != null
+                            ? ClipRRect(borderRadius: BorderRadius.circular(11), child: Image.memory(decodedImg, fit: BoxFit.contain))
+                            : const Icon(Icons.category_rounded, color: AppTheme.textSecondary),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade200, foregroundColor: Colors.black87),
+                        icon: const Icon(Icons.upload, size: 16),
+                        label: Text(base64Img != null ? 'Change Icon' : 'Pick Icon', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final xfile = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 400);
+                          if (xfile != null) {
+                            final bytes = await xfile.readAsBytes();
+                            setM(() => base64Img = base64Encode(bytes));
                           }
                         },
-                  child: isSaving
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : Text(existing == null ? 'Create Step' : 'Save Changes', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-                ),
+                      ),
+                      if (base64Img != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                          tooltip: 'Remove Icon',
+                          onPressed: () => setM(() => base64Img = null),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                      onPressed: isSaving
+                          ? null
+                          : () async {
+                              final name = nameCtrl.text.trim();
+                              if (name.isEmpty) return;
+                              final sNum = int.tryParse(stepCtrl.text) ?? 1;
+                              setM(() => isSaving = true);
+                              try {
+                                final payload = {
+                                  'name': name,
+                                  'subtitle': subCtrl.text.trim(),
+                                  'step_number': sNum,
+                                  'selection_type': selType,
+                                  'brand': brandId,
+                                  'is_mandatory': isMandatory,
+                                  if (base64Img != null) 'image_base64': base64Img,
+                                  'is_active': true,
+                                };
+                                if (existing == null) {
+                                  await _api.createConditionCategory(payload);
+                                } else {
+                                  await _api.updateConditionCategory(existing.id, payload);
+                                }
+                                if (ctx.mounted) Navigator.pop(ctx);
+                                _loadAllValuationData();
+                              } catch (e) {
+                                setM(() => isSaving = false);
+                                if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
+                              }
+                            },
+                      child: isSaving
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : Text(existing == null ? 'Create Step' : 'Save Changes', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
               ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1051,7 +1077,108 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
                                 child: Text(s.subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                               ),
                             const SizedBox(height: 8),
-                            Text('${s.options.length} deduction rules linked', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen)),
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  if (_expandedStepIds.contains(s.id)) {
+                                    _expandedStepIds.remove(s.id);
+                                  } else {
+                                    _expandedStepIds.add(s.id);
+                                  }
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${s.options.length} options / rules linked',
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryGreen),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      _expandedStepIds.contains(s.id) ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                                      size: 16,
+                                      color: AppTheme.primaryGreen,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (_expandedStepIds.contains(s.id)) ...[
+                              const Divider(height: 16),
+                              if (s.options.isEmpty)
+                                const Padding(
+                                  padding: EdgeInsets.only(bottom: 8),
+                                  child: Text('No options inside this step yet.', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                                )
+                              else
+                                ...s.options.map((opt) {
+                                  final valLabel = opt.deductionType == 'PERCENTAGE'
+                                      ? '${opt.defaultDeductionValue.toStringAsFixed(opt.defaultDeductionValue % 1 == 0 ? 0 : 1)}%'
+                                      : '₹${opt.defaultDeductionValue.toStringAsFixed(0)}';
+                                  final badgeText = opt.isAccessoryBonus
+                                      ? '+$valLabel Bonus'
+                                      : (opt.isDefect ? '-$valLabel' : '₹0');
+                                  final badgeColor = opt.isAccessoryBonus
+                                      ? AppTheme.primaryGreen
+                                      : (opt.isDefect ? Colors.red.shade700 : Colors.grey.shade600);
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 6),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade50,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: Colors.grey.shade200),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(opt.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                                              Text(
+                                                badgeText + (opt.exclusiveGroup.isNotEmpty ? ' · ${opt.exclusiveGroup}' : ''),
+                                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: badgeColor),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.edit, size: 16, color: AppTheme.textSecondary),
+                                          constraints: const BoxConstraints(),
+                                          padding: const EdgeInsets.all(6),
+                                          onPressed: () => _showOptionModal(s, opt),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_outline, size: 16, color: Colors.red),
+                                          constraints: const BoxConstraints(),
+                                          padding: const EdgeInsets.all(6),
+                                          onPressed: () => _confirmDeleteOption(opt),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
+                              const SizedBox(height: 4),
+                              SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppTheme.primaryGreen,
+                                    side: BorderSide(color: AppTheme.primaryGreen.withValues(alpha: 0.4)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                  ),
+                                  icon: const Icon(Icons.add_rounded, size: 16),
+                                  label: const Text('Add Option to Step', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                  onPressed: () => _showOptionModal(s),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
