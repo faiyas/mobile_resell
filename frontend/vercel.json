@@ -17,11 +17,11 @@
   ],
   "rewrites": [
     {
-      "source": "/api/v1/:path*",
-      "destination": "https://50-6-206-122.sslip.io/api/v1/:path*"
+      "source": "/api/v1/(.*)",
+      "destination": "https://50-6-206-122.sslip.io/api/v1/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
