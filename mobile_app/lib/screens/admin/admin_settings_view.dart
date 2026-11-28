@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../services/api_service.dart';
-import '../../utils/image_helper.dart';
+import '../../utils/contact_launcher.dart';
 import '../../widgets/glass_container.dart';
 
 class AdminSettingsView extends StatefulWidget {
@@ -35,15 +34,15 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
   bool _isSavingOta = false;
   Map<String, dynamic> _loadedSettings = {};
 
-  // Business Profile, Contacts & Legal Links
-  final _bizWebsiteCtrl = TextEditingController();
-  final _bizPolicyUrlCtrl = TextEditingController();
-  final _bizTermsUrlCtrl = TextEditingController();
+  // Operational Pricing & Serviceable Pincodes
+  final _minFloorCtrl = TextEditingController();
+  final _doorstepFeeCtrl = TextEditingController();
+  final _pincodesCtrl = TextEditingController();
+  bool _isSavingOps = false;
+
+  // Support Contact Settings (Mail ID & Phone Number only)
   final _bizHelplineCtrl = TextEditingController();
-  final _bizWhatsappCtrl = TextEditingController();
   final _bizEmailCtrl = TextEditingController();
-  final _bizAddressCtrl = TextEditingController();
-  String? _bizLogoBase64;
   bool _isSavingBiz = false;
 
   @override
@@ -57,15 +56,8 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
     final b = await _api.getBusinessSettings();
     if (!mounted || b.isEmpty) return;
     setState(() {
-      _bizWebsiteCtrl.text = b['website_url']?.toString() ?? '';
-      _bizPolicyUrlCtrl.text = b['privacy_policy_url']?.toString() ?? '';
-      _bizTermsUrlCtrl.text = b['terms_url']?.toString() ?? '';
       _bizHelplineCtrl.text = b['customer_helpline']?.toString() ?? '';
-      _bizWhatsappCtrl.text = b['whatsapp_number']?.toString() ?? '';
       _bizEmailCtrl.text = b['support_email']?.toString() ?? '';
-      _bizAddressCtrl.text = b['office_address']?.toString() ?? '';
-      final logo = b['business_logo']?.toString() ?? '';
-      _bizLogoBase64 = logo.isNotEmpty ? logo : null;
     });
   }
 
@@ -73,26 +65,21 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
     setState(() => _isSavingBiz = true);
     try {
       await _api.updateBusinessSettings({
-        'website_url': _bizWebsiteCtrl.text.trim(),
-        'privacy_policy_url': _bizPolicyUrlCtrl.text.trim(),
-        'terms_url': _bizTermsUrlCtrl.text.trim(),
         'customer_helpline': _bizHelplineCtrl.text.trim(),
-        'whatsapp_number': _bizWhatsappCtrl.text.trim(),
         'support_email': _bizEmailCtrl.text.trim(),
-        'office_address': _bizAddressCtrl.text.trim(),
-        if (_bizLogoBase64 != null) 'business_logo': _bizLogoBase64,
       });
+      await ContactLauncher.refreshFromServer();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('✓ Business contacts, website & policy URLs updated!'),
+          content: Text('✓ Support Mail ID & Phone Number updated across Web & Mobile!'),
           backgroundColor: AppTheme.darkGreen,
         ),
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save business settings: $e'), backgroundColor: Colors.red),
+          SnackBar(content: Text('Failed to save support contacts: $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -110,7 +97,38 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
       _apkUrlCtrl.text = s['apk_download_url']?.toString() ?? '';
       _releaseNotesCtrl.text = s['release_notes']?.toString() ?? '';
       _forceUpdate = s['force_update'] == true || s['force_update']?.toString().toLowerCase() == 'true';
+      _minFloorCtrl.text = (s['minPayoutFloor'] ?? 500).toString();
+      _doorstepFeeCtrl.text = (s['doorstepFee'] ?? 0).toString();
+      _pincodesCtrl.text = s['pincodesServed']?.toString() ?? '';
     });
+  }
+
+  Future<void> _saveOperationalSettings() async {
+    setState(() => _isSavingOps = true);
+    try {
+      final payload = Map<String, dynamic>.from(_loadedSettings);
+      payload['minPayoutFloor'] = int.tryParse(_minFloorCtrl.text.trim()) ?? 500;
+      payload['doorstepFee'] = int.tryParse(_doorstepFeeCtrl.text.trim()) ?? 0;
+      payload['pincodesServed'] = _pincodesCtrl.text.trim();
+
+      final updated = await _api.updateSystemSettings(payload);
+      if (!mounted) return;
+      setState(() => _loadedSettings = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✓ Serviceable pincodes & pricing safeguards saved!'),
+          backgroundColor: AppTheme.darkGreen,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save operational settings: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSavingOps = false);
+    }
   }
 
   Future<void> _saveOtaUpdate() async {
@@ -159,13 +177,11 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
     _minVerCtrl.dispose();
     _apkUrlCtrl.dispose();
     _releaseNotesCtrl.dispose();
-    _bizWebsiteCtrl.dispose();
-    _bizPolicyUrlCtrl.dispose();
-    _bizTermsUrlCtrl.dispose();
+    _minFloorCtrl.dispose();
+    _doorstepFeeCtrl.dispose();
+    _pincodesCtrl.dispose();
     _bizHelplineCtrl.dispose();
-    _bizWhatsappCtrl.dispose();
     _bizEmailCtrl.dispose();
-    _bizAddressCtrl.dispose();
     super.dispose();
   }
 
@@ -266,7 +282,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
 
         const SizedBox(height: 14),
 
-        // Business Contacts, Website URL & Policy Links Card
+        // Support Contact Settings Card (Mail ID & Phone Number only)
         GlassContainer(
           borderRadius: 18,
           padding: const EdgeInsets.all(16),
@@ -275,127 +291,34 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.language_rounded, color: AppTheme.primaryGreen, size: 20),
+                  Icon(Icons.support_agent_rounded, color: AppTheme.primaryGreen, size: 20),
                   SizedBox(width: 8),
-                  Text('Website, Contacts & Policy Links', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
+                  Text('Support Contact Settings', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
                 ],
               ),
               const SizedBox(height: 4),
               const Text(
-                'Update live website URL, privacy/terms page links, helpline, and support email across Web & Mobile:',
+                'Update Mail ID & Phone Number shown across Web & Mobile:',
                 style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: _bizLogoBase64 != null && ImageHelper.decodeBase64(_bizLogoBase64) != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(13),
-                            child: Image.memory(ImageHelper.decodeBase64(_bizLogoBase64)!, fit: BoxFit.contain, gaplessPlayback: true),
-                          )
-                        : const Icon(Icons.storefront_rounded, color: AppTheme.primaryGreen, size: 26),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final src = await ImageHelper.showImageSourceDialog(context);
-                        if (src == null) return;
-                        final b64 = await ImageHelper.pickImageAsBase64(
-                          source: src == 'camera' ? ImageSource.camera : ImageSource.gallery,
-                          maxWidth: 512,
-                          maxHeight: 512,
-                          imageQuality: 85,
-                        );
-                        if (b64 != null && mounted) setState(() => _bizLogoBase64 = b64);
-                      },
-                      icon: const Icon(Icons.add_photo_alternate_outlined, size: 16),
-                      label: Text(_bizLogoBase64 != null ? 'Change Business Logo' : 'Upload Business Logo', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _bizWebsiteCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Website URL',
-                  hintText: 'https://mobile-resell.vercel.app',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  isDense: true,
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _bizPolicyUrlCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Privacy Policy Page URL',
-                  hintText: 'https://mobile-resell.vercel.app/privacy-policy',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  isDense: true,
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _bizTermsUrlCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Terms & Conditions Page URL',
-                  hintText: 'https://mobile-resell.vercel.app/terms',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  isDense: true,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _bizHelplineCtrl,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: 'Customer Helpline',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: _bizWhatsappCtrl,
-                      keyboardType: TextInputType.phone,
-                      decoration: InputDecoration(
-                        labelText: 'WhatsApp Number',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        isDense: true,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
               TextField(
                 controller: _bizEmailCtrl,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
-                  labelText: 'Support Email',
+                  labelText: 'Mail ID (Support Email)',
+                  hintText: 'support@dollyresell.com',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   isDense: true,
                 ),
               ),
               const SizedBox(height: 10),
               TextField(
-                controller: _bizAddressCtrl,
+                controller: _bizHelplineCtrl,
+                keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
-                  labelText: 'Office Address',
+                  labelText: 'Phone Number (Customer Helpline)',
+                  hintText: '+91 90252 32453',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   isDense: true,
                 ),
@@ -413,7 +336,89 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
                       ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : const Icon(Icons.save_rounded, size: 16, color: Colors.white),
                   label: Text(
-                    _isSavingBiz ? 'Saving...' : 'Save Contacts & Links',
+                    _isSavingBiz ? 'Saving...' : 'Save Support Contacts',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 14),
+
+        // Operations & Serviceable Pincodes Card
+        GlassContainer(
+          borderRadius: 18,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.location_on_outlined, color: AppTheme.primaryGreen, size: 20),
+                  SizedBox(width: 8),
+                  Text('Operations & Serviceable Pincodes', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Configure allowed pickup pincodes, minimum payout floor, and doorstep fee:',
+                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _minFloorCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Min Payout Floor (₹)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _doorstepFeeCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Doorstep Fee (₹)',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _pincodesCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Active Operational Pincodes (Comma-separated)',
+                  hintText: '605001, 605002, 605003...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGreen,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isSavingOps ? null : _saveOperationalSettings,
+                  icon: _isSavingOps
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.save_rounded, size: 16, color: Colors.white),
+                  label: Text(
+                    _isSavingOps ? 'Saving...' : 'Save Pincodes & Pricing',
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
