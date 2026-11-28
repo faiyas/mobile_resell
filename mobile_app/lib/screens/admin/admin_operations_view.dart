@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
+import '../../utils/image_helper.dart';
 import '../../widgets/glass_container.dart';
 
 class AdminOperationsView extends StatefulWidget {
@@ -312,8 +313,73 @@ class _AdminOperationsViewState extends State<AdminOperationsView> {
                 ),
               ],
             ),
+            if (order.inspection != null && order.inspection!.photos.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryGreen,
+                    side: BorderSide(color: AppTheme.primaryGreen.withValues(alpha: 0.4)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  icon: const Icon(Icons.photo_library_outlined, size: 15),
+                  label: Text(
+                    'View Inspection Photos (${order.inspection!.photos.length})',
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800),
+                  ),
+                  onPressed: () => _showInspectionPhotosDialog(order),
+                ),
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  void _showInspectionPhotosDialog(SaleOrderModel order) {
+    final photos = order.inspection?.photos ?? [];
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Inspection Photos · ${order.saleCode}',
+          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Inspector: ${order.inspection?.inspectorName ?? 'Field Agent'} · IMEI: ${order.inspection?.verifiedImei ?? order.imeiNumber ?? 'Verified'}',
+                  style: const TextStyle(fontSize: 11.5, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: photos.map((p) {
+                    final bytes = ImageHelper.decodeBase64(p.imageBase64);
+                    if (bytes == null) return const SizedBox.shrink();
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.memory(bytes, width: 110, height: 110, fit: BoxFit.cover, gaplessPlayback: true),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
       ),
     );
   }

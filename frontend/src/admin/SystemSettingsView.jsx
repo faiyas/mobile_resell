@@ -25,9 +25,10 @@ export default function SystemSettingsView({ mode = 'settings' }) {
     companyName: 'Dolly Buyback Services Pvt Ltd'
   });
 
-  // Business Settings (contacts, website URL, privacy/terms URLs)
+  // Business Settings (contacts, website URL, privacy/terms URLs, logo)
   const [bizForm, setBizForm] = useState({
     company_name: '',
+    business_logo: '',
     website_url: '',
     privacy_policy_url: '',
     terms_url: '',
@@ -300,6 +301,31 @@ export default function SystemSettingsView({ mode = 'settings' }) {
             <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm border-b border-slate-100 pb-3">
               <Globe className="w-4 h-4 text-[#0BAA4B]" />
               <h3>Business Profile, Contacts &amp; Policy Links</h3>
+            </div>
+
+            <div className="flex items-center gap-4 pb-2">
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                {bizForm.business_logo ? (
+                  <img src={bizForm.business_logo} alt="Business Logo" className="w-full h-full object-contain" />
+                ) : (
+                  <Globe className="w-6 h-6 text-slate-400" />
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Business Logo</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => setBizForm(prev => ({ ...prev, business_logo: reader.result }));
+                    reader.readAsDataURL(file);
+                  }}
+                  className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

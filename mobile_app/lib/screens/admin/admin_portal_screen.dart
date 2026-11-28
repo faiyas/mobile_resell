@@ -117,7 +117,7 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
     }
   }
 
-  Future<void> _handleConfirmPayout(SaleOrderModel order, String codeOrUtr) async {
+  Future<void> _handleConfirmPayout(SaleOrderModel order, String codeOrUtr, {String? proofBase64}) async {
     final isCash = order.beneficiaryType == 'CASH';
     try {
       final payload = <String, dynamic>{
@@ -128,7 +128,9 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
         payload['cash_otp'] = codeOrUtr;
       } else {
         payload['utr_number'] = codeOrUtr;
-        payload['payment_proof_base64'] = 'ADMIN_APP_MANUAL_UTR_ENTRY';
+        payload['payment_proof_base64'] = (proofBase64 != null && proofBase64.isNotEmpty)
+            ? proofBase64
+            : 'ADMIN_APP_MANUAL_UTR_ENTRY';
       }
 
       await _api.recordPayment(order.id, payload);

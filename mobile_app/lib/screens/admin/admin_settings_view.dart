@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../services/api_service.dart';
+import '../../utils/image_helper.dart';
 import '../../widgets/glass_container.dart';
 
 class AdminSettingsView extends StatefulWidget {
@@ -41,6 +43,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
   final _bizWhatsappCtrl = TextEditingController();
   final _bizEmailCtrl = TextEditingController();
   final _bizAddressCtrl = TextEditingController();
+  String? _bizLogoBase64;
   bool _isSavingBiz = false;
 
   @override
@@ -61,6 +64,8 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
       _bizWhatsappCtrl.text = b['whatsapp_number']?.toString() ?? '';
       _bizEmailCtrl.text = b['support_email']?.toString() ?? '';
       _bizAddressCtrl.text = b['office_address']?.toString() ?? '';
+      final logo = b['business_logo']?.toString() ?? '';
+      _bizLogoBase64 = logo.isNotEmpty ? logo : null;
     });
   }
 
@@ -75,6 +80,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
         'whatsapp_number': _bizWhatsappCtrl.text.trim(),
         'support_email': _bizEmailCtrl.text.trim(),
         'office_address': _bizAddressCtrl.text.trim(),
+        if (_bizLogoBase64 != null) 'business_logo': _bizLogoBase64,
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -278,6 +284,44 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
               const Text(
                 'Update live website URL, privacy/terms page links, helpline, and support email across Web & Mobile:',
                 style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: _bizLogoBase64 != null && ImageHelper.decodeBase64(_bizLogoBase64) != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(13),
+                            child: Image.memory(ImageHelper.decodeBase64(_bizLogoBase64)!, fit: BoxFit.contain, gaplessPlayback: true),
+                          )
+                        : const Icon(Icons.storefront_rounded, color: AppTheme.primaryGreen, size: 26),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final src = await ImageHelper.showImageSourceDialog(context);
+                        if (src == null) return;
+                        final b64 = await ImageHelper.pickImageAsBase64(
+                          source: src == 'camera' ? ImageSource.camera : ImageSource.gallery,
+                          maxWidth: 512,
+                          maxHeight: 512,
+                          imageQuality: 85,
+                        );
+                        if (b64 != null && mounted) setState(() => _bizLogoBase64 = b64);
+                      },
+                      icon: const Icon(Icons.add_photo_alternate_outlined, size: 16),
+                      label: Text(_bizLogoBase64 != null ? 'Change Business Logo' : 'Upload Business Logo', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               TextField(

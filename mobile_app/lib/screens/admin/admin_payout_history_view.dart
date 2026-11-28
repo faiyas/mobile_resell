@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/models.dart';
+import '../../utils/image_helper.dart';
 import '../../widgets/glass_container.dart';
 
 class AdminPayoutHistoryView extends StatefulWidget {
@@ -242,77 +243,121 @@ class _AdminPayoutHistoryViewState extends State<AdminPayoutHistoryView> {
 
   void _showDigitalReceipt(BuildContext context, SaleOrderModel order) {
     final price = order.finalPrice ?? order.estimatedPrice;
+    final proofBytes = ImageHelper.decodeBase64(order.payment?.paymentProofBase64);
+    final utr = order.payment?.utrNumber ?? '';
+    final payMethod = order.payment?.paymentMethod ?? (order.beneficiaryType == 'CASH' ? 'CASH' : (order.beneficiaryUpiId != null ? 'UPI' : 'Bank IMPS'));
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         contentPadding: const EdgeInsets.all(20),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Company Header
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.verified_rounded, color: AppTheme.primaryGreen, size: 36),
               ),
-              child: const Icon(Icons.verified_rounded, color: AppTheme.primaryGreen, size: 36),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'PAYMENT RECEIPT',
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.primaryGreen, letterSpacing: 1.0),
-            ),
-            const SizedBox(height: 2),
-            const Text(
-              'Dolly Buyback India Pvt Ltd',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
-            ),
-            const SizedBox(height: 14),
-            const Divider(height: 1),
-            const SizedBox(height: 14),
+              const SizedBox(height: 10),
+              const Text(
+                'PAYMENT RECEIPT',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w900, color: AppTheme.primaryGreen, letterSpacing: 1.0),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'Dolly Buyback India Pvt Ltd',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.textPrimary),
+              ),
+              const SizedBox(height: 14),
+              const Divider(height: 1),
+              const SizedBox(height: 14),
 
-            // Order Details List
-            _buildReceiptRow('Transaction Ref', order.saleCode),
-            _buildReceiptRow('Beneficiary', order.beneficiaryName.isNotEmpty ? order.beneficiaryName : order.customerName),
-            _buildReceiptRow('Payout Mode', order.beneficiaryUpiId != null ? 'UPI' : 'Bank IMPS'),
-            if (order.beneficiaryUpiId != null)
-              _buildReceiptRow('UPI VPA', order.beneficiaryUpiId!),
-            _buildReceiptRow('Device', '${order.brandName} ${order.modelName}'),
-            if (order.imeiNumber != null && order.imeiNumber!.isNotEmpty)
-              _buildReceiptRow('Verified IMEI', order.imeiNumber!),
-            const SizedBox(height: 10),
-            const Divider(height: 1),
-            const SizedBox(height: 10),
+              // Order Details List
+              _buildReceiptRow('Transaction Ref', order.saleCode),
+              _buildReceiptRow('Beneficiary', order.beneficiaryName.isNotEmpty ? order.beneficiaryName : order.customerName),
+              _buildReceiptRow('Payout Mode', payMethod),
+              if (utr.isNotEmpty)
+                _buildReceiptRow('UTR / Ref No.', utr),
+              if (order.beneficiaryUpiId != null && order.beneficiaryUpiId!.isNotEmpty)
+                _buildReceiptRow('UPI VPA', order.beneficiaryUpiId!),
+              _buildReceiptRow('Device', '${order.brandName} ${order.modelName}'),
+              if (order.imeiNumber != null && order.imeiNumber!.isNotEmpty)
+                _buildReceiptRow('Verified IMEI', order.imeiNumber!),
 
-            // Total Amount
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Amount Disbursed:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
-                Text(
-                  '₹${price.toStringAsFixed(0)}',
-                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.primaryGreen),
+              if (proofBytes != null) ...[
+                const SizedBox(height: 12),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Payment Proof Screenshot', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppTheme.textSecondary)),
+                ),
+                const SizedBox(height: 6),
+                GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: ctx,
+                      builder: (imgCtx) => Dialog(
+                        backgroundColor: Colors.black,
+                        insetPadding: const EdgeInsets.all(12),
+                        child: Stack(
+                          children: [
+                            InteractiveViewer(child: Image.memory(proofBytes, fit: BoxFit.contain)),
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: IconButton(
+                                icon: const Icon(Icons.close_rounded, color: Colors.white),
+                                onPressed: () => Navigator.pop(imgCtx),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.memory(proofBytes, height: 150, width: double.infinity, fit: BoxFit.cover, gaplessPlayback: true),
+                  ),
                 ),
               ],
-            ),
-            const SizedBox(height: 18),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryGreen,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Close Receipt', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
+              const Divider(height: 1),
+              const SizedBox(height: 10),
+
+              // Total Amount
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Amount Disbursed:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                  Text(
+                    '₹${price.toStringAsFixed(0)}',
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: AppTheme.primaryGreen),
+                  ),
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: 18),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGreen,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Close Receipt', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
