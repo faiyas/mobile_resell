@@ -14,6 +14,7 @@ import 'admin_catalog_pricing_view.dart';
 import 'admin_triage_valuation_view.dart';
 import 'admin_valuation_simulator_view.dart';
 import 'admin_cms_view.dart';
+import 'admin_notifications_view.dart';
 import 'admin_settings_view.dart';
 import '../../widgets/notification_center_sheet.dart';
 import '../../services/app_notification_service.dart';
@@ -171,8 +172,10 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
         return 'Valuation Simulator';
       case AdminNavSection.cms:
         return 'Hero Banners (CMS)';
+      case AdminNavSection.notifications:
+        return 'Push Notification Desk';
       case AdminNavSection.settings:
-        return 'Settings & Diagnostics';
+        return 'Settings & App Updates';
     }
   }
 
@@ -233,6 +236,8 @@ class _AdminPortalScreenState extends State<AdminPortalScreen> {
         return AdminCmsView(
           onRefresh: _loadAllAdminData,
         );
+      case AdminNavSection.notifications:
+        return const AdminNotificationsView();
       case AdminNavSection.settings:
         return const AdminSettingsView();
     }

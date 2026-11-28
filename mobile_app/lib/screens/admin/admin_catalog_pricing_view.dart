@@ -534,10 +534,10 @@ class _AdminCatalogPricingViewState extends State<AdminCatalogPricingView> {
 
   // ================= 5. VARIANT CRUD =================
   void _showAddVariantModal(PhoneModelItem model) {
-    final storageCtrl = TextEditingController(text: '128GB');
-    final ramCtrl = TextEditingController(text: '8GB');
-    final mintCtrl = TextEditingController(text: '15000');
-    final minCtrl = TextEditingController(text: '500');
+    final storageCtrl = TextEditingController();
+    final ramCtrl = TextEditingController();
+    final mintCtrl = TextEditingController();
+    final minCtrl = TextEditingController();
     bool isSaving = false;
 
     showModalBottomSheet(

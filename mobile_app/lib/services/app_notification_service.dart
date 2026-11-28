@@ -63,6 +63,7 @@ class AppNotificationService extends ChangeNotifier {
   AppNotificationService._internal();
 
   static const String _storageKey = 'dolly_in_app_notifications_v1';
+  static final ValueNotifier<Map<String, dynamic>?> tapPayloadNotifier = ValueNotifier<Map<String, dynamic>?>(null);
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   List<AppNotificationItem> _notifications = [];
@@ -104,17 +105,17 @@ class AppNotificationService extends ChangeNotifier {
       await _localNotifications.initialize(
         settings: initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) async {
-          final payload = response.payload;
-          if (payload != null && payload.isNotEmpty) {
-            try {
-              final uri = Uri.parse(payload);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            } catch (_) {}
-          }
+          _handleNotificationTapPayload(response.payload);
         },
       );
+
+      // Check if app was launched from a closed-state notification tap
+      final launchDetails = await _localNotifications.getNotificationAppLaunchDetails();
+      if (launchDetails?.didNotificationLaunchApp == true && launchDetails?.notificationResponse?.payload != null) {
+        Future.delayed(const Duration(milliseconds: 800), () {
+          _handleNotificationTapPayload(launchDetails!.notificationResponse!.payload);
+        });
+      }
 
       // Request Android 13+ runtime notification permission
       final androidPlatform = _localNotifications.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
@@ -126,6 +127,18 @@ class AppNotificationService extends ChangeNotifier {
     } catch (e) {
       debugPrint('Local notifications init error: $e');
     }
+  }
+
+  void _handleNotificationTapPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map) {
+        tapPayloadNotifier.value = Map<String, dynamic>.from(decoded);
+        return;
+      }
+    } catch (_) {}
+    tapPayloadNotifier.value = {'actionUrl': payload, 'actionType': ''};
   }
 
   Future<void> _save() async {
@@ -199,12 +212,19 @@ class AppNotificationService extends ChangeNotifier {
       const notificationDetails = NotificationDetails(android: androidDetails);
 
       final notifId = item.id.hashCode & 0x7FFFFFFF;
+      final payloadJson = jsonEncode({
+        'id': item.id,
+        'actionType': item.actionType ?? '',
+        'actionUrl': item.actionUrl ?? '',
+        'title': item.title,
+        'body': item.body,
+      });
       await _localNotifications.show(
         id: notifId,
         title: item.title,
         body: item.body,
         notificationDetails: notificationDetails,
-        payload: item.actionUrl,
+        payload: payloadJson,
       );
     } catch (e) {
       debugPrint('Error showing native notification popup: $e');

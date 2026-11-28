@@ -24,6 +24,83 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
   final _newPassCtrl = TextEditingController();
   bool _isSavingPass = false;
 
+  // OTA App Release & Update Pipeline
+  final _latestVerCtrl = TextEditingController();
+  final _minVerCtrl = TextEditingController();
+  final _apkUrlCtrl = TextEditingController();
+  final _releaseNotesCtrl = TextEditingController();
+  bool _forceUpdate = false;
+  bool _isSavingOta = false;
+  Map<String, dynamic> _loadedSettings = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSystemSettings();
+  }
+
+  Future<void> _loadSystemSettings() async {
+    final s = await _api.getSystemSettings();
+    if (!mounted || s.isEmpty) return;
+    setState(() {
+      _loadedSettings = Map<String, dynamic>.from(s);
+      _latestVerCtrl.text = s['latest_version']?.toString() ?? '';
+      _minVerCtrl.text = s['min_version']?.toString() ?? '';
+      _apkUrlCtrl.text = s['apk_download_url']?.toString() ?? '';
+      _releaseNotesCtrl.text = s['release_notes']?.toString() ?? '';
+      _forceUpdate = s['force_update'] == true || s['force_update']?.toString().toLowerCase() == 'true';
+    });
+  }
+
+  Future<void> _saveOtaUpdate() async {
+    final latest = _latestVerCtrl.text.trim();
+    if (latest.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter Latest App Version (e.g. 2.5.0)'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    setState(() => _isSavingOta = true);
+    try {
+      final payload = Map<String, dynamic>.from(_loadedSettings);
+      payload['latest_version'] = latest;
+      payload['min_version'] = _minVerCtrl.text.trim().isNotEmpty ? _minVerCtrl.text.trim() : latest;
+      payload['force_update'] = _forceUpdate;
+      payload['apk_download_url'] = _apkUrlCtrl.text.trim();
+      payload['release_notes'] = _releaseNotesCtrl.text.trim();
+
+      final updated = await _api.updateSystemSettings(payload);
+      if (!mounted) return;
+      setState(() => _loadedSettings = updated);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✓ App update v$latest published & broadcast to all devices!'),
+          backgroundColor: AppTheme.darkGreen,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Update publish failed: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSavingOta = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _pincodeCtrl.dispose();
+    _oldPassCtrl.dispose();
+    _newPassCtrl.dispose();
+    _latestVerCtrl.dispose();
+    _minVerCtrl.dispose();
+    _apkUrlCtrl.dispose();
+    _releaseNotesCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _checkPincode() async {
     final code = _pincodeCtrl.text.trim();
     if (code.length != 6) {
@@ -117,6 +194,106 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
               ),
             ),
           ],
+        ),
+
+        const SizedBox(height: 14),
+
+        // OTA App Release & Update Pipeline Card
+        GlassContainer(
+          borderRadius: 18,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.system_update_rounded, color: AppTheme.primaryGreen, size: 20),
+                  SizedBox(width: 8),
+                  Text('Mobile App Release & OTA Update', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Push an app version update & release alert directly to all mobile devices:',
+                style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _latestVerCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Latest Version *',
+                        hintText: 'e.g. 2.5.0',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _minVerCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Min Supported',
+                        hintText: 'e.g. 2.4.0',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _apkUrlCtrl,
+                decoration: InputDecoration(
+                  labelText: 'APK Download URL',
+                  hintText: 'https://.../dolly-latest.apk',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _releaseNotesCtrl,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Release Notes / What\'s New',
+                  hintText: '• Bug fixes and new features...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                value: _forceUpdate,
+                activeTrackColor: Colors.redAccent,
+                title: const Text('Force Mandatory Update', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                onChanged: (v) => setState(() => _forceUpdate = v),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGreen,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isSavingOta ? null : _saveOtaUpdate,
+                  icon: _isSavingOta
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.rocket_launch_rounded, size: 16, color: Colors.white),
+                  label: Text(
+                    _isSavingOta ? 'Publishing Update...' : 'Publish App Update',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
 
         const SizedBox(height: 14),

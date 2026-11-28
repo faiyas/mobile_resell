@@ -13,6 +13,7 @@ enum AdminNavSection {
   triage,
   simulator,
   cms,
+  notifications,
   settings,
 }
 
@@ -227,9 +228,14 @@ class AdminSidebarDrawer extends StatelessWidget {
                   // SYSTEM
                   _buildSectionHeader('SYSTEM'),
                   _buildNavItem(
+                    section: AdminNavSection.notifications,
+                    icon: Icons.campaign_outlined,
+                    label: 'Push Notifications',
+                  ),
+                  _buildNavItem(
                     section: AdminNavSection.settings,
                     icon: Icons.tune_rounded,
-                    label: 'Settings & Diagnostics',
+                    label: 'Settings & App Updates',
                   ),
                 ],
               ),

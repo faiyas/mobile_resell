@@ -451,6 +451,22 @@ class ApiService {
     return {};
   }
 
+  Future<Map<String, dynamic>> updateSystemSettings(Map<String, dynamic> data) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/settings/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(data),
+    ).timeout(const Duration(seconds: 10));
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    }
+    final err = jsonDecode(res.body);
+    throw Exception(err['detail'] ?? 'Failed to update settings');
+  }
+
   // ================= 3. CATALOG & DEVICES =================
   Future<List<DeviceCategoryModel>> getDeviceCategories({bool forceRefresh = false}) async {
     if (!forceRefresh && _cachedCategories != null && _cachedCategories!.isNotEmpty) {
