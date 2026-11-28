@@ -196,6 +196,7 @@ if not DEBUG:
 CSRF_TRUSTED_ORIGINS = [
     'https://mobile-resell.vercel.app',
     'https://*.vercel.app',
+    'https://50-6-206-122.sslip.io',
     'https://*.instabox.tech',
     'http://localhost:5173',
     'http://127.0.0.1:5173',

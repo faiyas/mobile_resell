@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 class ApiConfig {
-  // Live Server Backend URL (Hosted on Instabox Linux Server)
-  static const String liveServerUrl = 'https://8010-agq5qlr2uletnjyzudtddvxrdq.instabox.tech/api/v1';
+  // Live Server Backend URL (Hosted on Bluehost Ubuntu VPS)
+  static const String liveServerUrl = 'https://50-6-206-122.sslip.io/api/v1';
 
   // Local Development URLs
   static const String localAndroidUrl = 'http://10.0.2.2:8000/api/v1';

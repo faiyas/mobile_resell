@@ -1,6 +1,6 @@
 // Auto-normalize API URL: Ensure /api/v1 is appended whether the user entered it or not
 const getApiBase = () => {
-  const defaultProd = 'https://8010-agq5qlr2uletnjyzudtddvxrdq.instabox.tech/api/v1';
+  const defaultProd = 'https://50-6-206-122.sslip.io/api/v1';
   let base = (import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://127.0.0.1:8000/api/v1' : defaultProd)).trim();
   base = base.replace(/\/+$/, '');
   if (!base.endsWith('/api/v1')) {

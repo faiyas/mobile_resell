@@ -24,7 +24,7 @@ class AppUpdateInfo {
 
 class AppUpdateService {
   static const String currentVersion = '2.4.0';
-  static const String defaultApkUrl = 'https://8010-agq5qlr2uletnjyzudtddvxrdq.instabox.tech/downloads/dolly-latest.apk';
+  static const String defaultApkUrl = 'https://50-6-206-122.sslip.io/downloads/dolly-latest.apk';
   static final ValueNotifier<AppUpdateInfo?> availableUpdateNotifier = ValueNotifier<AppUpdateInfo?>(null);
   static String? _promptedVersionInSession;
 
