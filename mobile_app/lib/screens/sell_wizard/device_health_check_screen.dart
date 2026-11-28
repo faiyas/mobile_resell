@@ -138,26 +138,13 @@ class _DeviceHealthCheckScreenState extends State<DeviceHealthCheckScreen> {
     });
   }
 
-  bool get _isPowerOnGateNo {
-    return _answers.entries.any((entry) {
-      if (entry.value != 'NO') return false;
-      final q = _questions.firstWhere((item) => item.code == entry.key, orElse: () => _questions.first);
-      return q.isPowerOnGate;
-    });
-  }
+  bool get _isPowerOnGateNo => false;
 
   Set<String> get _disabledQuestionCodes {
     final Set<String> disabled = {};
     for (final q in _questions) {
       if (_answers[q.code] == 'NO') {
         disabled.addAll(q.disablesQuestionCodes);
-        if (q.isPowerOnGate) {
-          // If a power on gate is NO, turn off all downstream questions
-          final qIndex = _questions.indexOf(q);
-          for (int j = qIndex + 1; j < _questions.length; j++) {
-            disabled.add(_questions[j].code);
-          }
-        }
       }
     }
     return disabled;

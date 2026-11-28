@@ -66,9 +66,11 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
     final subCtrl = TextEditingController(text: existing?.subtitle ?? '');
     final orderCtrl = TextEditingController(text: (existing?.displayOrder ?? (_triageQuestions.length + 1)).toString());
     final deductionCtrl = TextEditingController(text: (existing?.deductionValueOnNo ?? 0.0).toStringAsFixed(0));
-    bool isGate = existing?.isPowerOnGate ?? false;
+    final List<String> selectedDisabledCodes = List<String>.from(existing?.disablesQuestionCodes ?? []);
     String deductionType = existing?.deductionType ?? 'PERCENTAGE';
     bool isSaving = false;
+
+    final otherQuestions = _triageQuestions.where((q) => q.code != existing?.code).toList();
 
     showModalBottomSheet(
       context: context,
@@ -77,133 +79,197 @@ class _AdminTriageValuationViewState extends State<AdminTriageValuationView> wit
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setM) => Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, left: 20, right: 20, top: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
-              const SizedBox(height: 14),
-              Text(existing == null ? 'Add Triage Health Check' : 'Edit Triage Gate #${existing.displayOrder}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
-              const Text('Initial pre-qualification Yes/No question for device valuation', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-              const SizedBox(height: 16),
-              const Text('Question Text', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: textCtrl,
-                decoration: InputDecoration(
-                  hintText: 'e.g. Does the phone switch on?',
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text('Subtitle / Hint', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: subCtrl,
-                decoration: InputDecoration(
-                  hintText: 'e.g. Device must display home screen without charger',
-                  filled: true,
-                  fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Deduction on "NO" (%)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: deductionCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            suffixText: '%',
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                          ),
-                        ),
-                      ],
-                    ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+                const SizedBox(height: 14),
+                Text(existing == null ? 'Add Triage Health Check' : 'Edit Triage Gate #${existing.displayOrder}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 17)),
+                const Text('Initial pre-qualification Yes/No question for device valuation', style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
+                const SizedBox(height: 16),
+                const Text('Question Text', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: textCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Does the phone switch on?',
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
+                ),
+                const SizedBox(height: 12),
+                const Text('Subtitle / Hint', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: subCtrl,
+                  decoration: InputDecoration(
+                    hintText: 'e.g. Device must display home screen without charger',
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Deduction Type', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                          const SizedBox(height: 6),
+                          DropdownButtonFormField<String>(
+                            value: deductionType,
+                            decoration: InputDecoration(
+                              filled: true,
+                              fillColor: Colors.grey.shade100,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: 'PERCENTAGE', child: Text('Percentage (%)', style: TextStyle(fontSize: 13))),
+                              DropdownMenuItem(value: 'FIXED', child: Text('Flat Rupee (₹)', style: TextStyle(fontSize: 13))),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) setM(() => deductionType = val);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            deductionType == 'PERCENTAGE' ? 'Deduct on "NO" (%)' : 'Deduct on "NO" (₹)',
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                          ),
+                          const SizedBox(height: 6),
+                          TextField(
+                            controller: deductionCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              suffixText: deductionType == 'PERCENTAGE' ? '%' : '₹',
+                              filled: true,
+                              fillColor: Colors.grey.shade100,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text('Gate Order', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: orderCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                if (otherQuestions.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Gate Order', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-                        const SizedBox(height: 6),
-                        TextField(
-                          controller: orderCtrl,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                          ),
+                        const Text(
+                          '🔗 Dynamic Gating: If answered "NO", automatically turn OFF:',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12, color: AppTheme.textPrimary),
                         ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Select follow-up questions to skip/hide when customer answers "No".',
+                          style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                        ),
+                        const SizedBox(height: 6),
+                        ...otherQuestions.map((otherQ) {
+                          final isChecked = selectedDisabledCodes.contains(otherQ.code);
+                          return CheckboxListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            activeColor: AppTheme.primaryGreen,
+                            title: Text(otherQ.questionText, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                            value: isChecked,
+                            onChanged: (checked) {
+                              setM(() {
+                                if (checked == true) {
+                                  if (!selectedDisabledCodes.contains(otherQ.code)) {
+                                    selectedDisabledCodes.add(otherQ.code);
+                                  }
+                                } else {
+                                  selectedDisabledCodes.remove(otherQ.code);
+                                }
+                              });
+                            },
+                          );
+                        }),
                       ],
                     ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Power-On Gate (Auto-Reject if NO)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                subtitle: const Text('If answer is NO, immediate dead device flow is triggered', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-                value: isGate,
-                activeColor: Colors.redAccent,
-                onChanged: (val) => setM(() => isGate = val),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          final qText = textCtrl.text.trim();
-                          if (qText.isEmpty) return;
-                          final order = int.tryParse(orderCtrl.text) ?? 1;
-                          final ded = double.tryParse(deductionCtrl.text) ?? 0.0;
-                          setM(() => isSaving = true);
-                          try {
-                            final payload = {
-                              'question_text': qText,
-                              'subtitle': subCtrl.text.trim(),
-                              'display_order': order,
-                              'deduction_value_on_no': ded,
-                              'deduction_type': deductionType,
-                              'is_power_on_gate': isGate,
-                              'is_active': true,
-                            };
-                            if (existing == null) {
-                              await _api.createTriageQuestion(payload);
-                            } else {
-                              await _api.updateTriageQuestion(existing.id, payload);
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryGreen, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                            final qText = textCtrl.text.trim();
+                            if (qText.isEmpty) return;
+                            final order = int.tryParse(orderCtrl.text) ?? 1;
+                            final ded = double.tryParse(deductionCtrl.text) ?? 0.0;
+                            setM(() => isSaving = true);
+                            try {
+                              final payload = {
+                                'question_text': qText,
+                                'subtitle': subCtrl.text.trim(),
+                                'display_order': order,
+                                'deduction_value_on_no': ded,
+                                'deduction_type': deductionType,
+                                'is_power_on_gate': false,
+                                'disables_question_codes': selectedDisabledCodes,
+                                'is_active': true,
+                              };
+                              if (existing == null) {
+                                await _api.createTriageQuestion(payload);
+                              } else {
+                                await _api.updateTriageQuestion(existing.id, payload);
+                              }
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              _loadAllValuationData();
+                            } catch (e) {
+                              setM(() => isSaving = false);
+                              if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
                             }
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            _loadAllValuationData();
-                          } catch (e) {
-                            setM(() => isSaving = false);
-                            if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Error: $e')));
-                          }
-                        },
-                  child: isSaving
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : Text(existing == null ? 'Create Question' : 'Save Changes', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                          },
+                    child: isSaving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : Text(existing == null ? 'Create Question' : 'Save Changes', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-            ],
+                const SizedBox(height: 20),
+              ],
+            ),
           ),
         ),
       ),

@@ -325,34 +325,20 @@ def calculate_estimate_view(request):
                 for dc in tq.disables_question_codes:
                     disabled_codes.add(str(dc).strip())
 
-            if tq.is_power_on_gate:
-                is_dead_device = True
-                floor = max(min_price or Decimal('0.00'), config_floor)
-                amt = max(base_price - floor, Decimal('0.00'))
-                total_deduction += amt
-                deductions_breakdown.append({
-                    'code': tq.code,
-                    'title': f"{tq.question_text} (Non-Working / Dead Device)",
-                    'category': "Initial Health Check",
-                    'deduction_amount': float(amt),
-                    'rule_type': "Dead Device Floor Applied"
-                })
-                break
+            if tq.deduction_type == 'PERCENTAGE':
+                amt = (base_price * tq.deduction_value_on_no) / Decimal('100.00')
+                rtype = f"{tq.deduction_value_on_no}% of Base"
             else:
-                if tq.deduction_type == 'PERCENTAGE':
-                    amt = (base_price * tq.deduction_value_on_no) / Decimal('100.00')
-                    rtype = f"{tq.deduction_value_on_no}% of Base"
-                else:
-                    amt = tq.deduction_value_on_no
-                    rtype = f"Flat ₹{tq.deduction_value_on_no}"
-                total_deduction += amt
-                deductions_breakdown.append({
-                    'code': tq.code,
-                    'title': f"{tq.question_text} (Answered No)",
-                    'category': "Initial Health Check",
-                    'deduction_amount': float(amt),
-                    'rule_type': rtype
-                })
+                amt = tq.deduction_value_on_no
+                rtype = f"Flat ₹{tq.deduction_value_on_no}"
+            total_deduction += amt
+            deductions_breakdown.append({
+                'code': tq.code,
+                'title': f"{tq.question_text} (Answered No)",
+                'category': "Initial Health Check",
+                'deduction_amount': float(amt),
+                'rule_type': rtype
+            })
 
     # 2. Process Standalone deductions (if device turns on)
     if not is_dead_device:

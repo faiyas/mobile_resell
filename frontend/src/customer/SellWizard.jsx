@@ -1021,9 +1021,7 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
                       <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/60 text-[11px] text-amber-800 flex items-center gap-2">
                         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                         <span>
-                          {q.is_power_on_gate
-                            ? "Device cannot power on. Dead phone minimum floor valuation rule will be applied."
-                            : `Condition deduction will be applied (${q.deduction_type === 'PERCENTAGE' ? `${q.deduction_value_on_no}%` : `₹${q.deduction_value_on_no}`} deduction).`}
+                          {`Condition deduction will be applied (${q.deduction_type === 'PERCENTAGE' ? `${q.deduction_value_on_no}%` : `₹${q.deduction_value_on_no}`} deduction).`}
                         </span>
                       </div>
                     )}
@@ -1045,20 +1043,9 @@ export default function SellWizard({ onOrderCreated, currentUser, onOpenAuth }) 
               <button
                 type="button"
                 onClick={() => {
-                  // If Power On is NO or dead phone, can jump straight to evaluation quote or continue
-                  const isPowerOnNo = Object.entries(triageAnswers).some(([code, ans]) => {
-                    const q = triageQuestions.find(item => item.code === code);
-                    return q?.is_power_on_gate && ans === 'NO';
-                  });
-
-                  if (isPowerOnNo) {
-                    // Direct to estimated quote for dead phone
-                    computeValuation();
-                  } else {
-                    // Proceed to cosmetic defect questionnaire
-                    setQuestionStepIndex(0);
-                    setCurrentScreen(4);
-                  }
+                  // Proceed to cosmetic defect questionnaire
+                  setQuestionStepIndex(0);
+                  setCurrentScreen(4);
                 }}
                 className="flex items-center gap-1.5 text-xs font-black text-white bg-[#0BAA4B] hover:bg-[#087C38] px-6 py-2.5 rounded-xl shadow-md shadow-[#0BAA4B]/20 transition"
               >

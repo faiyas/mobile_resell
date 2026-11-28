@@ -314,7 +314,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
         code: q.code || '',
         question_text: q.question_text || '',
         subtitle: q.subtitle || '',
-        is_power_on_gate: !!q.is_power_on_gate,
+        is_power_on_gate: false,
         deduction_type: q.deduction_type || 'PERCENTAGE',
         deduction_value_on_no: q.deduction_value_on_no !== undefined ? q.deduction_value_on_no : 10,
         disables_question_codes: Array.isArray(q.disables_question_codes) ? q.disables_question_codes : [],
@@ -1752,9 +1752,9 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
 
                   <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
                     <div className="flex items-center gap-1.5">
-                      {tq.is_power_on_gate ? (
-                        <span className="bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          ⚡ Power-On Gate
+                      {Array.isArray(tq.disables_question_codes) && tq.disables_question_codes.length > 0 ? (
+                        <span className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          🔗 Dynamic Gate ({tq.disables_question_codes.length})
                         </span>
                       ) : (
                         <span className="bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full">
@@ -3207,9 +3207,9 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
 
                     <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px]">
                       <div className="flex items-center gap-1.5">
-                        {tq.is_power_on_gate ? (
-                          <span className="bg-rose-100 text-rose-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 text-[10px]">
-                            ⚡ Reject / Power-On Gate
+                        {Array.isArray(tq.disables_question_codes) && tq.disables_question_codes.length > 0 ? (
+                          <span className="bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 text-[10px]">
+                            🔗 Dynamic Gate ({tq.disables_question_codes.length})
                           </span>
                         ) : (
                           <span className="bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full text-[10px]">
@@ -4542,22 +4542,6 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
               placeholder="e.g. Check if the phone powers on and confirm that it is in working condition"
               className="w-full p-2.5 border border-slate-300 rounded-xl text-slate-700 focus:ring-2 focus:ring-rose-500 focus:outline-none"
             />
-          </div>
-
-          {/* Power-On Gate Feature Toggle */}
-          <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl space-y-1.5">
-            <label className="flex items-center gap-2 cursor-pointer font-black text-rose-900">
-              <input
-                type="checkbox"
-                checked={triageForm.is_power_on_gate}
-                onChange={(e) => setTriageForm({ ...triageForm, is_power_on_gate: e.target.checked })}
-                className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500"
-              />
-              <span>⚡ Power-On Gate (Dead Phone Logic)</span>
-            </label>
-            <p className="text-[11px] text-rose-700/90 pl-6 leading-relaxed">
-              If customer clicks <strong>"No"</strong>, all following questions are hidden and the bottom button switches to <strong>"Finish"</strong>, taking the user straight to Dead Phone valuation.
-            </p>
           </div>
 
           {/* Deduction Type & Value */}

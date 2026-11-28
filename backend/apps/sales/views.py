@@ -172,24 +172,23 @@ def sales_list_create_view(request):
         from apps.valuation.models import EvaluationTriageQuestion
         triage_questions = list(EvaluationTriageQuestion.objects.filter(is_active=True).order_by('display_order'))
         is_dead_device = False
+        disabled_codes = set()
 
         for tq in triage_questions:
+            if tq.code in disabled_codes:
+                continue
             ans = str(triage_answers.get(tq.code, '')).strip().upper()
             if ans == 'NO':
-                if tq.is_power_on_gate:
-                    is_dead_device = True
-                    floor = max(min_price or Decimal('0.00'), config_floor)
-                    amt = max(base_price - floor, Decimal('0.00'))
-                    total_deduction += amt
-                    answers_to_create.append((None, amt, f"{tq.question_text}: NO (Dead Device)"))
-                    break
+                if tq.disables_question_codes and isinstance(tq.disables_question_codes, list):
+                    for dc in tq.disables_question_codes:
+                        disabled_codes.add(str(dc).strip())
+
+                if tq.deduction_type == 'PERCENTAGE':
+                    amt = (base_price * tq.deduction_value_on_no) / Decimal('100.00')
                 else:
-                    if tq.deduction_type == 'PERCENTAGE':
-                        amt = (base_price * tq.deduction_value_on_no) / Decimal('100.00')
-                    else:
-                        amt = tq.deduction_value_on_no
-                    total_deduction += amt
-                    answers_to_create.append((None, amt, f"{tq.question_text}: NO"))
+                    amt = tq.deduction_value_on_no
+                total_deduction += amt
+                answers_to_create.append((None, amt, f"{tq.question_text}: NO"))
 
         # 2. Condition Options Deductions (if phone turns on)
         if not is_dead_device:
