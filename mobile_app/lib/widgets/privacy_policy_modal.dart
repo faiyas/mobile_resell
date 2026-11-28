@@ -46,6 +46,12 @@ class _PrivacyPolicyModalState extends State<PrivacyPolicyModal> {
     final company = _biz['company_name']?.toString().trim().isNotEmpty == true
         ? _biz['company_name'].toString().trim()
         : 'Dolly Technologies Pvt Ltd';
+    final supportEmail = _biz['support_email']?.toString().trim().isNotEmpty == true
+        ? _biz['support_email'].toString().trim()
+        : 'support@dollyresell.com';
+    final supportPhone = _biz['customer_helpline']?.toString().trim().isNotEmpty == true
+        ? _biz['customer_helpline'].toString().trim()
+        : '+91 90252 32453';
     return Container(
       height: MediaQuery.of(context).size.height * 0.88,
       decoration: const BoxDecoration(
@@ -178,7 +184,7 @@ class _PrivacyPolicyModalState extends State<PrivacyPolicyModal> {
                   title: '4. Account & Profile Deletion (App Compliance)',
                   content:
                       'In accordance with Google Play Section 4.8 and Apple App Store Guideline 5.1.1, you have the absolute right to request the permanent deletion of your customer profile, phone number, and history.\n\n'
-                      'You can initiate account deletion at any time from Profile → Delete Account, or by writing to support@dollyresell.com. All records except statutory tax invoices will be purged within 48 hours.',
+                      'You can initiate account deletion at any time from Profile → Delete Account, or by writing to $supportEmail. All records except statutory tax invoices will be purged within 48 hours.',
                 ),
                 const SizedBox(height: 16),
 
@@ -188,8 +194,8 @@ class _PrivacyPolicyModalState extends State<PrivacyPolicyModal> {
                   content:
                       'For any queries regarding this policy or your personal data:\n'
                       '• Grievance Officer: Mohamed Faiyas M\n'
-                      '• Email: privacy@dollyresell.com / support@dollyresell.com\n'
-                      '• Customer Helpline: Available in Profile Help & Contact Desk (Mon-Sat, 9AM-8PM)',
+                      '• Email: $supportEmail\n'
+                      '• Customer Helpline: $supportPhone (Mon-Sat, 9AM-8PM)',
                 ),
 
                 const SizedBox(height: 24),

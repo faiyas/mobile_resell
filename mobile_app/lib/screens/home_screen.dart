@@ -58,6 +58,9 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadInitialData();
+    ContactLauncher.refreshFromServer().then((_) {
+      if (mounted) setState(() {});
+    });
     BackgroundNotificationRunner().start();
     WidgetsBinding.instance.addPostFrameCallback((_) => _checkAppUpdates());
   }
@@ -1721,8 +1724,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const Icon(Icons.phone_rounded, size: 16, color: AppTheme.primaryGreen),
                       const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text('+91 90252 32453', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
+                      Expanded(
+                        child: Text(ContactLauncher.displayPhone, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textPrimary)),
                       ),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
@@ -1745,8 +1748,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const Icon(Icons.email_outlined, size: 16, color: Color(0xFFD97706)),
                       const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text('aiothamizha@gmail.com', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textPrimary)),
+                      Expanded(
+                        child: Text(ContactLauncher.email, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.textPrimary)),
                       ),
                       ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
@@ -2243,13 +2246,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: const Icon(Icons.phone_in_talk_rounded, color: AppTheme.primaryGreen, size: 20),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Customer & Agent Hotline', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
-                            SizedBox(height: 2),
-                            Text('+91 90252 32453', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.textPrimary)),
+                            const Text('Customer & Agent Hotline', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text(ContactLauncher.displayPhone, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15, color: AppTheme.textPrimary)),
                           ],
                         ),
                       ),
@@ -2279,13 +2282,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: const Icon(Icons.email_outlined, color: Color(0xFFD97706), size: 20),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Official Support Email', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
-                            SizedBox(height: 2),
-                            Text('aiothamizha@gmail.com', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary)),
+                            const Text('Official Support Email', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 2),
+                            Text(ContactLauncher.email, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: AppTheme.textPrimary)),
                           ],
                         ),
                       ),

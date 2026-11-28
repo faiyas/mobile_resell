@@ -76,13 +76,20 @@ export default function SystemSettingsView({ mode = 'settings' }) {
     try {
       const [updated, updatedBiz] = await Promise.all([
         api.updateSystemSettings(form),
-        api.updateBusinessSettings(bizForm),
+        api.updateBusinessSettings({
+          support_email: bizForm.support_email || '',
+          customer_helpline: bizForm.customer_helpline || '',
+        }),
       ]);
       if (updated) {
         setForm(prev => ({ ...prev, ...updated }));
       }
       if (updatedBiz) {
         setBizForm(prev => ({ ...prev, ...updatedBiz }));
+        try {
+          localStorage.setItem('dolly_cached_business_settings', JSON.stringify(updatedBiz));
+          window.dispatchEvent(new CustomEvent('dolly-biz-updated', { detail: updatedBiz }));
+        } catch {}
       }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
@@ -296,123 +303,34 @@ export default function SystemSettingsView({ mode = 'settings' }) {
             </div>
           </div>
 
-          {/* Card 4: Business Contacts, Website URL & Legal Page Links */}
+          {/* Card 4: Support Contact Settings (Mail ID & Phone Number only) */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
             <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm border-b border-slate-100 pb-3">
               <Globe className="w-4 h-4 text-[#0BAA4B]" />
-              <h3>Business Profile, Contacts &amp; Policy Links</h3>
-            </div>
-
-            <div className="flex items-center gap-4 pb-2">
-              <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
-                {bizForm.business_logo ? (
-                  <img src={bizForm.business_logo} alt="Business Logo" className="w-full h-full object-contain" />
-                ) : (
-                  <Globe className="w-6 h-6 text-slate-400" />
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Business Logo</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = () => setBizForm(prev => ({ ...prev, business_logo: reader.result }));
-                    reader.readAsDataURL(file);
-                  }}
-                  className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
-                />
-              </div>
+              <h3>Support Contact Settings</h3>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Company / Brand Name</label>
-                <input
-                  type="text"
-                  value={bizForm.company_name || ''}
-                  onChange={(e) => setBizForm({ ...bizForm, company_name: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:border-[#0BAA4B] outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Website URL</label>
-                <input
-                  type="url"
-                  placeholder="https://mobile-resell.vercel.app"
-                  value={bizForm.website_url || ''}
-                  onChange={(e) => setBizForm({ ...bizForm, website_url: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Privacy Policy Page URL</label>
-                <input
-                  type="url"
-                  placeholder="https://mobile-resell.vercel.app/privacy-policy"
-                  value={bizForm.privacy_policy_url || ''}
-                  onChange={(e) => setBizForm({ ...bizForm, privacy_policy_url: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Terms &amp; Conditions Page URL</label>
-                <input
-                  type="url"
-                  placeholder="https://mobile-resell.vercel.app/terms"
-                  value={bizForm.terms_url || ''}
-                  onChange={(e) => setBizForm({ ...bizForm, terms_url: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Customer Helpline</label>
-                <input
-                  type="text"
-                  value={bizForm.customer_helpline || ''}
-                  onChange={(e) => setBizForm({ ...bizForm, customer_helpline: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">WhatsApp Number</label>
-                <input
-                  type="text"
-                  value={bizForm.whatsapp_number || ''}
-                  onChange={(e) => setBizForm({ ...bizForm, whatsapp_number: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Support Email</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Mail ID (Support Email)</label>
                 <input
                   type="email"
+                  placeholder="support@dollyresell.com"
                   value={bizForm.support_email || ''}
                   onChange={(e) => setBizForm({ ...bizForm, support_email: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Working Hours</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Phone Number (Customer Helpline)</label>
                 <input
                   type="text"
-                  value={bizForm.working_hours || ''}
-                  onChange={(e) => setBizForm({ ...bizForm, working_hours: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:border-[#0BAA4B] outline-none"
+                  placeholder="+91 90252 32453"
+                  value={bizForm.customer_helpline || ''}
+                  onChange={(e) => setBizForm({ ...bizForm, customer_helpline: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
                 />
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Office Address</label>
-              <input
-                type="text"
-                value={bizForm.office_address || ''}
-                onChange={(e) => setBizForm({ ...bizForm, office_address: e.target.value })}
-                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:border-[#0BAA4B] outline-none"
-              />
             </div>
           </div>
 

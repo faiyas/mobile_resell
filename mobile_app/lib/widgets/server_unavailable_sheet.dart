@@ -86,7 +86,7 @@ class _ServerUnavailableSheetState extends State<ServerUnavailableSheet> {
   Widget build(BuildContext context) {
     final helpline = (_biz['customer_helpline']?.toString().trim().isNotEmpty == true)
         ? _biz['customer_helpline'].toString().trim()
-        : '+91 99885 52211';
+        : '+91 90252 32453';
     final waRaw = (_biz['whatsapp_number']?.toString().trim().isNotEmpty == true
             ? _biz['whatsapp_number'].toString()
             : helpline)
@@ -94,7 +94,7 @@ class _ServerUnavailableSheetState extends State<ServerUnavailableSheet> {
     final waNum = waRaw.length == 10 ? '91$waRaw' : waRaw;
     final email = (_biz['support_email']?.toString().trim().isNotEmpty == true)
         ? _biz['support_email'].toString().trim()
-        : 'support@dollyresell.com';
+        : 'aiothamizha@gmail.com';
     final company = _biz['company_name']?.toString() ?? 'Dolly Support';
 
     final isOrder = widget.contextTag.contains('order');

@@ -1,9 +1,39 @@
-import React, { useState } from 'react';
-import { ShieldCheck, Truck, Banknote, RefreshCw, Smartphone, Award, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, Truck, Banknote, RefreshCw, Smartphone, Award, Lock, Phone, Mail } from 'lucide-react';
 import PrivacyPolicyModal from './PrivacyPolicyModal';
+import { api } from '../services/api';
 
 export default function Footer() {
   const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [biz, setBiz] = useState(() => {
+    try {
+      const raw = localStorage.getItem('dolly_cached_business_settings');
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    api.getBusinessSettings()
+      .then((data) => {
+        if (data && typeof data === 'object') {
+          setBiz(data);
+          try { localStorage.setItem('dolly_cached_business_settings', JSON.stringify(data)); } catch {}
+        }
+      })
+      .catch(() => {});
+
+    const onUpdate = (e) => {
+      if (e?.detail) setBiz(e.detail);
+    };
+    window.addEventListener('dolly-biz-updated', onUpdate);
+    return () => window.removeEventListener('dolly-biz-updated', onUpdate);
+  }, []);
+
+  const supportPhone = (biz?.customer_helpline || '+91 90252 32453').trim();
+  const cleanTel = supportPhone.replace(/[^\d+]/g, '');
+  const supportEmail = (biz?.support_email || 'support@dollyresell.com').trim();
   return (
     <footer className="bg-slate-900 text-slate-400 mt-12 sm:mt-20 border-t border-slate-800 pb-16 sm:pb-0">
       {/* Value props banner */}
@@ -67,7 +97,15 @@ export default function Footer() {
             Copyrights reserved to 1103 TechStudios · Dolly Platform. Registered under Indian IT & Electronic Waste Guidelines.
           </p>
 
-          <div className="flex gap-4">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <a href={`tel:${cleanTel}`} className="flex items-center gap-1.5 text-emerald-400 hover:text-emerald-300 font-semibold">
+              <Phone className="w-3.5 h-3.5" />
+              <span>{supportPhone}</span>
+            </a>
+            <a href={`mailto:${supportEmail}`} className="flex items-center gap-1.5 text-amber-400 hover:text-amber-300 font-semibold">
+              <Mail className="w-3.5 h-3.5" />
+              <span>{supportEmail}</span>
+            </a>
             <span onClick={() => setPrivacyOpen(true)} className="text-slate-400 hover:text-white cursor-pointer">Terms & Conditions</span>
             <span onClick={() => setPrivacyOpen(true)} className="text-slate-400 hover:text-white cursor-pointer">Privacy & Data Wiping Policy</span>
             <span onClick={() => setPrivacyOpen(true)} className="text-slate-400 hover:text-white cursor-pointer">IMEI Verification Notice</span>
