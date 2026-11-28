@@ -287,6 +287,16 @@ def variants_list_create_view(request):
             queryset = queryset.filter(model__brand_id=brand_id)
         if series_id:
             queryset = queryset.filter(model__series_id=series_id)
+        search_q = request.GET.get('search', '').strip()
+        if search_q:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(model__name__icontains=search_q) |
+                Q(model__brand__name__icontains=search_q) |
+                Q(model__series__name__icontains=search_q) |
+                Q(storage__icontains=search_q) |
+                Q(ram__icontains=search_q)
+            )
 
         page = request.GET.get('page')
         page_size = int(request.GET.get('page_size', 10))

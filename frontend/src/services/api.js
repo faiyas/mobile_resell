@@ -173,6 +173,18 @@ export const api = {
 
   getVariants: (modelId, all = false, brandId = null, seriesId = null) => 
     request(`/catalog/variants/?${modelId ? `model=${modelId}&` : ''}${brandId ? `brand=${brandId}&` : ''}${seriesId ? `series=${seriesId}&` : ''}all=${all}`).then(res => (res && Array.isArray(res.results)) ? res.results : res),
+  getVariantsPaginated: ({ modelId = '', brandId = '', seriesId = '', search = '', page = 1, pageSize = 25, all = true } = {}) => {
+    const params = new URLSearchParams();
+    params.set('paginate', 'true');
+    params.set('page', String(page));
+    params.set('page_size', String(pageSize));
+    params.set('all', String(all));
+    if (modelId) params.set('model', String(modelId));
+    if (brandId) params.set('brand', String(brandId));
+    if (seriesId) params.set('series', String(seriesId));
+    if (search) params.set('search', search);
+    return request(`/catalog/variants/?${params.toString()}`);
+  },
   createVariant: (data) => request('/catalog/variants/', { method: 'POST', body: JSON.stringify(data) }),
   updateVariant: (id, data) => request(`/catalog/variants/${id}/`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteVariant: (id) => request(`/catalog/variants/${id}/`, { method: 'DELETE' }),

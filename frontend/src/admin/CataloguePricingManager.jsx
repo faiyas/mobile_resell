@@ -138,6 +138,10 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
   const [modelsTotalPages, setModelsTotalPages] = useState(1);
   const [variantsPage, setVariantsPage] = useState(1);
   const [variantsPageSize, setVariantsPageSize] = useState(25);
+  const [variantsTotalCount, setVariantsTotalCount] = useState(0);
+  const [variantsTotalPages, setVariantsTotalPages] = useState(1);
+  const [variantsLoading, setVariantsLoading] = useState(true);
+  const [variantsError, setVariantsError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBrandId, setFilterBrandId] = useState('');
   const [filterSeriesId, setFilterSeriesId] = useState('');
@@ -150,6 +154,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
     setFilterSeriesId('');
     setFilterModelId('');
     setModelsPage(1);
+    setVariantsPage(1);
   };
 
   const handleSeriesFilterChange = (sId) => {
@@ -441,9 +446,9 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
       // PHASE 2: Background fetch initial paginated models & variant tables
       Promise.all([
         api.getModels('', false, '', 1, modelsPageSize).catch(() => ({ results: [], count: 0, total_pages: 1 })),
-        api.getVariants('', true).catch(() => []),
+        fetchPaginatedVariants(1, variantsPageSize, '', '', '', ''),
         api.getPriceHistory().catch(() => [])
-      ]).then(([mRes, vData, hData]) => {
+      ]).then(([mRes, _vRes, hData]) => {
         if (mRes && mRes.results) {
           setModels(mRes.results);
           setModelsTotalCount(mRes.count || 0);
@@ -453,7 +458,6 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
           setModelsTotalCount(mRes.length);
           setModelsTotalPages(1);
         }
-        if (vData && vData.length > 0) setVariants(vData);
         if (hData && hData.length > 0) setPriceHistory(hData);
       }).catch(() => {}).finally(() => {
         setModelsLoading(false);
@@ -496,6 +500,53 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
       return () => clearTimeout(timer);
     }
   }, [subTab, modelsPage, modelsPageSize, filterBrandId, filterSeriesId, searchQuery]);
+
+  const fetchPaginatedVariants = async (
+    page = variantsPage,
+    size = variantsPageSize,
+    bId = filterBrandId,
+    sId = filterSeriesId,
+    mId = filterModelId,
+    q = variantSearch
+  ) => {
+    setVariantsLoading(true);
+    setVariantsError('');
+    try {
+      const res = await api.getVariantsPaginated({
+        brandId: bId,
+        seriesId: sId,
+        modelId: mId,
+        search: q,
+        page,
+        pageSize: size,
+        all: true,
+      });
+      if (res && Array.isArray(res.results)) {
+        setVariants(res.results);
+        setVariantsTotalCount(res.count || 0);
+        setVariantsTotalPages(res.total_pages || 1);
+        setVariantsPage(res.current_page || page);
+      } else if (Array.isArray(res)) {
+        setVariants(res);
+        setVariantsTotalCount(res.length);
+        setVariantsTotalPages(1);
+      }
+    } catch (err) {
+      console.error('Failed to load variants:', err);
+      setVariantsError(err.message || 'Failed to load storage variants.');
+    } finally {
+      setVariantsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (subTab === 'variants') {
+      const timer = setTimeout(() => {
+        fetchPaginatedVariants(variantsPage, variantsPageSize, filterBrandId, filterSeriesId, filterModelId, variantSearch);
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [subTab, variantsPage, variantsPageSize, filterBrandId, filterSeriesId, filterModelId, variantSearch]);
 
   // Sync simulator model when brand changes
   useEffect(() => {
@@ -2724,7 +2775,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                   type="text"
                   placeholder="Search model, storage, RAM..."
                   value={variantSearch}
-                  onChange={(e) => setVariantSearch(e.target.value)}
+                  onChange={(e) => { setVariantSearch(e.target.value); setVariantsPage(1); }}
                   className="w-full pl-8 pr-7 py-2 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500/20 bg-slate-50 focus:bg-white"
                 />
                 {variantSearch && (
@@ -2756,76 +2807,42 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
             </div>
 
             {/* Total / Filtered Counts */}
-            {(() => {
-              const count = variants.filter(v => {
-                const m = models.find(mod => mod.id === (v.model || v.model_id));
-                const vBrandId = v.brand_id || (m ? (m.brand?.id || m.brand) : null);
-                const vSeriesId = v.series_id || (m ? (m.series?.id || m.series) : null);
-                if (filterBrandId && String(vBrandId) !== String(filterBrandId)) return false;
-                if (filterSeriesId && String(vSeriesId) !== String(filterSeriesId)) return false;
-                if (filterModelId && String(v.model || v.model_id) !== String(filterModelId)) return false;
-                if (variantSearch.trim()) {
-                  const q = variantSearch.toLowerCase().trim();
-                  const bName = (v.brand_name || (m?.brand_name) || '').toLowerCase();
-                  const mName = (v.model_name || (m?.name) || '').toLowerCase();
-                  const sName = (v.series_name || (m?.series_name) || '').toLowerCase();
-                  const storageStr = (v.storage || '').toLowerCase();
-                  const ramStr = (v.ram || '').toLowerCase();
-                  if (!bName.includes(q) && !mName.includes(q) && !sName.includes(q) && !storageStr.includes(q) && !ramStr.includes(q)) return false;
-                }
-                return true;
-              }).length;
-
-              return (
-                <div className="text-[11px] font-bold text-slate-500 whitespace-nowrap">
-                  Showing <span className="text-slate-900 font-extrabold">{count}</span> of {variants.length}
-                </div>
-              );
-            })()}
+            <div className="text-[11px] font-bold text-slate-500 whitespace-nowrap flex items-center gap-1.5">
+              {variantsLoading ? (
+                <span className="inline-flex items-center gap-1.5 text-[#0BAA4B] font-extrabold">
+                  <RefreshCw className="w-3 h-3 animate-spin" /> Loading variants...
+                </span>
+              ) : (
+                <>
+                  Showing <span className="text-slate-900 font-extrabold">{variants.length}</span> of{' '}
+                  <span className="text-slate-900 font-extrabold">{variantsTotalCount}</span>
+                </>
+              )}
+            </div>
           </div>
 
           {(() => {
-            const filteredVariants = variants.filter(v => {
-              const m = models.find(mod => mod.id === (v.model || v.model_id));
-              const vBrandId = v.brand_id || (m ? (m.brand?.id || m.brand) : null);
-              const vSeriesId = v.series_id || (m ? (m.series?.id || m.series) : null);
-
-              if (filterBrandId && String(vBrandId) !== String(filterBrandId)) return false;
-              if (filterSeriesId && String(vSeriesId) !== String(filterSeriesId)) return false;
-              if (filterModelId && String(v.model || v.model_id) !== String(filterModelId)) return false;
-              if (variantSearch.trim()) {
-                const q = variantSearch.toLowerCase().trim();
-                const bName = (v.brand_name || (m?.brand_name) || '').toLowerCase();
-                const mName = (v.model_name || (m?.name) || '').toLowerCase();
-                const sName = (v.series_name || (m?.series_name) || '').toLowerCase();
-                const storageStr = (v.storage || '').toLowerCase();
-                const ramStr = (v.ram || '').toLowerCase();
-                if (!bName.includes(q) && !mName.includes(q) && !sName.includes(q) && !storageStr.includes(q) && !ramStr.includes(q)) return false;
-              }
-              return true;
-            });
-
             const hasActiveFilters = Boolean(filterBrandId || filterSeriesId || filterModelId || variantSearch);
-            const totalVariantPages = Math.max(1, Math.ceil(filteredVariants.length / variantsPageSize));
+            const totalVariantPages = Math.max(1, variantsTotalPages);
             const safeVariantPage = Math.min(variantsPage, totalVariantPages);
-            const paginatedVariants = filteredVariants.slice((safeVariantPage - 1) * variantsPageSize, safeVariantPage * variantsPageSize);
+            const paginatedVariants = variants;
 
             return (
               <>
                 <BulkActionBar
-                  totalCount={filteredVariants.length}
+                  totalCount={variantsTotalCount}
                   selectedIds={selectedIds}
                   itemName="Storage Variants"
                   loading={bulkDeleting}
-                  onToggleSelectAll={() => setSelectedIds(selectedIds.length === filteredVariants.length ? [] : filteredVariants.map(v => v.id))}
+                  onToggleSelectAll={() => setSelectedIds(selectedIds.length === paginatedVariants.length ? [] : paginatedVariants.map(v => v.id))}
                   onDeleteSelected={() => handleBulkDelete('catalog', 'variants', false, selectedIds)}
                   onDeleteAll={() => handleBulkDelete(
                     'catalog',
                     'variants',
                     !hasActiveFilters,
-                    hasActiveFilters ? filteredVariants.map(v => v.id) : [],
+                    hasActiveFilters ? paginatedVariants.map(v => v.id) : [],
                     hasActiveFilters
-                      ? `This will delete ALL ${filteredVariants.length} filtered Storage Variants!`
+                      ? `This will delete ALL ${paginatedVariants.length} variants on this page!`
                       : 'This will delete ALL Storage Variants & Base Prices!'
                   )}
                 />
@@ -2838,8 +2855,8 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                           <th className="py-3 px-4 w-10">
                             <input
                               type="checkbox"
-                              checked={filteredVariants.length > 0 && selectedIds.length === filteredVariants.length}
-                              onChange={() => setSelectedIds(selectedIds.length === filteredVariants.length ? [] : filteredVariants.map(v => v.id))}
+                              checked={paginatedVariants.length > 0 && selectedIds.length === paginatedVariants.length}
+                              onChange={() => setSelectedIds(selectedIds.length === paginatedVariants.length ? [] : paginatedVariants.map(v => v.id))}
                               className="w-4 h-4 rounded text-[#0BAA4B] focus:ring-[#0BAA4B] cursor-pointer"
                             />
                           </th>
@@ -2852,23 +2869,55 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {modelsLoading ? (
+                        {variantsLoading ? (
+                          <>
+                            <tr>
+                              <td colSpan={7} className="text-center pt-8 pb-4">
+                                <div className="relative w-11 h-11 mx-auto mb-2.5 flex items-center justify-center">
+                                  <div className="absolute inset-0 rounded-2xl bg-[#0BAA4B]/20 animate-ping" />
+                                  <img
+                                    src="/dolly_icon.png"
+                                    alt="Dolly"
+                                    onError={(e) => { e.currentTarget.src = '/dolly_logo.png'; }}
+                                    className="w-8 h-8 object-contain rounded-xl relative animate-pulse shadow-sm"
+                                  />
+                                </div>
+                                <p className="font-bold text-sm text-slate-800">
+                                  Loading Storage Variants (Page {safeVariantPage})...
+                                </p>
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                  Fetching {variantsPageSize} variants &amp; pricing matrix from server...
+                                </p>
+                              </td>
+                            </tr>
+                            {Array.from({ length: 5 }).map((_, idx) => (
+                              <tr key={`sk-${idx}`} className="animate-pulse">
+                                <td className="py-3 px-4"><div className="w-4 h-4 bg-slate-200 rounded" /></td>
+                                <td className="py-3 px-4"><div className="h-3.5 w-36 bg-slate-200 rounded-md" /></td>
+                                <td className="py-3 px-4"><div className="h-3.5 w-20 bg-slate-200 rounded-md" /></td>
+                                <td className="py-3 px-4"><div className="h-4 w-16 bg-emerald-100 rounded-md" /></td>
+                                <td className="py-3 px-4"><div className="h-3.5 w-14 bg-slate-200 rounded-md" /></td>
+                                <td className="py-3 px-4"><div className="h-4 w-12 bg-slate-200 rounded-full" /></td>
+                                <td className="py-3 px-4 text-right"><div className="h-6 w-20 bg-slate-200 rounded-lg ml-auto" /></td>
+                              </tr>
+                            ))}
+                          </>
+                        ) : variantsError ? (
                           <tr>
                             <td colSpan={7} className="text-center py-12">
-                              <div className="relative w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                                <div className="absolute inset-0 rounded-2xl bg-[#0BAA4B]/20 animate-ping" />
-                                <img
-                                  src="/dolly_icon.png"
-                                  alt="Dolly"
-                                  onError={(e) => { e.currentTarget.src = '/dolly_logo.png'; }}
-                                  className="w-9 h-9 object-contain rounded-xl relative animate-pulse shadow-sm"
-                                />
-                              </div>
-                              <p className="font-bold text-sm text-slate-700">Loading Storage Variants...</p>
-                              <p className="text-xs text-slate-400 mt-0.5">Fetching pricing matrix and models...</p>
+                              <AlertCircle className="w-8 h-8 mx-auto mb-2 text-rose-500" />
+                              <p className="font-bold text-sm text-slate-800">Unable to Load Storage Variants</p>
+                              <p className="text-xs text-rose-600 mt-0.5">{variantsError}</p>
+                              <button
+                                type="button"
+                                onClick={() => fetchPaginatedVariants(safeVariantPage, variantsPageSize, filterBrandId, filterSeriesId, filterModelId, variantSearch)}
+                                className="mt-3 px-4 py-1.5 bg-[#0BAA4B] hover:bg-[#087C38] text-white font-bold text-xs rounded-xl transition inline-flex items-center gap-1.5"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" /> Retry Loading
+                              </button>
                             </td>
                           </tr>
-                        ) : filteredVariants.length === 0 ? (
+                        ) : paginatedVariants.length === 0 ? (
                           <tr>
                             <td colSpan={7} className="text-center py-12 text-slate-400">
                               <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-40 text-slate-400" />
@@ -2949,7 +2998,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                   </div>
 
                   {/* Pagination Bar for Storage Variants */}
-                  {filteredVariants.length > 0 && (
+                  {variantsTotalCount > 0 && (
                     <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
                       <div className="flex items-center gap-2 text-slate-500 font-medium">
                         <span>Showing</span>
@@ -2966,7 +3015,7 @@ export default function CataloguePricingManager({ initialSubTab = 'brands', onSu
                           <option value={50}>50</option>
                           <option value={100}>100</option>
                         </select>
-                        <span>per page · {filteredVariants.length} total variants</span>
+                        <span>per page · {variantsTotalCount} total variants</span>
                       </div>
 
                       <div className="flex items-center gap-1.5">
