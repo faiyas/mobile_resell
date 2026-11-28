@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/theme.dart';
-import '../config/api_config.dart';
+import '../services/api_service.dart';
 
-class PrivacyPolicyModal extends StatelessWidget {
+class PrivacyPolicyModal extends StatefulWidget {
   const PrivacyPolicyModal({super.key});
 
   static void show(BuildContext context) {
@@ -16,7 +16,35 @@ class PrivacyPolicyModal extends StatelessWidget {
   }
 
   @override
+  State<PrivacyPolicyModal> createState() => _PrivacyPolicyModalState();
+}
+
+class _PrivacyPolicyModalState extends State<PrivacyPolicyModal> {
+  Map<String, dynamic> _biz = {};
+
+  @override
+  void initState() {
+    super.initState();
+    ApiService().getBusinessSettings().then((data) {
+      if (mounted && data.isNotEmpty) setState(() => _biz = data);
+    });
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final policyUrl = _biz['privacy_policy_url']?.toString().trim() ?? '';
+    final termsUrl = _biz['terms_url']?.toString().trim() ?? '';
+    final websiteUrl = _biz['website_url']?.toString().trim() ?? '';
+    final company = _biz['company_name']?.toString().trim().isNotEmpty == true
+        ? _biz['company_name'].toString().trim()
+        : 'Dolly Technologies Pvt Ltd';
     return Container(
       height: MediaQuery.of(context).size.height * 0.88,
       decoration: const BoxDecoration(
@@ -80,6 +108,44 @@ class PrivacyPolicyModal extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               children: [
+                if (policyUrl.isNotEmpty || termsUrl.isNotEmpty || websiteUrl.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      if (policyUrl.isNotEmpty)
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryGreen,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () => _openUrl(policyUrl),
+                          icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                          label: const Text('Privacy Policy', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                        ),
+                      if (termsUrl.isNotEmpty)
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () => _openUrl(termsUrl),
+                          icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                          label: const Text('Terms & Conditions', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                        ),
+                      if (websiteUrl.isNotEmpty)
+                        OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () => _openUrl(websiteUrl),
+                          icon: const Icon(Icons.language_rounded, size: 15),
+                          label: Text('Visit $company', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                ],
                 _buildPolicySection(
                   icon: Icons.cleaning_services_outlined,
                   title: '1. Certified Data Sanitization (Data Wiping)',

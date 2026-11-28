@@ -10,6 +10,8 @@ class ApiService {
   factory ApiService() => _instance;
   ApiService._internal();
 
+  static final ValueNotifier<String?> serverUnavailableNotifier = ValueNotifier<String?>(null);
+
   /// User-friendly error message transformer
   static String formatErrorMessage(dynamic error) {
     final str = error.toString();
@@ -147,11 +149,22 @@ class ApiService {
   // ================= 1. AUTHENTICATION & PROFILE =================
   Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/auth/login/');
-    final res = await http.post(
-      url,
-      headers: _headers,
-      body: jsonEncode({'email': email.trim(), 'password': password}),
-    );
+    late http.Response res;
+    try {
+      res = await http.post(
+        url,
+        headers: _headers,
+        body: jsonEncode({'email': email.trim(), 'password': password}),
+      ).timeout(const Duration(seconds: 12));
+    } catch (e) {
+      serverUnavailableNotifier.value = 'auth_${DateTime.now().millisecondsSinceEpoch}';
+      return {'success': false, 'message': 'Server temporarily unavailable. Please contact admin.'};
+    }
+
+    if (res.statusCode >= 502 && res.statusCode <= 504) {
+      serverUnavailableNotifier.value = 'auth_${DateTime.now().millisecondsSinceEpoch}';
+      return {'success': false, 'message': 'Server temporarily unavailable. Please contact admin.'};
+    }
 
     if (res.statusCode == 200) {
       final data = jsonDecode(res.body);
@@ -178,11 +191,22 @@ class ApiService {
 
   Future<Map<String, dynamic>> register(Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/auth/register/');
-    final res = await http.post(
-      url,
-      headers: _headers,
-      body: jsonEncode(payload),
-    );
+    late http.Response res;
+    try {
+      res = await http.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 12));
+    } catch (e) {
+      serverUnavailableNotifier.value = 'auth_${DateTime.now().millisecondsSinceEpoch}';
+      return {'success': false, 'message': 'Server temporarily unavailable. Please contact admin.'};
+    }
+
+    if (res.statusCode >= 502 && res.statusCode <= 504) {
+      serverUnavailableNotifier.value = 'auth_${DateTime.now().millisecondsSinceEpoch}';
+      return {'success': false, 'message': 'Server temporarily unavailable. Please contact admin.'};
+    }
 
     if (res.statusCode == 201) {
       final data = jsonDecode(res.body);
@@ -735,11 +759,22 @@ class ApiService {
   // ================= 5. SALES ORDERS & BOOKINGS =================
   Future<SaleOrderModel> createSale(Map<String, dynamic> payload) async {
     final url = Uri.parse('${ApiConfig.baseUrl}/sales/');
-    final res = await http.post(
-      url,
-      headers: _headers,
-      body: jsonEncode(payload),
-    );
+    late http.Response res;
+    try {
+      res = await http.post(
+        url,
+        headers: _headers,
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 15));
+    } catch (e) {
+      serverUnavailableNotifier.value = 'order_${DateTime.now().millisecondsSinceEpoch}';
+      throw Exception('Server temporarily unavailable. Please try again or contact admin.');
+    }
+
+    if (res.statusCode >= 502 && res.statusCode <= 504) {
+      serverUnavailableNotifier.value = 'order_${DateTime.now().millisecondsSinceEpoch}';
+      throw Exception('Server temporarily unavailable. Please try again or contact admin.');
+    }
 
     if (res.statusCode == 201) {
       return SaleOrderModel.fromJson(Map<String, dynamic>.from(jsonDecode(res.body)));
@@ -1407,10 +1442,57 @@ class ApiService {
   }
 
   /// Lightweight keep-alive health check ping
-  Future<void> pingHealth() async {
+  Future<bool> pingHealth() async {
     try {
       final url = Uri.parse('${ApiConfig.baseUrl}/health/');
-      await http.get(url, headers: _headers).timeout(const Duration(seconds: 4));
+      final res = await http.get(url, headers: _headers).timeout(const Duration(seconds: 5));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<Map<String, dynamic>> getCatalogVersions() async {
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/catalog/versions/');
+      final res = await http.get(url, headers: _headers).timeout(const Duration(seconds: 5));
+      if (res.statusCode == 200) {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      }
+    } catch (_) {}
+    return {};
+  }
+
+  Future<Map<String, dynamic>> updateBusinessSettings(Map<String, dynamic> data) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/catalog/business-settings/');
+    final res = await http.post(
+      url,
+      headers: _headers,
+      body: jsonEncode(data),
+    ).timeout(const Duration(seconds: 10));
+    if (res.statusCode == 200 || res.statusCode == 201) {
+      final decoded = Map<String, dynamic>.from(jsonDecode(res.body));
+      _cachedBusinessSettings = decoded;
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('dolly_cached_business_settings', jsonEncode(decoded));
+      } catch (_) {}
+      return decoded;
+    }
+    final err = jsonDecode(res.body);
+    throw Exception(err['detail'] ?? 'Failed to update business settings');
+  }
+
+  Future<void> ackNotifications(List<int> ids) async {
+    if (ids.isEmpty) return;
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}/sales/notifications/ack/');
+      await http.post(
+        url,
+        headers: _headers,
+        body: jsonEncode({'ids': ids}),
+      ).timeout(const Duration(seconds: 5));
     } catch (_) {}
   }
 

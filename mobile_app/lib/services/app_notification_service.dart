@@ -240,13 +240,6 @@ class AppNotificationService extends ChangeNotifier {
     }
     await _save();
     notifyListeners();
-
-    if (id.startsWith('remote_')) {
-      final remoteId = int.tryParse(id.replaceFirst('remote_', ''));
-      if (remoteId != null) {
-        ApiService().markNotificationRead(remoteId);
-      }
-    }
   }
 
   Future<void> markAllAsRead() async {
@@ -255,20 +248,25 @@ class AppNotificationService extends ChangeNotifier {
     }
     await _save();
     notifyListeners();
-    ApiService().markAllNotificationsRead();
+  }
+
+  Future<void> _recordDismissedId(String id) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList('dolly_dismissed_notif_ids_v1') ?? [];
+      if (!list.contains(id)) {
+        list.add(id);
+        if (list.length > 250) list.removeRange(0, list.length - 250);
+        await prefs.setStringList('dolly_dismissed_notif_ids_v1', list);
+      }
+    } catch (_) {}
   }
 
   Future<void> removeNotification(String id) async {
     _notifications.removeWhere((n) => n.id == id);
+    await _recordDismissedId(id);
     await _save();
     notifyListeners();
-
-    if (id.startsWith('remote_')) {
-      final remoteId = int.tryParse(id.replaceFirst('remote_', ''));
-      if (remoteId != null) {
-        ApiService().dismissNotification(remoteId);
-      }
-    }
   }
 
   Future<void> restoreNotification(AppNotificationItem item, int index) async {
@@ -282,27 +280,36 @@ class AppNotificationService extends ChangeNotifier {
   }
 
   Future<void> clearAll() async {
+    for (final n in _notifications) {
+      await _recordDismissedId(n.id);
+    }
     _notifications.clear();
     await _save();
     notifyListeners();
-    ApiService().clearAllNotifications();
   }
 
-  /// Syncs notifications broadcasted from the server/admin
+  /// Syncs notifications from server into device storage, then acks delivery
   Future<void> syncRemoteNotifications() async {
     if (!_initialized) {
       await init();
       return;
     }
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final dismissedList = prefs.getStringList('dolly_dismissed_notif_ids_v1') ?? [];
+      final dismissedSet = dismissedList.toSet();
       final res = await ApiService().getNotifications();
       final results = res['results'];
       if (results is List && results.isNotEmpty) {
         bool hasNew = false;
+        final List<int> ackIds = [];
         for (var item in results) {
           if (item is! Map) continue;
           final idNum = item['id'];
+          final parsedInt = int.tryParse(idNum?.toString() ?? '');
+          if (parsedInt != null) ackIds.add(parsedInt);
           final notifId = 'remote_$idNum';
+          if (dismissedSet.contains(notifId)) continue;
           final exists = _notifications.any((n) => n.id == notifId);
           if (!exists) {
             final parsedTime = item['created_at'] != null 
@@ -324,6 +331,9 @@ class AppNotificationService extends ChangeNotifier {
               _showNativePopup(newItem);
             }
           }
+        }
+        if (ackIds.isNotEmpty) {
+          ApiService().ackNotifications(ackIds);
         }
         if (hasNew) {
           _notifications.sort((a, b) => b.timestamp.compareTo(a.timestamp));

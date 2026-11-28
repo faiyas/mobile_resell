@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, X, CheckCircle2, Lock } from 'lucide-react';
+import { Shield, X, CheckCircle2, Lock, ExternalLink } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function PrivacyPolicyModal({ isOpen, onClose }) {
@@ -17,6 +17,9 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
 
   const email = settings?.support_email || 'support@dollyresell.com';
   const company = settings?.company_name || '1103 TechStudios · Dolly Platform';
+  const policyUrl = settings?.privacy_policy_url || '';
+  const termsUrl = settings?.terms_url || '';
+  const websiteUrl = settings?.website_url || '';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
@@ -42,6 +45,43 @@ export default function PrivacyPolicyModal({ isOpen, onClose }) {
 
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-5 text-sm text-slate-700 leading-relaxed">
+          {(policyUrl || termsUrl || websiteUrl) && (
+            <div className="flex flex-wrap gap-2 pb-2 border-b border-slate-100">
+              {policyUrl && (
+                <a
+                  href={policyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs border border-emerald-200 transition"
+                >
+                  <span>Full Privacy Policy</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+              {termsUrl && (
+                <a
+                  href={termsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-200 transition"
+                >
+                  <span>Terms &amp; Conditions</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+              {websiteUrl && (
+                <a
+                  href={websiteUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs border border-slate-200 transition"
+                >
+                  <span>Visit Website</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
+          )}
           <section>
             <h3 className="font-bold text-slate-900 text-base mb-1.5 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />

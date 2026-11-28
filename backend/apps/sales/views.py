@@ -800,3 +800,33 @@ def notification_clear_all_view(request):
         UserNotification.objects.all().update(is_dismissed=True)
     return Response({'success': True, 'message': 'Notifications cleared'})
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def notification_ack_view(request):
+    """
+    Device-first notification cleanup:
+    - Personal/order-specific notifications acknowledged by the device are deleted from the server DB.
+    - Public broadcasts older than 48 hours are pruned to keep server storage minimal.
+    """
+    ids = request.data.get('ids', []) if isinstance(request.data, dict) else []
+    deleted_count = 0
+    if isinstance(ids, list) and ids:
+        from django.db.models import Q
+        clean_ids = [int(i) for i in ids if str(i).isdigit()]
+        if clean_ids:
+            deleted_count, _ = UserNotification.objects.filter(
+                id__in=clean_ids
+            ).filter(
+                Q(recipient__isnull=False) | Q(related_order__isnull=False)
+            ).delete()
+
+    from datetime import timedelta
+    cutoff = timezone.now() - timedelta(hours=48)
+    UserNotification.objects.filter(
+        recipient__isnull=True,
+        related_order__isnull=True,
+        created_at__lt=cutoff
+    ).delete()
+
+    return Response({'success': True, 'deleted': deleted_count})
+

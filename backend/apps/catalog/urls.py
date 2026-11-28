@@ -7,7 +7,7 @@ from .views import (
     variants_list_create_view, variant_detail_view,
     cms_sections_view, system_settings_view, business_settings_view,
     catalog_bulk_delete_view, catalog_sync_bundle_view,
-    catalog_stats_view
+    catalog_stats_view, catalog_versions_view
 )
 
 urlpatterns = [
@@ -40,6 +40,7 @@ urlpatterns = [
 
     # Fast Admin Sidebar Counts & Stats
     path('stats/', catalog_stats_view, name='catalog-stats'),
+    path('versions/', catalog_versions_view, name='catalog-versions'),
 
     # Bulk Delete & Mobile Offline Sync Bundle
     path('bulk-delete/', catalog_bulk_delete_view, name='catalog-bulk-delete'),

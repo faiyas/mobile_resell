@@ -135,6 +135,7 @@ class BusinessSettingSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'company_name', 'business_logo', 'customer_helpline', 'agent_helpline',
             'whatsapp_number', 'support_email', 'office_address', 'google_maps_url',
+            'website_url', 'privacy_policy_url', 'terms_url',
             'working_hours', 'instagram_url', 'facebook_url', 'youtube_url',
             'terms_and_conditions', 'privacy_policy_text', 'updated_at'
         ]

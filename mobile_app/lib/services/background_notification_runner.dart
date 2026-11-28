@@ -1,69 +1,25 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:workmanager/workmanager.dart';
 import 'api_service.dart';
 import 'app_notification_service.dart';
 import 'app_update_service.dart';
-
-const String _bgSyncTaskName = 'dollyBackgroundSyncTask';
-
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    try {
-      WidgetsFlutterBinding.ensureInitialized();
-      await ApiService().init();
-      await AppNotificationService().init();
-      await BackgroundNotificationRunner.runBackgroundSyncCycle();
-    } catch (e) {
-      debugPrint('WorkManager background sync error: $e');
-    }
-    return Future.value(true);
-  });
-}
 
 class BackgroundNotificationRunner {
   static final BackgroundNotificationRunner _instance = BackgroundNotificationRunner._internal();
   factory BackgroundNotificationRunner() => _instance;
   BackgroundNotificationRunner._internal();
 
-  Timer? _pollingTimer;
-  bool _isRunning = false;
-  bool _workmanagerInitialized = false;
+  bool _started = false;
 
-  /// Starts both foreground polling (15s) and closed-app WorkManager sync (15m)
+  /// On-demand sync on app boot / resume (no continuous background polling)
   Future<void> start() async {
-    if (!_workmanagerInitialized) {
-      try {
-        await Workmanager().initialize(callbackDispatcher);
-        await Workmanager().registerPeriodicTask(
-          'dolly_bg_notif_sync',
-          _bgSyncTaskName,
-          frequency: const Duration(minutes: 15),
-          constraints: Constraints(networkType: NetworkType.connected),
-          existingWorkPolicy: ExistingPeriodicWorkPolicy.keep,
-        );
-        _workmanagerInitialized = true;
-      } catch (e) {
-        debugPrint('Workmanager init error (non-mobile or already registered): $e');
-      }
-    }
-
-    if (_isRunning) return;
-    _isRunning = true;
-    AppNotificationService().init();
-
-    // Run first check after 2 seconds
+    if (_started) return;
+    _started = true;
+    await AppNotificationService().init();
     Future.delayed(const Duration(seconds: 2), () => runBackgroundSyncCycle());
-
-    // Periodic check every 15 seconds for near-real-time web-to-mobile sync while open
-    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) => runBackgroundSyncCycle());
   }
 
   void stop() {
-    _pollingTimer?.cancel();
-    _pollingTimer = null;
-    _isRunning = false;
+    _started = false;
   }
 
   static Future<void> runBackgroundSyncCycle() async {
@@ -96,7 +52,7 @@ class BackgroundNotificationRunner {
       // 3. Sync remote broadcast notifications from backend API
       await AppNotificationService().syncRemoteNotifications();
     } catch (e) {
-      debugPrint('Background notification runner cycle: $e');
+      debugPrint('Notification sync cycle: $e');
     }
   }
 }

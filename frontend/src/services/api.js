@@ -26,8 +26,12 @@ export const getCurrentUser = () => {
 export const setCurrentUser = (user) => localStorage.setItem('recell_user', JSON.stringify(user));
 export const removeCurrentUser = () => localStorage.removeItem('recell_user');
 
+const inflightRequests = new Map();
+
 async function request(endpoint, options = {}) {
+  const method = (options.method || 'GET').toUpperCase();
   const isAuthEndpoint = endpoint.includes('/auth/login') || endpoint.includes('/auth/register');
+  const isOrderSubmit = method === 'POST' && endpoint.startsWith('/sales/');
   const token = !isAuthEndpoint ? getAuthToken() : null;
   const headers = {
     'Content-Type': 'application/json',
@@ -35,38 +39,63 @@ async function request(endpoint, options = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const isAuthError = response.status === 401 || (response.status === 403 && (
-      data.detail === 'Invalid token' ||
-      data.detail === 'Token has expired' ||
-      data.detail?.includes('authentication')
-    ));
-
-    if (isAuthError && getAuthToken()) {
-      // Stale or invalid token - auto-purge to avoid stuck authentication
-      removeAuthToken();
-      removeCurrentUser();
-      window.dispatchEvent(new CustomEvent('recell-auth-expired'));
-    }
-    let errorMsg = data.detail || data.message || data.error;
-    if (!errorMsg && typeof data === 'object' && data !== null) {
-      const entries = Object.entries(data);
-      if (entries.length > 0) {
-        const [field, val] = entries[0];
-        const valText = Array.isArray(val) ? val.join(', ') : (typeof val === 'string' ? val : JSON.stringify(val));
-        errorMsg = field === 'detail' || field === 'non_field_errors' ? valText : `${field}: ${valText}`;
-      }
-    }
-    errorMsg = errorMsg || (response.statusText ? `${response.status} ${response.statusText}` : 'API Request Failed');
-    throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
+  const dedupeKey = method === 'GET' ? endpoint : null;
+  if (dedupeKey && inflightRequests.has(dedupeKey)) {
+    return inflightRequests.get(dedupeKey);
   }
-  return data;
+
+  const exec = (async () => {
+    let response;
+    try {
+      response = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers,
+      });
+    } catch (networkErr) {
+      if (isAuthEndpoint || isOrderSubmit) {
+        window.dispatchEvent(new CustomEvent('dolly-server-unavailable', { detail: { endpoint, method } }));
+      }
+      throw networkErr;
+    }
+
+    if ([502, 503, 504].includes(response.status) && (isAuthEndpoint || isOrderSubmit)) {
+      window.dispatchEvent(new CustomEvent('dolly-server-unavailable', { detail: { endpoint, method } }));
+    }
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const isAuthError = response.status === 401 || (response.status === 403 && (
+        data.detail === 'Invalid token' ||
+        data.detail === 'Token has expired' ||
+        data.detail?.includes('authentication')
+      ));
+
+      if (isAuthError && getAuthToken()) {
+        // Stale or invalid token - auto-purge to avoid stuck authentication
+        removeAuthToken();
+        removeCurrentUser();
+        window.dispatchEvent(new CustomEvent('recell-auth-expired'));
+      }
+      let errorMsg = data.detail || data.message || data.error;
+      if (!errorMsg && typeof data === 'object' && data !== null) {
+        const entries = Object.entries(data);
+        if (entries.length > 0) {
+          const [field, val] = entries[0];
+          const valText = Array.isArray(val) ? val.join(', ') : (typeof val === 'string' ? val : JSON.stringify(val));
+          errorMsg = field === 'detail' || field === 'non_field_errors' ? valText : `${field}: ${valText}`;
+        }
+      }
+      errorMsg = errorMsg || (response.statusText ? `${response.status} ${response.statusText}` : 'API Request Failed');
+      throw new Error(typeof errorMsg === 'string' ? errorMsg : JSON.stringify(errorMsg));
+    }
+    return data;
+  })();
+
+  if (dedupeKey) {
+    inflightRequests.set(dedupeKey, exec);
+    exec.finally(() => inflightRequests.delete(dedupeKey));
+  }
+  return exec;
 }
 
 // Lightweight SWR (Stale-While-Revalidate) Cache for read-only catalog endpoints
@@ -131,6 +160,7 @@ export const api = {
 
   // Catalog & Categories (Cached via SWR for instant 0ms front-page paints)
   getCatalogStats: () => request('/catalog/stats/'),
+  getCatalogVersions: () => request('/catalog/versions/'),
   getCategories: (all = false) => (all ? request(`/catalog/categories/?all=true`) : cachedRequest('/catalog/categories/?all=false')),
   createCategory: (data) => { clearCatalogCache(); return request('/catalog/categories/', { method: 'POST', body: JSON.stringify(data) }); },
   updateCategory: (id, data) => { clearCatalogCache(); return request(`/catalog/categories/${id}/`, { method: 'PUT', body: JSON.stringify(data) }); },
@@ -168,8 +198,14 @@ export const api = {
   updateCMSSection: (data) => { clearCatalogCache(); return request('/catalog/cms/sections/', { method: 'POST', body: JSON.stringify(data) }); },
   getSystemSettings: () => request('/catalog/settings/'),
   updateSystemSettings: (data) => request('/catalog/settings/', { method: 'POST', body: JSON.stringify(data) }),
-  getBusinessSettings: () => request('/catalog/business-settings/'),
-  updateBusinessSettings: (data) => request('/catalog/business-settings/', { method: 'POST', body: JSON.stringify(data) }),
+  getBusinessSettings: () => request('/catalog/business-settings/').then((data) => {
+    try { localStorage.setItem('dolly_cached_business_settings', JSON.stringify(data)); } catch {}
+    return data;
+  }),
+  updateBusinessSettings: (data) => request('/catalog/business-settings/', { method: 'POST', body: JSON.stringify(data) }).then((res) => {
+    try { localStorage.setItem('dolly_cached_business_settings', JSON.stringify(res)); } catch {}
+    return res;
+  }),
 
   getVariants: (modelId, all = false, brandId = null, seriesId = null) => 
     request(`/catalog/variants/?${modelId ? `model=${modelId}&` : ''}${brandId ? `brand=${brandId}&` : ''}${seriesId ? `series=${seriesId}&` : ''}all=${all}`).then(res => (res && Array.isArray(res.results)) ? res.results : res),
@@ -273,6 +309,7 @@ export const api = {
   dismissNotification: (id) => request(`/sales/notifications/${id}/dismiss/`, { method: 'POST' }),
   markAllNotificationsRead: () => request('/sales/notifications/mark-all-read/', { method: 'POST' }),
   clearAllNotifications: () => request('/sales/notifications/clear-all/', { method: 'POST' }),
+  ackNotifications: (ids) => request('/sales/notifications/ack/', { method: 'POST', body: JSON.stringify({ ids }) }).catch(() => null),
   
   // Health & Keep-Alive Ping
   pingHealth: () => request('/health/').catch(() => null),

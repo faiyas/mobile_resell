@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import AuthModal from './components/AuthModal';
+import ServerUnavailableModal from './components/ServerUnavailableModal';
 import SellWizard from './customer/SellWizard';
 import TrackOrder from './customer/TrackOrder';
 import AdminDashboard from './admin/AdminDashboard';
@@ -55,15 +56,8 @@ export default function App() {
       }
     }).catch(console.error);
 
-    // Heartbeat Keep-Alive: Ping backend every 1 minute to prevent cloud backend idling
-    api.pingHealth();
-    const keepAliveTimer = setInterval(() => {
-      api.pingHealth();
-    }, 60000);
-
     return () => {
       window.removeEventListener('recell-auth-expired', handleAuthExpired);
-      clearInterval(keepAliveTimer);
     };
   }, []);
 
@@ -442,6 +436,9 @@ export default function App() {
         onClose={() => setAuthModalOpen(false)}
         onAuthSuccess={handleAuthSuccess}
       />
+
+      {/* Global Server Unavailable / Contact Admin Modal */}
+      <ServerUnavailableModal />
 
     </div>
   );

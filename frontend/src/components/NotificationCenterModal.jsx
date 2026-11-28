@@ -18,16 +18,61 @@ export default function NotificationCenterModal({ isOpen, onClose, onSelectOrder
     }
   }, [isOpen]);
 
+  const STORAGE_KEY = 'dolly_web_notifications_v1';
+  const DISMISSED_KEY = 'dolly_web_notifications_dismissed_v1';
+
+  const getLocalNotifs = () => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const getDismissedIds = () => {
+    try {
+      const raw = localStorage.getItem(DISMISSED_KEY);
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  };
+
+  const saveLocalNotifs = (list) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, 100)));
+    } catch {}
+  };
+
   const loadNotifications = async () => {
-    setLoading(true);
+    const cached = getLocalNotifs();
+    if (cached.length > 0) {
+      setNotifications(cached);
+      setUnreadCount(cached.filter(n => !n.is_read).length);
+    }
+    setLoading(cached.length === 0);
     try {
       const res = await api.getNotifications(currentUser?.phone || '');
-      if (res && Array.isArray(res.results)) {
-        setNotifications(res.results);
-        setUnreadCount(res.unread_count || 0);
-      } else if (Array.isArray(res)) {
-        setNotifications(res);
-        setUnreadCount(res.filter(n => !n.is_read).length);
+      const incoming = res && Array.isArray(res.results) ? res.results : (Array.isArray(res) ? res : []);
+      const dismissed = getDismissedIds();
+      const map = new Map();
+      cached.forEach(n => map.set(n.id, n));
+      const ackIds = [];
+      incoming.forEach(n => {
+        if (dismissed.has(n.id)) return;
+        ackIds.push(n.id);
+        const existing = map.get(n.id);
+        map.set(n.id, existing ? { ...n, is_read: existing.is_read || n.is_read } : n);
+      });
+      const merged = Array.from(map.values()).sort(
+        (a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)
+      );
+      saveLocalNotifs(merged);
+      setNotifications(merged);
+      setUnreadCount(merged.filter(n => !n.is_read).length);
+      if (ackIds.length > 0) {
+        api.ackNotifications(ackIds);
       }
     } catch (e) {
       console.warn('Failed to load notifications:', e);
@@ -37,35 +82,37 @@ export default function NotificationCenterModal({ isOpen, onClose, onSelectOrder
   };
 
   const handleMarkAsRead = async (id) => {
-    try {
-      await api.markNotificationRead(id);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch (e) {}
+    const updated = notifications.map(n => n.id === id ? { ...n, is_read: true } : n);
+    saveLocalNotifs(updated);
+    setNotifications(updated);
+    setUnreadCount(updated.filter(n => !n.is_read).length);
   };
 
   const handleDismiss = async (id, e) => {
     e?.stopPropagation();
-    try {
-      await api.dismissNotification(id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    } catch (e) {}
+    const dismissed = getDismissedIds();
+    dismissed.add(id);
+    try { localStorage.setItem(DISMISSED_KEY, JSON.stringify(Array.from(dismissed).slice(-200))); } catch {}
+    const updated = notifications.filter(n => n.id !== id);
+    saveLocalNotifs(updated);
+    setNotifications(updated);
+    setUnreadCount(updated.filter(n => !n.is_read).length);
   };
 
   const handleMarkAllRead = async () => {
-    try {
-      await api.markAllNotificationsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      setUnreadCount(0);
-    } catch (e) {}
+    const updated = notifications.map(n => ({ ...n, is_read: true }));
+    saveLocalNotifs(updated);
+    setNotifications(updated);
+    setUnreadCount(0);
   };
 
   const handleClearAll = async () => {
-    try {
-      await api.clearAllNotifications();
-      setNotifications([]);
-      setUnreadCount(0);
-    } catch (e) {}
+    const dismissed = getDismissedIds();
+    notifications.forEach(n => dismissed.add(n.id));
+    try { localStorage.setItem(DISMISSED_KEY, JSON.stringify(Array.from(dismissed).slice(-200))); } catch {}
+    saveLocalNotifs([]);
+    setNotifications([]);
+    setUnreadCount(0);
   };
 
   if (!isOpen) return null;

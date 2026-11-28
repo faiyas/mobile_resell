@@ -25,6 +25,21 @@ export default function SystemSettingsView({ mode = 'settings' }) {
     companyName: 'Dolly Buyback Services Pvt Ltd'
   });
 
+  // Business Settings (contacts, website URL, privacy/terms URLs)
+  const [bizForm, setBizForm] = useState({
+    company_name: '',
+    website_url: '',
+    privacy_policy_url: '',
+    terms_url: '',
+    customer_helpline: '',
+    agent_helpline: '',
+    whatsapp_number: '',
+    support_email: '',
+    working_hours: '',
+    office_address: '',
+    google_maps_url: '',
+  });
+
   useEffect(() => {
     setActiveTab(mode);
   }, [mode]);
@@ -36,9 +51,15 @@ export default function SystemSettingsView({ mode = 'settings' }) {
   const loadSettingsFromBackend = async () => {
     setLoading(true);
     try {
-      const data = await api.getSystemSettings();
+      const [data, bizData] = await Promise.all([
+        api.getSystemSettings().catch(() => ({})),
+        api.getBusinessSettings().catch(() => ({})),
+      ]);
       if (data && typeof data === 'object' && Object.keys(data).length > 0) {
         setForm(prev => ({ ...prev, ...data }));
+      }
+      if (bizData && typeof bizData === 'object' && Object.keys(bizData).length > 0) {
+        setBizForm(prev => ({ ...prev, ...bizData }));
       }
     } catch (err) {
       console.error('Failed to load settings:', err);
@@ -52,9 +73,15 @@ export default function SystemSettingsView({ mode = 'settings' }) {
     setSaving(true);
     setErrorMsg('');
     try {
-      const updated = await api.updateSystemSettings(form);
+      const [updated, updatedBiz] = await Promise.all([
+        api.updateSystemSettings(form),
+        api.updateBusinessSettings(bizForm),
+      ]);
       if (updated) {
         setForm(prev => ({ ...prev, ...updated }));
+      }
+      if (updatedBiz) {
+        setBizForm(prev => ({ ...prev, ...updatedBiz }));
       }
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 4000);
@@ -263,6 +290,101 @@ export default function SystemSettingsView({ mode = 'settings' }) {
                 placeholder="• Feature updates, bug fixes, or promotional announcements..."
                 value={form.release_notes || ''}
                 onChange={(e) => setForm({ ...form, release_notes: e.target.value })}
+                className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:border-[#0BAA4B] outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Card 4: Business Contacts, Website URL & Legal Page Links */}
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center gap-2 text-slate-900 font-extrabold text-sm border-b border-slate-100 pb-3">
+              <Globe className="w-4 h-4 text-[#0BAA4B]" />
+              <h3>Business Profile, Contacts &amp; Policy Links</h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Company / Brand Name</label>
+                <input
+                  type="text"
+                  value={bizForm.company_name || ''}
+                  onChange={(e) => setBizForm({ ...bizForm, company_name: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:border-[#0BAA4B] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Website URL</label>
+                <input
+                  type="url"
+                  placeholder="https://mobile-resell.vercel.app"
+                  value={bizForm.website_url || ''}
+                  onChange={(e) => setBizForm({ ...bizForm, website_url: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Privacy Policy Page URL</label>
+                <input
+                  type="url"
+                  placeholder="https://mobile-resell.vercel.app/privacy-policy"
+                  value={bizForm.privacy_policy_url || ''}
+                  onChange={(e) => setBizForm({ ...bizForm, privacy_policy_url: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Terms &amp; Conditions Page URL</label>
+                <input
+                  type="url"
+                  placeholder="https://mobile-resell.vercel.app/terms"
+                  value={bizForm.terms_url || ''}
+                  onChange={(e) => setBizForm({ ...bizForm, terms_url: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Customer Helpline</label>
+                <input
+                  type="text"
+                  value={bizForm.customer_helpline || ''}
+                  onChange={(e) => setBizForm({ ...bizForm, customer_helpline: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">WhatsApp Number</label>
+                <input
+                  type="text"
+                  value={bizForm.whatsapp_number || ''}
+                  onChange={(e) => setBizForm({ ...bizForm, whatsapp_number: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Support Email</label>
+                <input
+                  type="email"
+                  value={bizForm.support_email || ''}
+                  onChange={(e) => setBizForm({ ...bizForm, support_email: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:bg-white focus:border-[#0BAA4B] outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Working Hours</label>
+                <input
+                  type="text"
+                  value={bizForm.working_hours || ''}
+                  onChange={(e) => setBizForm({ ...bizForm, working_hours: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-semibold focus:bg-white focus:border-[#0BAA4B] outline-none"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">Office Address</label>
+              <input
+                type="text"
+                value={bizForm.office_address || ''}
+                onChange={(e) => setBizForm({ ...bizForm, office_address: e.target.value })}
                 className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-medium focus:bg-white focus:border-[#0BAA4B] outline-none"
               />
             </div>

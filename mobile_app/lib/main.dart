@@ -1,21 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'config/theme.dart';
 import 'screens/orders/track_order_screen.dart';
 import 'screens/splash_screen.dart';
+import 'services/api_service.dart';
 import 'services/app_notification_service.dart';
 import 'services/app_update_service.dart';
 import 'services/background_notification_runner.dart';
-import 'services/server_keep_alive_service.dart';
 import 'widgets/notification_center_sheet.dart';
+import 'widgets/server_unavailable_sheet.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  FlutterForegroundTask.initCommunicationPort();
   await AppNotificationService().init();
   await BackgroundNotificationRunner().start();
-  await ServerKeepAliveService().restoreIfEnabled();
   runApp(const RecellApp());
 }
 
@@ -33,13 +31,24 @@ class _RecellAppState extends State<RecellApp> {
     super.initState();
     AppUpdateService.availableUpdateNotifier.addListener(_onUpdateAvailable);
     AppNotificationService.tapPayloadNotifier.addListener(_onNotificationTapped);
+    ApiService.serverUnavailableNotifier.addListener(_onServerUnavailable);
   }
 
   @override
   void dispose() {
     AppUpdateService.availableUpdateNotifier.removeListener(_onUpdateAvailable);
     AppNotificationService.tapPayloadNotifier.removeListener(_onNotificationTapped);
+    ApiService.serverUnavailableNotifier.removeListener(_onServerUnavailable);
     super.dispose();
+  }
+
+  void _onServerUnavailable() {
+    final tag = ApiService.serverUnavailableNotifier.value;
+    final ctx = RecellApp.navigatorKey.currentContext;
+    if (tag != null && ctx != null) {
+      ApiService.serverUnavailableNotifier.value = null;
+      ServerUnavailableSheet.show(ctx, contextTag: tag);
+    }
   }
 
   void _onUpdateAvailable() {

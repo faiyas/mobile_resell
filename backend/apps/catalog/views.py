@@ -327,6 +327,7 @@ def variants_list_create_view(request):
         serializer = StorageVariantSerializer(data=request.data)
         if serializer.is_valid():
             variant = serializer.save()
+            bump_catalog_version('brand_variants', variant.model.brand_id)
             return Response(StorageVariantSerializer(variant).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -350,6 +351,7 @@ def variant_detail_view(request, pk):
         serializer = StorageVariantSerializer(variant, data=request.data, partial=True)
         if serializer.is_valid():
             updated_variant = serializer.save()
+            bump_catalog_version('brand_variants', updated_variant.model.brand_id)
             new_price = updated_variant.base_price
 
             if old_price != new_price:
@@ -493,6 +495,7 @@ def system_settings_view(request):
             'data_json': data
         }
     )
+    bump_catalog_version('settings')
 
     new_version = str(data.get('latest_version', '') or '').strip()
     if new_version and new_version != old_version:
@@ -534,6 +537,7 @@ def business_settings_view(request):
     serializer = BusinessSettingSerializer(setting, data=request.data, partial=True)
     if serializer.is_valid():
         serializer.save()
+        bump_catalog_version('settings')
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -668,4 +672,52 @@ def catalog_stats_view(request):
         'cms': CMSHomeSection.objects.count(),
         'options': ConditionOption.objects.count(),
     })
+
+# ================= 9. SELECTIVE CACHE VERSION MANIFEST =================
+def _get_versions_dict():
+    section, _ = CMSHomeSection.objects.get_or_create(
+        section_type='CATALOG_VERSIONS',
+        defaults={
+            'title': 'Selective Cache Version Manifest',
+            'data_json': {
+                'brands': 1,
+                'triage': 1,
+                'deductions': 1,
+                'banners': 1,
+                'settings': 1,
+                'brand_variants': {},
+            }
+        }
+    )
+    data = section.data_json if isinstance(section.data_json, dict) else {}
+    data.setdefault('brands', 1)
+    data.setdefault('triage', 1)
+    data.setdefault('deductions', 1)
+    data.setdefault('banners', 1)
+    data.setdefault('settings', 1)
+    if not isinstance(data.get('brand_variants'), dict):
+        data['brand_variants'] = {}
+    return section, data
+
+def bump_catalog_version(key, brand_id=None):
+    try:
+        section, data = _get_versions_dict()
+        if key == 'brand_variants' and brand_id is not None:
+            bkey = str(brand_id)
+            bv = dict(data.get('brand_variants', {}))
+            bv[bkey] = int(bv.get(bkey, 0)) + 1
+            data['brand_variants'] = bv
+        else:
+            data[key] = int(data.get(key, 0)) + 1
+        section.data_json = data
+        section.save(update_fields=['data_json'])
+    except Exception:
+        pass
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def catalog_versions_view(request):
+    """Tiny <300-byte manifest so clients only reload sections/brands that actually changed."""
+    _, data = _get_versions_dict()
+    return Response(data)
 

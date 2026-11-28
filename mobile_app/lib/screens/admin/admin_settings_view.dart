@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/api_service.dart';
-import '../../services/server_keep_alive_service.dart';
 import '../../widgets/glass_container.dart';
 
 class AdminSettingsView extends StatefulWidget {
@@ -33,51 +32,65 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
   bool _forceUpdate = false;
   bool _isSavingOta = false;
   Map<String, dynamic> _loadedSettings = {};
-  bool _keepAliveEnabled = false;
-  bool _keepAliveBusy = false;
+
+  // Business Profile, Contacts & Legal Links
+  final _bizWebsiteCtrl = TextEditingController();
+  final _bizPolicyUrlCtrl = TextEditingController();
+  final _bizTermsUrlCtrl = TextEditingController();
+  final _bizHelplineCtrl = TextEditingController();
+  final _bizWhatsappCtrl = TextEditingController();
+  final _bizEmailCtrl = TextEditingController();
+  final _bizAddressCtrl = TextEditingController();
+  bool _isSavingBiz = false;
 
   @override
   void initState() {
     super.initState();
     _loadSystemSettings();
-    _loadKeepAliveState();
+    _loadBusinessSettings();
   }
 
-  Future<void> _loadKeepAliveState() async {
-    final enabled = await ServerKeepAliveService().isEnabled();
-    final running = await ServerKeepAliveService().isRunning();
-    if (mounted) {
-      setState(() => _keepAliveEnabled = enabled || running);
-    }
+  Future<void> _loadBusinessSettings() async {
+    final b = await _api.getBusinessSettings();
+    if (!mounted || b.isEmpty) return;
+    setState(() {
+      _bizWebsiteCtrl.text = b['website_url']?.toString() ?? '';
+      _bizPolicyUrlCtrl.text = b['privacy_policy_url']?.toString() ?? '';
+      _bizTermsUrlCtrl.text = b['terms_url']?.toString() ?? '';
+      _bizHelplineCtrl.text = b['customer_helpline']?.toString() ?? '';
+      _bizWhatsappCtrl.text = b['whatsapp_number']?.toString() ?? '';
+      _bizEmailCtrl.text = b['support_email']?.toString() ?? '';
+      _bizAddressCtrl.text = b['office_address']?.toString() ?? '';
+    });
   }
 
-  Future<void> _toggleKeepAlive(bool value) async {
-    setState(() => _keepAliveBusy = true);
+  Future<void> _saveBusinessSettings() async {
+    setState(() => _isSavingBiz = true);
     try {
-      if (value) {
-        final started = await ServerKeepAliveService().start();
-        if (mounted) {
-          setState(() => _keepAliveEnabled = started);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(started
-                  ? '✓ 1-Minute Server Keep-Alive started in background!'
-                  : 'Keep-Alive is supported on Android devices.'),
-              backgroundColor: started ? AppTheme.darkGreen : Colors.orange,
-            ),
-          );
-        }
-      } else {
-        await ServerKeepAliveService().stop();
-        if (mounted) {
-          setState(() => _keepAliveEnabled = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Server Keep-Alive stopped.')),
-          );
-        }
+      await _api.updateBusinessSettings({
+        'website_url': _bizWebsiteCtrl.text.trim(),
+        'privacy_policy_url': _bizPolicyUrlCtrl.text.trim(),
+        'terms_url': _bizTermsUrlCtrl.text.trim(),
+        'customer_helpline': _bizHelplineCtrl.text.trim(),
+        'whatsapp_number': _bizWhatsappCtrl.text.trim(),
+        'support_email': _bizEmailCtrl.text.trim(),
+        'office_address': _bizAddressCtrl.text.trim(),
+      });
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✓ Business contacts, website & policy URLs updated!'),
+          backgroundColor: AppTheme.darkGreen,
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to save business settings: $e'), backgroundColor: Colors.red),
+        );
       }
     } finally {
-      if (mounted) setState(() => _keepAliveBusy = false);
+      if (mounted) setState(() => _isSavingBiz = false);
     }
   }
 
@@ -140,6 +153,13 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
     _minVerCtrl.dispose();
     _apkUrlCtrl.dispose();
     _releaseNotesCtrl.dispose();
+    _bizWebsiteCtrl.dispose();
+    _bizPolicyUrlCtrl.dispose();
+    _bizTermsUrlCtrl.dispose();
+    _bizHelplineCtrl.dispose();
+    _bizWhatsappCtrl.dispose();
+    _bizEmailCtrl.dispose();
+    _bizAddressCtrl.dispose();
     super.dispose();
   }
 
@@ -240,7 +260,7 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
 
         const SizedBox(height: 14),
 
-        // Server Keep-Alive (1-Minute Background Ping)
+        // Business Contacts, Website URL & Policy Links Card
         GlassContainer(
           borderRadius: 18,
           padding: const EdgeInsets.all(16),
@@ -249,26 +269,110 @@ class _AdminSettingsViewState extends State<AdminSettingsView> {
             children: [
               const Row(
                 children: [
-                  Icon(Icons.bolt_rounded, color: AppTheme.primaryGreen, size: 20),
+                  Icon(Icons.language_rounded, color: AppTheme.primaryGreen, size: 20),
                   SizedBox(width: 8),
-                  Text('Server Keep-Alive (1-Min Background Ping)', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
+                  Text('Website, Contacts & Policy Links', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary)),
                 ],
               ),
               const SizedBox(height: 4),
               const Text(
-                'Pings the backend every 60 seconds whenever your device has internet so InstaBox never auto-pauses. Requests background battery exemption on Android.',
+                'Update live website URL, privacy/terms page links, helpline, and support email across Web & Mobile:',
                 style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
               ),
-              const SizedBox(height: 8),
-              SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                value: _keepAliveEnabled,
-                activeTrackColor: AppTheme.primaryGreen,
-                title: Text(
-                  _keepAliveEnabled ? 'Active · Pinging every 1 minute' : 'Disabled · Enable to keep server awake',
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _bizWebsiteCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Website URL',
+                  hintText: 'https://mobile-resell.vercel.app',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
                 ),
-                onChanged: _keepAliveBusy ? null : _toggleKeepAlive,
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _bizPolicyUrlCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Privacy Policy Page URL',
+                  hintText: 'https://mobile-resell.vercel.app/privacy-policy',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _bizTermsUrlCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Terms & Conditions Page URL',
+                  hintText: 'https://mobile-resell.vercel.app/terms',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _bizHelplineCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Customer Helpline',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _bizWhatsappCtrl,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'WhatsApp Number',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _bizEmailCtrl,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Support Email',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _bizAddressCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Office Address',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  isDense: true,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryGreen,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isSavingBiz ? null : _saveBusinessSettings,
+                  icon: _isSavingBiz
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.save_rounded, size: 16, color: Colors.white),
+                  label: Text(
+                    _isSavingBiz ? 'Saving...' : 'Save Contacts & Links',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
               ),
             ],
           ),

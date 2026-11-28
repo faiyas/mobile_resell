@@ -16,10 +16,12 @@ from .views import (
     notification_dismiss_view,
     notification_mark_all_read_view,
     notification_clear_all_view,
+    notification_ack_view,
 )
 
 urlpatterns = [
     path('notifications/', notifications_list_view, name='sales-notifications-list'),
+    path('notifications/ack/', notification_ack_view, name='sales-notifications-ack'),
     path('notifications/mark-all-read/', notification_mark_all_read_view, name='sales-notifications-mark-all-read'),
     path('notifications/clear-all/', notification_clear_all_view, name='sales-notifications-clear-all'),
     path('notifications/<int:pk>/read/', notification_mark_read_view, name='sales-notification-mark-read'),
