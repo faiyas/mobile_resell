@@ -125,9 +125,7 @@ export const formatImageSrc = (src) => {
     s.startsWith('http://') ||
     s.startsWith('https://') ||
     s.startsWith('blob:') ||
-    s.startsWith('/logo') ||
-    s.startsWith('/assets') ||
-    s.startsWith('/static')
+    (s.startsWith('/') && !s.startsWith('/9j/'))
   ) {
     return s;
   }
